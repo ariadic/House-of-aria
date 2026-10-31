@@ -1,0 +1,998 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aria Visualizer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;700;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0b0a10; --panel:#15131d; --panel2:#1d1a28; --line:#2c2840; --text:#ece9f5; --muted:#9a94b3;
+  --accent:#b46cff; --accent2:#ff5fa2; --ok:#4ade80; --warn:#fbbf24;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{background:var(--bg);color:var(--text);font-family:Heebo,system-ui,sans-serif;font-size:14px}
+header{display:flex;align-items:center;gap:12px;padding:12px 18px;border-bottom:1px solid var(--line);background:linear-gradient(90deg,#1a1028,#0b0a10)}
+header h1{margin:0;font-size:20px;font-weight:900;letter-spacing:.5px;background:linear-gradient(90deg,var(--accent),var(--accent2));-webkit-background-clip:text;background-clip:text;color:transparent}
+header .sub{color:var(--muted);font-size:13px}
+.app{display:grid;grid-template-columns:400px 1fr;height:calc(100% - 55px)}
+.panel{overflow-y:auto;border-left:1px solid var(--line);background:var(--panel);padding:12px}
+.stage{display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:16px;gap:12px;overflow:auto;min-width:0}
+.card{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:12px}
+.card h3{margin:0 0 10px;font-size:15px;display:flex;align-items:center;gap:8px}
+.card h3 .n{background:var(--accent);color:#000;border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:900}
+label{display:block;color:var(--muted);font-size:12px;margin:8px 0 4px}
+input[type=text],input[type=number],select{width:100%;background:#0f0e15;color:var(--text);border:1px solid var(--line);border-radius:8px;padding:8px;font:inherit}
+input[type=range]{width:100%;accent-color:var(--accent)}
+input[type=color]{width:100%;height:36px;border:1px solid var(--line);border-radius:8px;background:#0f0e15;padding:2px}
+.row{display:flex;gap:8px}.row>*{flex:1;min-width:0}
+.btn{background:#2a2540;color:var(--text);border:1px solid var(--line);border-radius:8px;padding:8px 12px;font:inherit;cursor:pointer;white-space:nowrap}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:linear-gradient(90deg,var(--accent),var(--accent2));color:#fff;border:0;font-weight:700}
+.btn.small{padding:5px 8px;font-size:12px}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.drop{border:2px dashed var(--line);border-radius:10px;padding:12px;text-align:center;color:var(--muted);cursor:pointer;position:relative;transition:.15s}
+.drop:hover,.drop.over{border-color:var(--accent);color:var(--text)}
+.drop input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.drop .fname{color:var(--ok);font-size:12px;margin-top:4px;word-break:break-all}
+.presets{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.fx-tools{display:flex;gap:6px;margin-bottom:8px}
+.fx-tools input{flex:1}
+.fx-group{margin-top:10px}
+.fx-group h4{margin:0 0 6px;font-size:12px;color:var(--accent);font-weight:700}
+.fx-list{display:grid;grid-template-columns:1fr 1fr;gap:4px}
+.fx{display:flex;align-items:center;gap:6px;background:#0f0e15;border:1px solid var(--line);border-radius:7px;padding:5px 7px;cursor:pointer;font-size:12px;user-select:none;color:var(--text);margin:0}
+.fx input{accent-color:var(--accent);margin:0}
+.fx.on{border-color:var(--accent);background:#221a33}
+.count{color:var(--muted);font-size:12px;margin-inline-start:auto;font-weight:400}
+.canvas-wrap{position:relative;background:#000;border-radius:12px;overflow:hidden;box-shadow:0 10px 40px #0008;max-width:100%}
+#cv{display:block;max-height:calc(100vh - 260px);max-width:100%;height:auto;width:auto}
+.transport{width:100%;max-width:900px;display:flex;flex-direction:column;gap:8px}
+.tl-wrap{position:relative}
+#timeline{width:100%;height:56px;display:block;background:#0f0e15;border:1px solid var(--line);border-radius:8px;cursor:pointer}
+.controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.time{font-variant-numeric:tabular-nums;color:var(--muted);direction:ltr}
+.progress{height:8px;background:#0f0e15;border-radius:6px;overflow:hidden;border:1px solid var(--line);flex:1;min-width:120px}
+.progress>div{height:100%;width:0;background:linear-gradient(90deg,var(--accent),var(--accent2))}
+.note{color:var(--muted);font-size:12px;line-height:1.5}
+.hint{background:#1e1a10;border:1px solid #4a3d12;color:#f6dc8a;border-radius:8px;padding:8px;font-size:12px;margin-top:8px;display:none}
+a.dl{color:var(--ok);font-weight:700}
+.check{display:flex;align-items:center;gap:6px;color:var(--text);font-size:13px;margin:8px 0 0}
+@media (max-width:900px){
+  .app{grid-template-columns:1fr;height:auto}
+  .panel{border-left:0;border-bottom:1px solid var(--line);order:2;overflow:visible}
+  .stage{order:1;padding:16px}
+  #cv{max-height:60vh}
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>ARIA VISUALIZER</h1>
+  <span class="sub">תמונה + מוזיקה ← סרטון ויזואלי לסושיאל</span>
+</header>
+<div class="app">
+  <aside class="panel">
+    <div class="card">
+      <h3><span class="n">1</span>קבצים</h3>
+      <div class="row">
+        <div class="drop" id="dropImg">🖼️ תמונה<br><small>JPG / PNG / WEBP / GIF…</small>
+          <input type="file" id="imgIn" accept="image/*">
+          <div class="fname" id="imgName"></div>
+        </div>
+        <div class="drop" id="dropAud">🎵 שיר<br><small>MP3 / WAV / M4A / וידאו</small>
+          <input type="file" id="audIn" accept="audio/*,video/*,.mp3,.wav,.m4a,.aac,.flac,.ogg">
+          <div class="fname" id="audName"></div>
+        </div>
+      </div>
+      <div class="hint" id="imgErr"></div>
+    </div>
+
+    <div class="card">
+      <h3><span class="n">2</span>מקטע ופורמט</h3>
+      <div class="row">
+        <div><label>התחלה (שניות)</label><input type="number" id="segStart" min="0" step="0.1" value="0"></div>
+        <div><label>סיום (שניות)</label><input type="number" id="segEnd" min="0" step="0.1" value="30"></div>
+      </div>
+      <div class="row" style="margin-top:6px">
+        <button class="btn small" id="setStart">התחלה = עכשיו</button>
+        <button class="btn small" id="setEnd">סיום = עכשיו</button>
+      </div>
+      <div class="row" style="margin-top:6px">
+        <button class="btn small" data-len="15">15 שנ׳</button>
+        <button class="btn small" data-len="30">30 שנ׳</button>
+        <button class="btn small" data-len="60">60 שנ׳</button>
+        <button class="btn small" data-len="90">90 שנ׳</button>
+      </div>
+      <label>פורמט</label>
+      <select id="format">
+        <option value="1080x1920">9:16 · Reels / TikTok / Shorts (1080×1920)</option>
+        <option value="1080x1350">4:5 · פוסט אינסטגרם (1080×1350)</option>
+        <option value="1080x1080">1:1 · ריבוע (1080×1080)</option>
+        <option value="1920x1080">16:9 · יוטיוב (1920×1080)</option>
+        <option value="720x1280">9:16 · מהיר (720×1280)</option>
+      </select>
+      <div class="row">
+        <div><label>FPS</label><select id="fps"><option>30</option><option>60</option></select></div>
+        <div><label>איכות</label><select id="bitrate"><option value="8">רגילה (8Mbps)</option><option value="14" selected>גבוהה (14Mbps)</option><option value="25">מקסימום (25Mbps)</option></select></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3><span class="n">3</span>עיצוב וטקסט</h3>
+      <div class="row">
+        <div><label>צבע 1</label><input type="color" id="c1" value="#b46cff"></div>
+        <div><label>צבע 2</label><input type="color" id="c2" value="#ff5fa2"></div>
+        <div><label>מצב צבע</label><select id="colorMode"><option value="gradient">מעבר</option><option value="rainbow">קשת</option><option value="mono">צבע 1</option></select></div>
+      </div>
+      <label>רגישות לסאונד <span id="sensV"></span></label><input type="range" id="sens" min="0.3" max="2.5" step="0.05" value="1.1">
+      <label>החלקה</label><input type="range" id="smooth" min="0.3" max="0.95" step="0.01" value="0.78">
+      <label>עמעום רקע</label><input type="range" id="dim" min="0" max="0.85" step="0.01" value="0.2">
+      <label>שם השיר / אמן</label><input type="text" id="title" placeholder="למשל: ARIA">
+      <label>שורה שנייה</label><input type="text" id="subtitle" placeholder="למשל: הסינגל החדש · עכשיו בכל הפלטפורמות">
+      <div class="row">
+        <div><label>מיקום טקסט</label><select id="textPos"><option value="top">למעלה</option><option value="center">מרכז</option><option value="bottom" selected>למטה</option></select></div>
+        <div><label>גודל טקסט</label><input type="range" id="fontScale" min="0.4" max="2" step="0.05" value="1"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3><span class="n">4</span>אפקטים <span class="count" id="fxCount"></span></h3>
+      <div class="presets" id="presets"></div>
+      <div class="fx-tools">
+        <input type="text" id="fxSearch" placeholder="חיפוש אפקט…">
+        <button class="btn small" id="fxRandom">🎲 אקראי</button>
+        <button class="btn small" id="fxClear">נקה</button>
+      </div>
+      <div id="fxGroups"></div>
+    </div>
+  </aside>
+
+  <main class="stage" id="stage">
+    <div class="canvas-wrap"><canvas id="cv" width="1080" height="1920"></canvas></div>
+    <div class="transport">
+      <div class="tl-wrap"><canvas id="timeline" height="56"></canvas></div>
+      <div class="controls">
+        <button class="btn" id="playBtn">▶ נגן מקטע</button>
+        <span class="time" id="timeLbl">0:00 / 0:00</span>
+        <span class="time" id="segLbl"></span>
+        <span style="flex:1"></span>
+        <label class="check" style="margin:0"><input type="checkbox" id="muteExport"> השתק בזמן ייצוא</label>
+        <button class="btn primary" id="exportBtn">⬇ ייצא סרטון</button>
+        <button class="btn" id="cancelBtn" style="display:none">בטל</button>
+      </div>
+      <div class="controls" id="exportRow" style="display:none">
+        <div class="progress"><div id="prog"></div></div>
+        <span class="time" id="progLbl"></span>
+      </div>
+      <div class="note" id="exportNote">
+        הייצוא מתבצע בזמן אמת (סרטון של 30 שניות לוקח 30 שניות). אל תעבור לטאב אחר בזמן הייצוא.
+        ב־Chrome/Edge החדשים הקובץ יוצא כ־MP4 שעולה ישר לאינסטגרם/טיקטוק. דפדפנים אחרים מייצאים WEBM.
+      </div>
+      <div id="dlBox" class="note"></div>
+    </div>
+  </main>
+</div>
+
+<script>
+'use strict';
+/* =========================================================
+   Helpers
+   ========================================================= */
+const $ = s => document.querySelector(s);
+const clamp = (v, a = 0, b = 1) => v < a ? a : v > b ? b : v;
+const R = (a, b) => a + Math.random() * (b - a);
+const TAU = Math.PI * 2;
+const mk = (w = 1, h = 1) => { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; };
+const fmt = s => { if (!isFinite(s)) s = 0; const m = Math.floor(s / 60), r = Math.floor(s % 60); return m + ':' + String(r).padStart(2, '0'); };
+const mirrorIdx = (i, n) => { const h = n / 2; return i < h ? i : n - 1 - i; };
+
+/* =========================================================
+   Canvases
+   ========================================================= */
+const cv = $('#cv'), ctx = cv.getContext('2d');
+let W = 1080, H = 1920, MD = 1080, CX = 540, CY = 960;
+const layer = mk(), lctx = layer.getContext('2d');       // visualizer layer
+const buf = mk(), bctx = buf.getContext('2d');           // snapshot buffer
+const tmp = mk(), tctx = tmp.getContext('2d');           // scratch
+const trailC = mk(), trctx = trailC.getContext('2d');    // zoom trails scratch
+const small = mk(), sctx = small.getContext('2d');       // pixelate
+let cover = null;   // image fitted to frame
+let square = null;  // image fitted to square (album art)
+let imgEl = null;
+
+function resize(w, h) {
+  W = w; H = h; MD = Math.min(W, H); CX = W / 2; CY = H / 2;
+  for (const c of [cv, layer, buf, tmp, trailC]) { c.width = W; c.height = H; }
+  buildCover();
+  for (const k in S) delete S[k];
+}
+
+function buildCover() {
+  if (!imgEl) { cover = null; square = null; return; }
+  const iw = imgEl.naturalWidth || imgEl.width, ih = imgEl.naturalHeight || imgEl.height;
+  cover = mk(W, H);
+  const c = cover.getContext('2d');
+  const s = Math.max(W / iw, H / ih);
+  c.drawImage(imgEl, (W - iw * s) / 2, (H - ih * s) / 2, iw * s, ih * s);
+  const q = 900;
+  square = mk(q, q);
+  const sq = square.getContext('2d');
+  const s2 = Math.max(q / iw, q / ih);
+  sq.drawImage(imgEl, (q - iw * s2) / 2, (q - ih * s2) / 2, iw * s2, ih * s2);
+}
+
+/* Noise textures for film grain */
+const noiseTex = [0, 1, 2, 3].map(() => {
+  const c = mk(256, 256), x = c.getContext('2d'), d = x.createImageData(256, 256);
+  for (let i = 0; i < d.data.length; i += 4) { const v = Math.random() * 255; d.data[i] = d.data[i + 1] = d.data[i + 2] = v; d.data[i + 3] = 255; }
+  x.putImageData(d, 0, 0); return c;
+});
+const scanTex = (() => { const c = mk(4, 4), x = c.getContext('2d'); x.fillStyle = 'rgba(0,0,0,0.6)'; x.fillRect(0, 0, 4, 2); return c; })();
+
+/* =========================================================
+   Settings
+   ========================================================= */
+const cfg = {};
+const hexRgb = h => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
+function readCfg() {
+  cfg.sens = +$('#sens').value; cfg.smooth = +$('#smooth').value; cfg.dim = +$('#dim').value;
+  cfg.c1 = hexRgb($('#c1').value); cfg.c2 = hexRgb($('#c2').value); cfg.colorMode = $('#colorMode').value;
+  cfg.title = $('#title').value.trim(); cfg.sub = $('#subtitle').value.trim();
+  cfg.textPos = $('#textPos').value; cfg.fontScale = +$('#fontScale').value;
+  cfg.fps = +$('#fps').value; cfg.bitrate = +$('#bitrate').value;
+  $('#sensV').textContent = cfg.sens.toFixed(2);
+}
+document.querySelectorAll('.panel input, .panel select').forEach(el => el.addEventListener('input', readCfg));
+readCfg();
+
+function col(p, a = 1) {
+  p = clamp(p);
+  if (cfg.colorMode === 'rainbow') return `hsla(${(A.hue + p * 300) % 360},95%,62%,${a})`;
+  if (cfg.colorMode === 'mono') { const c = cfg.c1; return `rgba(${c[0]},${c[1]},${c[2]},${a})`; }
+  const a1 = cfg.c1, a2 = cfg.c2;
+  return `rgba(${a1[0] + (a2[0] - a1[0]) * p | 0},${a1[1] + (a2[1] - a1[1]) * p | 0},${a1[2] + (a2[2] - a1[2]) * p | 0},${a})`;
+}
+
+/* =========================================================
+   Audio
+   ========================================================= */
+const audio = new Audio();
+audio.preload = 'auto';
+let actx = null, analyser = null, monitor = null, recDest = null;
+let freq = new Uint8Array(1024), wave = new Uint8Array(2048).fill(128);
+let peaks = null; // overview waveform
+
+function ensureAudio() {
+  if (actx) return;
+  actx = new (window.AudioContext || window.webkitAudioContext)();
+  const src = actx.createMediaElementSource(audio);
+  analyser = actx.createAnalyser(); analyser.fftSize = 2048;
+  monitor = actx.createGain();
+  recDest = actx.createMediaStreamDestination();
+  src.connect(analyser); analyser.connect(monitor); monitor.connect(actx.destination);
+  src.connect(recDest);
+  freq = new Uint8Array(analyser.frequencyBinCount);
+  wave = new Uint8Array(analyser.fftSize);
+}
+
+/* Analysis state */
+const A = { t: 0, dt: 0.016, frame: 0, bass: 0, mid: 0, treble: 0, energy: 0, beat: false, pulse: 0, hue: 0, bassAvg: 0.2, lastBeat: 0, prog: 0 };
+const rangeCache = new Map();
+let bandCache = new Map();
+function binOf(hz) { const sr = actx ? actx.sampleRate : 44100; return Math.round(hz / (sr / 2) * freq.length); }
+function avgHz(f0, f1) { const b0 = Math.max(0, binOf(f0)), b1 = Math.min(freq.length, Math.max(b0 + 1, binOf(f1))); let s = 0; for (let i = b0; i < b1; i++) s += freq[i]; return s / (b1 - b0) / 255; }
+A.bands = function (n) {
+  let out = bandCache.get(n); if (out) return out;
+  let rg = rangeCache.get(n);
+  if (!rg) {
+    rg = []; const lo = 35, hi = 14000;
+    for (let i = 0; i < n; i++) {
+      const b0 = Math.max(0, binOf(lo * Math.pow(hi / lo, i / n)));
+      const b1 = Math.max(b0 + 1, binOf(lo * Math.pow(hi / lo, (i + 1) / n)));
+      rg.push([b0, Math.min(freq.length, b1)]);
+    }
+    rangeCache.set(n, rg);
+  }
+  out = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    let m = 0; for (let b = rg[i][0]; b < rg[i][1]; b++) if (freq[b] > m) m = freq[b];
+    out[i] = clamp(Math.pow(m / 255, 1.6) * cfg.sens * (1 + 0.6 * i / n));
+  }
+  bandCache.set(n, out); return out;
+};
+
+function analyze(dt) {
+  bandCache = new Map();
+  if (analyser) { analyser.smoothingTimeConstant = cfg.smooth; analyser.getByteFrequencyData(freq); analyser.getByteTimeDomainData(wave); }
+  const rawBass = avgHz(25, 140);
+  A.bass = clamp(Math.pow(rawBass, 1.5) * cfg.sens * 1.3);
+  A.mid = clamp(Math.pow(avgHz(400, 2200), 1.3) * cfg.sens * 1.4);
+  A.treble = clamp(Math.pow(avgHz(4000, 12000), 1.2) * cfg.sens * 2);
+  const b = A.bands(64); let s = 0; for (let i = 0; i < 64; i++) s += b[i]; A.energy = clamp(s / 64 * 1.6);
+  A.beat = false;
+  if (rawBass > A.bassAvg * 1.18 + 0.04 && rawBass > 0.3 && A.t - A.lastBeat > 0.22) { A.beat = true; A.pulse = 1; A.lastBeat = A.t; }
+  A.bassAvg += (rawBass - A.bassAvg) * (1 - Math.exp(-dt * 2.5));
+  A.pulse *= Math.exp(-dt * 5);
+  A.hue = (A.hue + dt * (20 + A.energy * 60)) % 360;
+}
+
+/* Per-effect persistent state */
+const S = {};
+const st = (id, init) => S[id] || (S[id] = init());
+
+/* snapshot of current main canvas */
+function snap() { bctx.clearRect(0, 0, W, H); bctx.drawImage(cv, 0, 0); }
+
+/* =========================================================
+   EFFECTS (phase: transform | filter | bgpost | viz | vizfx | top)
+   ========================================================= */
+const G = {
+  motion: 'תנועת תמונה', filter: 'פילטרים לתמונה', distort: 'עיוותים ופלאשים', spectrum: 'ספקטרום ועמודות',
+  wave: 'גלי קול', shapes: 'צורות ומעגלים', particles: 'חלקיקים ומזג אוויר', scenes: 'סצנות', vfx: 'שכבת אפקט לוויזואליזציה', overlay: 'שכבה עליונה וטקסט'
+};
+const NOOP = () => {};
+const EFFECTS = [
+  /* ---------- Image motion ---------- */
+  { id: 'zoomPulse', name: 'זום על הבס', g: 'motion', ph: 'transform', fn: (T) => { T.scale *= 1 + A.bass * 0.14; } },
+  { id: 'heartbeat', name: 'דופק על ביט', g: 'motion', ph: 'transform', fn: (T) => { T.scale *= 1 + A.pulse * 0.1; } },
+  { id: 'shake', name: 'רעידת מצלמה', g: 'motion', ph: 'transform', fn: (T) => { const k = A.pulse * MD * 0.025; T.x += R(-k, k); T.y += R(-k, k); } },
+  { id: 'sway', name: 'נדנוד', g: 'motion', ph: 'transform', fn: (T) => { T.rot += Math.sin(A.t * 0.8) * 0.025 + (A.mid - 0.3) * 0.015; } },
+  { id: 'kenburns', name: 'קן ברנס (תנועה איטית)', g: 'motion', ph: 'transform', fn: (T) => { T.scale *= 1.04 + 0.04 * Math.sin(A.t * 0.12); T.x += Math.sin(A.t * 0.13) * W * 0.03; T.y += Math.cos(A.t * 0.1) * H * 0.02; } },
+  { id: 'bounce', name: 'קפיצה עם הבס', g: 'motion', ph: 'transform', fn: (T) => { T.y -= A.bass * MD * 0.03; } },
+
+  /* ---------- Image filters ---------- */
+  { id: 'hueMusic', name: 'שינוי גוון מוזיקלי', g: 'filter', ph: 'filter', fn: (F) => F.push(`hue-rotate(${(A.t * 25 + A.energy * 90) % 360}deg)`) },
+  { id: 'bassBright', name: 'הבהרה על בס', g: 'filter', ph: 'filter', fn: (F) => F.push(`brightness(${1 + A.bass * 0.55})`) },
+  { id: 'satEnergy', name: 'צבע לפי עוצמה', g: 'filter', ph: 'filter', fn: (F) => F.push(`saturate(${0.15 + A.energy * 2.2})`) },
+  { id: 'focusPull', name: 'פוקוס לפי עוצמה', g: 'filter', ph: 'filter', fn: (F) => { const b = (1 - A.energy) * 9; if (b > 0.3) F.push(`blur(${b.toFixed(1)}px)`); } },
+  { id: 'contrastPunch', name: 'פאנץ׳ קונטרסט', g: 'filter', ph: 'filter', fn: (F) => F.push(`contrast(${1 + A.pulse * 0.7})`) },
+  { id: 'blurredBg', name: 'רקע מטושטש', g: 'filter', ph: 'filter', fn: (F) => F.push('blur(22px) brightness(0.65) saturate(1.3)') },
+  { id: 'vintage', name: 'וינטג׳', g: 'filter', ph: 'filter', fn: (F) => F.push('sepia(0.55) contrast(1.1) saturate(1.2)') },
+  { id: 'mono', name: 'שחור-לבן', g: 'filter', ph: 'filter', fn: (F) => F.push('grayscale(1) contrast(1.15)') },
+
+  /* ---------- Distortion / post on background ---------- */
+  { id: 'rgbSplit', name: 'פיצול RGB', g: 'distort', ph: 'bgpost', fn: (c) => {
+      const d = (A.pulse * 28 + A.treble * 6) * cfg.sens; if (d < 1) return;
+      snap(); c.fillStyle = '#000'; c.fillRect(0, 0, W, H); c.globalCompositeOperation = 'lighter';
+      for (const [cc, off] of [['#f00', -d], ['#0f0', 0], ['#00f', d]]) {
+        tctx.globalCompositeOperation = 'source-over'; tctx.drawImage(buf, 0, 0);
+        tctx.globalCompositeOperation = 'multiply'; tctx.fillStyle = cc; tctx.fillRect(0, 0, W, H);
+        c.drawImage(tmp, off, 0);
+      }
+      tctx.globalCompositeOperation = 'source-over'; c.globalCompositeOperation = 'source-over';
+    } },
+  { id: 'glitch', name: 'גליץ׳ פרוסות', g: 'distort', ph: 'bgpost', fn: (c) => {
+      const s = st('glitch', () => ({ k: 0 })); if (A.beat) s.k = 1; s.k *= Math.exp(-A.dt * 7);
+      const amt = s.k + (A.treble > 0.75 ? 0.25 : 0); if (amt < 0.05) return;
+      snap(); const n = 6 + (amt * 14 | 0);
+      for (let i = 0; i < n; i++) { const y = R(0, H), h = R(8, H * 0.06), off = R(-1, 1) * W * 0.12 * amt; c.drawImage(buf, 0, y, W, h, off, y, W, h); }
+    } },
+  { id: 'pixelate', name: 'פיקסלים על ביט', g: 'distort', ph: 'bgpost', fn: (c) => {
+      if (A.pulse < 0.15) return; const size = Math.round(4 + A.pulse * 34);
+      const sw = Math.ceil(W / size), sh = Math.ceil(H / size);
+      if (small.width !== sw || small.height !== sh) { small.width = sw; small.height = sh; }
+      sctx.drawImage(cv, 0, 0, sw, sh); c.imageSmoothingEnabled = false; c.drawImage(small, 0, 0, sw, sh, 0, 0, W, H); c.imageSmoothingEnabled = true;
+    } },
+  { id: 'waveDistort', name: 'עיוות גלי', g: 'distort', ph: 'bgpost', fn: (c) => {
+      const amp = (A.energy * 40 + A.bass * 30) * cfg.sens; if (amp < 1) return; snap();
+      for (let y = 0; y < H; y += 6) { const off = Math.sin(y * 0.012 + A.t * 5) * amp; c.drawImage(buf, 0, y, W, 6, off, y, W, 6); }
+    } },
+  { id: 'mirrorH', name: 'מראה', g: 'distort', ph: 'bgpost', fn: (c) => { snap(); c.save(); c.translate(W, 0); c.scale(-1, 1); c.drawImage(buf, 0, 0, W / 2, H, 0, 0, W / 2, H); c.restore(); } },
+  { id: 'kaleido', name: 'קליידוסקופ', g: 'distort', ph: 'bgpost', fn: (c) => {
+      snap(); const w = W / 2, h = H / 2;
+      for (const [sx, sy] of [[1, 1], [-1, 1], [1, -1], [-1, -1]]) { c.save(); c.translate(CX, CY); c.scale(sx, sy); c.drawImage(buf, 0, 0, w, h, -w, -h, w, h); c.restore(); }
+    } },
+  { id: 'tunnel', name: 'מנהרת תמונה', g: 'distort', ph: 'bgpost', fn: (c) => {
+      snap(); c.globalAlpha = 0.6;
+      for (let k = 1; k <= 4; k++) { const s = Math.pow(0.74, k) * (1 + A.bass * 0.12); c.drawImage(buf, CX - W * s / 2, CY - H * s / 2, W * s, H * s); }
+      c.globalAlpha = 1;
+    } },
+  { id: 'echoGhost', name: 'הד רפאים', g: 'distort', ph: 'bgpost', fn: (c) => {
+      if (A.bass < 0.05) return; snap(); c.globalAlpha = 0.4 * A.bass; c.globalCompositeOperation = 'screen';
+      const s = 1.06 + A.bass * 0.06; c.drawImage(buf, CX - W * s / 2, CY - H * s / 2, W * s, H * s);
+      c.globalAlpha = 1; c.globalCompositeOperation = 'source-over';
+    } },
+  { id: 'invert', name: 'היפוך צבעים בביט חזק', g: 'distort', ph: 'bgpost', fn: (c) => {
+      if (A.pulse < 0.75) return; c.globalCompositeOperation = 'difference'; c.fillStyle = `rgba(255,255,255,${(A.pulse - 0.75) * 4})`; c.fillRect(0, 0, W, H); c.globalCompositeOperation = 'source-over';
+    } },
+  { id: 'flash', name: 'פלאש לבן על ביט', g: 'distort', ph: 'bgpost', fn: (c) => { if (A.pulse < 0.02) return; c.fillStyle = `rgba(255,255,255,${A.pulse * 0.28})`; c.fillRect(0, 0, W, H); } },
+
+  /* ---------- Spectrum ---------- */
+  { id: 'barsBottom', name: 'עמודות תחתונות', g: 'spectrum', ph: 'viz', fn: (L) => {
+      const n = 64, b = A.bands(n), w = W / n;
+      for (let i = 0; i < n; i++) { const h = b[i] * H * 0.32 + 2; L.fillStyle = col(i / n); L.fillRect(i * w + w * 0.15, H - h, w * 0.7, h); }
+    } },
+  { id: 'barsMirror', name: 'עמודות מראה במרכז', g: 'spectrum', ph: 'viz', fn: (L) => {
+      const n = 40, b = A.bands(n), w = W / (n * 2);
+      for (let i = 0; i < n; i++) { const h = b[i] * H * 0.18 + 2; L.fillStyle = col(i / n, 0.95);
+        for (const s of [-1, 1]) { const x = CX + s * (i + 0.5) * w - w * 0.35; L.fillRect(x, CY - h, w * 0.7, h * 2); } }
+    } },
+  { id: 'barsCircle', name: 'עמודות מעגליות', g: 'spectrum', ph: 'viz', fn: (L) => {
+      const n = 120, b = A.bands(60), r = MD * 0.24 * (1 + A.bass * 0.08);
+      L.translate(CX, CY); L.lineCap = 'round'; L.lineWidth = Math.max(2, TAU * r / n * 0.55);
+      for (let i = 0; i < n; i++) { const v = b[mirrorIdx(i, n) % 60], a = i / n * TAU - Math.PI / 2;
+        L.strokeStyle = col(v); L.beginPath(); L.moveTo(Math.cos(a) * r, Math.sin(a) * r); L.lineTo(Math.cos(a) * (r + 4 + v * MD * 0.2), Math.sin(a) * (r + 4 + v * MD * 0.2)); L.stroke(); }
+    } },
+  { id: 'mountain', name: 'הרים (ספקטרום ממולא)', g: 'spectrum', ph: 'viz', fn: (L) => {
+      const n = 48, b = A.bands(n), base = H, hmax = H * 0.3;
+      const g = L.createLinearGradient(0, H - hmax, 0, H); g.addColorStop(0, col(0, 0.85)); g.addColorStop(1, col(1, 0.1));
+      L.beginPath(); L.moveTo(0, base);
+      let px = 0, py = base - b[0] * hmax;
+      L.lineTo(px, py);
+      for (let i = 1; i < n; i++) { const x = i / (n - 1) * W, y = base - b[i] * hmax; L.quadraticCurveTo(px, py, (px + x) / 2, (py + y) / 2); px = x; py = y; }
+      L.lineTo(W, py); L.lineTo(W, base); L.closePath(); L.fillStyle = g; L.fill(); L.strokeStyle = col(0.2); L.lineWidth = 3; L.stroke();
+    } },
+  { id: 'dotsSpectrum', name: 'מטריצת נקודות', g: 'spectrum', ph: 'viz', fn: (L) => {
+      const n = 36, rows = 14, b = A.bands(n), gx = W * 0.9 / n, gy = H * 0.3 / (rows * 2), r = Math.min(gx, gy) * 0.32;
+      for (let i = 0; i < n; i++) { const lit = b[i] * rows, x = W * 0.05 + (i + 0.5) * gx;
+        for (let j = 0; j < rows; j++) { const on = j < lit; L.fillStyle = on ? col(j / rows) : 'rgba(255,255,255,0.06)';
+          for (const s of [-1, 1]) { L.beginPath(); L.arc(x, CY + s * (j + 0.5) * gy, r, 0, TAU); L.fill(); } } }
+    } },
+  { id: 'ledEQ', name: 'אקולייזר LED', g: 'spectrum', ph: 'viz', fn: (L) => {
+      const n = 20, segs = 16, b = A.bands(n), x0 = W * 0.08, w = W * 0.84 / n, y1 = H * 0.92, hh = H * 0.28 / segs;
+      for (let i = 0; i < n; i++) { const lit = Math.round(b[i] * segs);
+        for (let j = 0; j < segs; j++) { L.fillStyle = j < lit ? col(j / segs) : 'rgba(255,255,255,0.05)'; L.fillRect(x0 + i * w + w * 0.1, y1 - (j + 1) * hh + hh * 0.15, w * 0.8, hh * 0.7); } }
+    } },
+  { id: 'vuMeters', name: 'מדי VU בצדדים', g: 'spectrum', ph: 'viz', fn: (L) => {
+      const s = st('vu', () => ({ p: [0, 0] })), lv = [A.bass, A.treble], segs = 24, h = H * 0.5, y0 = CY + h / 2, w = W * 0.045, hh = h / segs;
+      for (let k = 0; k < 2; k++) { s.p[k] = Math.max(s.p[k] - A.dt * 0.5, lv[k]); const x = k ? W - W * 0.04 - w : W * 0.04;
+        for (let j = 0; j < segs; j++) { L.fillStyle = j < lv[k] * segs ? col(j / segs) : 'rgba(255,255,255,0.06)'; L.fillRect(x, y0 - (j + 1) * hh + 2, w, hh - 4); }
+        L.fillStyle = '#fff'; L.fillRect(x, y0 - s.p[k] * h - 3, w, 3); }
+    } },
+  { id: 'spectrogram', name: 'ספקטרוגרמה נגללת', g: 'spectrum', ph: 'viz', fn: (L) => {
+      const sh = Math.round(H * 0.16), s = st('spg', () => { const c = mk(W, sh); return { c, x: c.getContext('2d') }; });
+      const b = A.bands(64), step = 3; s.x.drawImage(s.c, -step, 0); s.x.clearRect(W - step, 0, step, sh);
+      for (let i = 0; i < 64; i++) { const v = b[i]; if (v < 0.03) continue; s.x.fillStyle = col(v, v); s.x.fillRect(W - step, sh - (i + 1) * sh / 64, step, sh / 64 + 1); }
+      L.drawImage(s.c, 0, H - sh);
+    } },
+  { id: 'fireBars', name: 'עמודות אש', g: 'spectrum', ph: 'viz', fn: (L) => {
+      const n = 40, b = A.bands(n), w = W / n; L.globalCompositeOperation = 'lighter';
+      for (let i = 0; i < n; i++) { const h = b[i] * H * 0.38 * R(0.9, 1.1) + 4; const g = L.createLinearGradient(0, H, 0, H - h);
+        g.addColorStop(0, 'rgba(255,240,150,0.95)'); g.addColorStop(0.4, 'rgba(255,120,20,0.8)'); g.addColorStop(1, 'rgba(200,0,0,0)');
+        L.fillStyle = g; L.fillRect(i * w, H - h, w * 0.92, h); }
+    } },
+  { id: 'edgeBars', name: 'עמודות בשולי המסגרת', g: 'spectrum', ph: 'viz', fn: (L) => {
+      const n = 32, b = A.bands(n), len = MD * 0.12;
+      for (let i = 0; i < n; i++) { const v = b[i] * len + 2; L.fillStyle = col(i / n, 0.9);
+        const x = (i + 0.5) / n * W, y = (i + 0.5) / n * H, tw = W / n * 0.6, th = H / n * 0.6;
+        L.fillRect(x - tw / 2, 0, tw, v); L.fillRect(W - x - tw / 2, H - v, tw, v); L.fillRect(0, H - y - th / 2, v, th); L.fillRect(W - v, y - th / 2, v, th); }
+    } },
+  { id: 'ridgeline', name: 'קווי רכס (היסטוריה)', g: 'spectrum', ph: 'viz', fn: (L) => {
+      const s = st('ridge', () => ({ h: [], acc: 0 })), n = 64;
+      s.acc += A.dt; if (s.acc > 1 / 20) { s.acc = 0; s.h.push(Float32Array.from(A.bands(n))); if (s.h.length > 26) s.h.shift(); }
+      const top = H * 0.28, gap = H * 0.44 / 26, x0 = W * 0.12, wd = W * 0.76;
+      L.lineWidth = 2;
+      for (let k = 0; k < s.h.length; k++) { const arr = s.h[k], y0 = top + (k + 26 - s.h.length) * gap;
+        L.beginPath(); L.moveTo(x0, y0);
+        for (let i = 0; i < n; i++) { const x = x0 + i / (n - 1) * wd, win = Math.sin(i / (n - 1) * Math.PI); L.lineTo(x, y0 - arr[mirrorIdx(i, n) * 2 % n] * win * gap * 5); }
+        L.lineTo(x0 + wd, y0); L.closePath(); L.fillStyle = 'rgba(0,0,0,0.9)'; L.fill(); L.strokeStyle = col(k / 26, 0.4 + 0.6 * k / 26); L.stroke(); }
+    } },
+
+  /* ---------- Waves ---------- */
+  { id: 'waveLine', name: 'גל קול קלאסי', g: 'wave', ph: 'viz', fn: (L) => {
+      L.lineWidth = Math.max(3, MD * 0.004); L.strokeStyle = col(0.3); L.shadowColor = col(0.3); L.shadowBlur = 18; L.beginPath();
+      const n = wave.length; for (let i = 0; i < n; i += 4) { const x = i / n * W, y = CY + (wave[i] - 128) / 128 * H * 0.15 * cfg.sens; i ? L.lineTo(x, y) : L.moveTo(x, y); } L.stroke();
+    } },
+  { id: 'tripleWave', name: 'גל משולש ניאון', g: 'wave', ph: 'viz', fn: (L) => {
+      L.lineWidth = Math.max(2, MD * 0.003); L.globalCompositeOperation = 'lighter'; const n = wave.length;
+      for (let k = 0; k < 3; k++) { L.strokeStyle = col(k / 2, 0.85); L.shadowColor = col(k / 2); L.shadowBlur = 20; L.beginPath();
+        for (let i = 0; i < n; i += 4) { const x = i / n * W, j = (i + k * 60) % n, y = CY + (wave[j] - 128) / 128 * H * (0.1 + k * 0.05) * cfg.sens; i ? L.lineTo(x, y) : L.moveTo(x, y); } L.stroke(); }
+    } },
+  { id: 'waveCircle', name: 'גל מעגלי', g: 'wave', ph: 'viz', fn: (L) => {
+      const n = 360, r0 = MD * 0.3; L.translate(CX, CY); L.lineWidth = 3; L.strokeStyle = col(0.6); L.shadowColor = col(0.6); L.shadowBlur = 16; L.beginPath();
+      for (let i = 0; i <= n; i++) { const idx = Math.floor(mirrorIdx(i % n, n) / (n / 2) * (wave.length - 1) * 0.5), a = i / n * TAU - Math.PI / 2, r = r0 + (wave[idx] - 128) / 128 * MD * 0.09 * cfg.sens;
+        i ? L.lineTo(Math.cos(a) * r, Math.sin(a) * r) : L.moveTo(Math.cos(a) * r, Math.sin(a) * r); } L.closePath(); L.stroke();
+    } },
+  { id: 'waveBars', name: 'גל עמודות סימטרי', g: 'wave', ph: 'viz', fn: (L) => {
+      const n = 90, w = W / n, step = Math.floor(wave.length / n);
+      for (let i = 0; i < n; i++) { let m = 0; for (let k = 0; k < step; k++) m = Math.max(m, Math.abs(wave[i * step + k] - 128)); const h = (m / 128) * H * 0.18 * cfg.sens + 2;
+        L.fillStyle = col(i / n); L.beginPath(); L.roundRect ? L.roundRect(i * w + w * 0.2, CY - h, w * 0.6, h * 2, w * 0.3) : L.rect(i * w + w * 0.2, CY - h, w * 0.6, h * 2); L.fill(); }
+    } },
+  { id: 'lissajous', name: 'אוסצילוסקופ ליסאז׳ו', g: 'wave', ph: 'viz', fn: (L) => {
+      L.translate(CX, CY); L.rotate(Math.PI / 4); const sc = MD * 0.3 * cfg.sens; L.strokeStyle = col(0.5, 0.85); L.lineWidth = 2; L.shadowColor = col(0.5); L.shadowBlur = 12; L.beginPath();
+      for (let i = 0; i < wave.length - 300; i += 2) { const x = (wave[i] - 128) / 128 * sc, y = (wave[i + 300] - 128) / 128 * sc; i ? L.lineTo(x, y) : L.moveTo(x, y); } L.stroke();
+    } },
+
+  /* ---------- Shapes ---------- */
+  { id: 'albumCircle', name: 'עטיפת אלבום עגולה', g: 'shapes', ph: 'viz', fn: (L) => {
+      const r = MD * 0.26 * (1 + A.pulse * 0.04 + A.bass * 0.03);
+      L.save(); L.shadowColor = col(0.5); L.shadowBlur = 40 + A.bass * 60; L.fillStyle = '#000'; L.beginPath(); L.arc(CX, CY, r, 0, TAU); L.fill(); L.restore();
+      L.save(); L.beginPath(); L.arc(CX, CY, r, 0, TAU); L.clip();
+      if (square) L.drawImage(square, CX - r, CY - r, r * 2, r * 2); else { const g = L.createLinearGradient(CX - r, CY - r, CX + r, CY + r); g.addColorStop(0, col(0)); g.addColorStop(1, col(1)); L.fillStyle = g; L.fillRect(CX - r, CY - r, r * 2, r * 2); }
+      L.restore(); L.strokeStyle = col(0.2); L.lineWidth = 4 + A.bass * 14; L.beginPath(); L.arc(CX, CY, r, 0, TAU); L.stroke();
+    } },
+  { id: 'albumSquare', name: 'עטיפת אלבום מרובעת', g: 'shapes', ph: 'viz', fn: (L) => {
+      const s = MD * 0.55 * (1 + A.pulse * 0.03 + A.bass * 0.02), x = CX - s / 2, y = CY - s / 2;
+      L.shadowColor = 'rgba(0,0,0,0.8)'; L.shadowBlur = 50; L.fillStyle = '#000'; L.fillRect(x, y, s, s); L.shadowColor = col(0.5); L.shadowBlur = 20 + A.bass * 50;
+      if (square) L.drawImage(square, x, y, s, s); else { L.fillStyle = col(0.5); L.fillRect(x, y, s, s); }
+      L.shadowBlur = 0; L.strokeStyle = 'rgba(255,255,255,0.25)'; L.lineWidth = 2; L.strokeRect(x, y, s, s);
+    } },
+  { id: 'vinyl', name: 'תקליט מסתובב', g: 'shapes', ph: 'viz', fn: (L) => {
+      const s = st('vinyl', () => ({ a: 0 })); s.a += A.dt * (1.6 + A.pulse * 0.6); const Rr = MD * 0.34 * (1 + A.bass * 0.025);
+      L.translate(CX, CY); L.shadowColor = col(0.5, 0.8); L.shadowBlur = 30 + A.bass * 40; L.fillStyle = '#0b0b0d'; L.beginPath(); L.arc(0, 0, Rr, 0, TAU); L.fill(); L.shadowBlur = 0;
+      L.strokeStyle = 'rgba(255,255,255,0.06)'; L.lineWidth = 1;
+      for (let r = Rr * 0.45; r < Rr * 0.98; r += Rr * 0.025) { L.beginPath(); L.arc(0, 0, r, 0, TAU); L.stroke(); }
+      if (L.createConicGradient) { const g = L.createConicGradient(-0.6, 0, 0); g.addColorStop(0, 'rgba(255,255,255,0)'); g.addColorStop(0.08, 'rgba(255,255,255,0.12)'); g.addColorStop(0.16, 'rgba(255,255,255,0)'); g.addColorStop(0.5, 'rgba(255,255,255,0)'); g.addColorStop(0.58, 'rgba(255,255,255,0.1)'); g.addColorStop(0.66, 'rgba(255,255,255,0)'); g.addColorStop(1, 'rgba(255,255,255,0)'); L.fillStyle = g; L.beginPath(); L.arc(0, 0, Rr, 0, TAU); L.fill(); }
+      L.save(); L.rotate(s.a); const lr = Rr * 0.4; L.beginPath(); L.arc(0, 0, lr, 0, TAU); L.clip();
+      if (square) L.drawImage(square, -lr, -lr, lr * 2, lr * 2); else { L.fillStyle = col(0.5); L.fill(); }
+      L.restore(); L.fillStyle = '#000'; L.beginPath(); L.arc(0, 0, Rr * 0.025, 0, TAU); L.fill();
+    } },
+  { id: 'sunburst', name: 'קרני שמש', g: 'shapes', ph: 'viz', fn: (L) => {
+      const n = 180, b = A.bands(90), r0 = MD * 0.08; L.translate(CX, CY); L.rotate(A.t * 0.15); L.lineWidth = Math.max(2, MD * 0.0025); L.lineCap = 'round';
+      for (let i = 0; i < n; i++) { const v = b[mirrorIdx(i, n)], a = i / n * TAU; L.strokeStyle = col(v, 0.3 + v * 0.7); L.beginPath(); L.moveTo(Math.cos(a) * r0, Math.sin(a) * r0); L.lineTo(Math.cos(a) * (r0 + v * MD * 0.45), Math.sin(a) * (r0 + v * MD * 0.45)); L.stroke(); }
+    } },
+  { id: 'spiral', name: 'ספירלת ספקטרום', g: 'shapes', ph: 'viz', fn: (L) => {
+      const b = A.bands(120); L.translate(CX, CY);
+      for (let i = 0; i < 240; i++) { const a = i * 0.26 + A.t * 0.6, r = MD * 0.02 + i * MD * 0.0019, v = b[i % 120]; L.fillStyle = col(i / 240, 0.35 + v * 0.65); L.beginPath(); L.arc(Math.cos(a) * r, Math.sin(a) * r, 1.5 + v * MD * 0.012, 0, TAU); L.fill(); }
+    } },
+  { id: 'polygon', name: 'מצולעים מתעוותים', g: 'shapes', ph: 'viz', fn: (L) => {
+      const b = A.bands(36); L.translate(CX, CY); L.lineWidth = 3; L.lineJoin = 'round';
+      [[6, 0.32, 1], [5, 0.24, -1.3], [3, 0.16, 1.7]].forEach(([sides, sc, sp], k) => {
+        L.save(); L.rotate(A.t * 0.3 * sp); L.strokeStyle = col(k / 2); L.shadowColor = col(k / 2); L.shadowBlur = 14; L.beginPath();
+        for (let i = 0; i <= 72; i++) { const th = i / 72 * TAU, seg = TAU / sides, pr = Math.cos(Math.PI / sides) / Math.cos((th % seg) - seg / 2), r = MD * sc * (1 + A.bass * 0.1) * pr * (1 + b[mirrorIdx(i % 72, 72) % 36] * 0.35);
+          i ? L.lineTo(Math.cos(th) * r, Math.sin(th) * r) : L.moveTo(Math.cos(th) * r, Math.sin(th) * r); }
+        L.closePath(); L.stroke(); L.restore(); });
+    } },
+  { id: 'blob', name: 'בועה נוזלית', g: 'shapes', ph: 'viz', fn: (L) => {
+      const n = 90, b = A.bands(45), base = MD * 0.2 * (1 + A.bass * 0.15), pts = [];
+      for (let i = 0; i < n; i++) { const a = i / n * TAU + A.t * 0.2, r = base + b[mirrorIdx(i, n) % 45] * MD * 0.13 + Math.sin(a * 3 + A.t * 2) * MD * 0.01; pts.push([CX + Math.cos(a) * r, CY + Math.sin(a) * r]); }
+      L.beginPath(); for (let i = 0; i <= n; i++) { const p = pts[i % n], q = pts[(i + 1) % n], mx = (p[0] + q[0]) / 2, my = (p[1] + q[1]) / 2; i ? L.quadraticCurveTo(p[0], p[1], mx, my) : L.moveTo(mx, my); }
+      const g = L.createRadialGradient(CX, CY, 0, CX, CY, base * 1.6); g.addColorStop(0, col(0, 0.9)); g.addColorStop(1, col(1, 0.25));
+      L.fillStyle = g; L.shadowColor = col(0.5); L.shadowBlur = 40; L.fill();
+    } },
+  { id: 'rings', name: 'טבעות תדרים', g: 'shapes', ph: 'viz', fn: (L) => {
+      const b = A.bands(10);
+      for (let k = 0; k < 10; k++) { const v = b[k], r = MD * (0.08 + k * 0.035) * (1 + v * 0.12); L.strokeStyle = col(k / 9, 0.2 + v * 0.8); L.lineWidth = 1 + v * 10; L.beginPath(); L.arc(CX, CY, r, 0, TAU); L.stroke(); }
+    } },
+  { id: 'shockwave', name: 'גלי הדף על ביט', g: 'shapes', ph: 'viz', fn: (L) => {
+      const s = st('shock', () => []); if (A.beat) s.push({ r: MD * 0.1, a: 1 });
+      for (let i = s.length - 1; i >= 0; i--) { const w = s[i]; w.r += A.dt * MD * 0.9; w.a -= A.dt * 1.1; if (w.a <= 0) { s.splice(i, 1); continue; }
+        L.strokeStyle = col(1 - w.a, w.a); L.lineWidth = 1 + w.a * 8; L.beginPath(); L.arc(CX, CY, w.r, 0, TAU); L.stroke(); }
+    } },
+  { id: 'orbitDots', name: 'נקודות במסלול', g: 'shapes', ph: 'viz', fn: (L) => {
+      const s = st('orbit', () => ({ a: new Float32Array(16) })), b = A.bands(16);
+      for (let k = 0; k < 16; k++) { s.a[k] += A.dt * (0.25 + k * 0.07) * (1 + A.bass * 1.5) * (k % 2 ? 1 : -1); const r = MD * (0.12 + k * 0.022), v = b[k];
+        for (let j = 0; j < 3; j++) { const a = s.a[k] + j * TAU / 3; L.fillStyle = col(k / 15, 0.4 + v * 0.6); L.beginPath(); L.arc(CX + Math.cos(a) * r, CY + Math.sin(a) * r, 2 + v * MD * 0.013, 0, TAU); L.fill(); } }
+    } },
+  { id: 'mandala', name: 'מנדלה', g: 'shapes', ph: 'viz', fn: (L) => {
+      const b = A.bands(24); L.translate(CX, CY); L.globalCompositeOperation = 'lighter';
+      for (let layerK = 0; layerK < 2; layerK++) { const np = 12, rot = A.t * (layerK ? -0.12 : 0.08) + layerK * Math.PI / 12;
+        for (let k = 0; k < np; k++) { const v = b[(k % 6) * 2 + layerK * 12], tip = MD * (0.12 + layerK * 0.06 + v * 0.28), w = MD * (0.03 + A.mid * 0.04);
+          L.save(); L.rotate(rot + k * TAU / np); L.beginPath(); L.moveTo(0, 0); L.quadraticCurveTo(w, tip * 0.5, 0, tip); L.quadraticCurveTo(-w, tip * 0.5, 0, 0);
+          L.fillStyle = col(layerK ? 1 : 0, 0.22 + v * 0.3); L.fill(); L.strokeStyle = col(layerK ? 0.7 : 0.3, 0.7); L.lineWidth = 1.5; L.stroke(); L.restore(); } }
+    } },
+  { id: 'hexGrid', name: 'רשת משושים פועמת', g: 'shapes', ph: 'viz', fn: (L) => {
+      const sz = MD * 0.05, s = st('hex', () => { const c = [], hx = sz * Math.sqrt(3), vy = sz * 1.5; for (let r = -1; r * vy < H + sz; r++) for (let q = -1; q * hx < W + hx; q++) c.push([q * hx + (r % 2 ? hx / 2 : 0), r * vy]); return c; });
+      const b = A.bands(32), maxD = Math.hypot(CX, CY); L.lineWidth = 2;
+      for (const [x, y] of s) { const d = Math.hypot(x - CX, y - CY) / maxD, v = b[Math.min(31, d * 32 | 0)]; if (v < 0.06) continue;
+        L.beginPath(); for (let i = 0; i < 6; i++) { const a = Math.PI / 6 + i * Math.PI / 3, rr = sz * 0.9; i ? L.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr) : L.moveTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr); } L.closePath();
+        L.fillStyle = col(d, v * 0.25); L.fill(); L.strokeStyle = col(d, v); L.stroke(); }
+    } },
+  { id: 'neonFrame', name: 'מסגרת ניאון', g: 'shapes', ph: 'viz', fn: (L) => {
+      const ins = MD * 0.04, c = col(0.5 + 0.5 * Math.sin(A.t)); L.strokeStyle = c; L.shadowColor = c; L.shadowBlur = 30 + A.bass * 50; L.lineWidth = 4 + A.bass * 16;
+      L.beginPath(); L.roundRect ? L.roundRect(ins, ins, W - ins * 2, H - ins * 2, MD * 0.04) : L.rect(ins, ins, W - ins * 2, H - ins * 2); L.stroke();
+    } },
+
+  /* ---------- Particles ---------- */
+  { id: 'particlesBurst', name: 'פיצוץ חלקיקים בביט', g: 'particles', ph: 'viz', fn: (L) => {
+      const s = st('burst', () => []);
+      if (A.beat) for (let i = 0; i < 60 && s.length < 900; i++) { const a = R(0, TAU), sp = MD * R(0.25, 1.1), r0 = MD * 0.15; s.push({ x: CX + Math.cos(a) * r0, y: CY + Math.sin(a) * r0, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, l: 1, p: Math.random(), sz: R(1.5, 5) }); }
+      L.globalCompositeOperation = 'lighter';
+      for (let i = s.length - 1; i >= 0; i--) { const p = s[i]; p.x += p.vx * A.dt; p.y += p.vy * A.dt; p.vx *= 0.97; p.vy *= 0.97; p.l -= A.dt * 0.7; if (p.l <= 0) { s.splice(i, 1); continue; }
+        L.fillStyle = col(p.p, p.l); L.beginPath(); L.arc(p.x, p.y, p.sz, 0, TAU); L.fill(); }
+    } },
+  { id: 'floatingDust', name: 'אבק מרחף', g: 'particles', ph: 'viz', fn: (L) => {
+      const s = st('dust', () => Array.from({ length: 160 }, () => ({ x: R(0, W), y: R(0, H), vx: R(-15, 15), vy: R(-25, -5), p: Math.random() })));
+      const sp = 1 + A.energy * 6, sz = 1.5 + A.treble * 4;
+      for (const p of s) { p.x += p.vx * A.dt * sp; p.y += p.vy * A.dt * sp; if (p.y < -10) p.y = H + 10; if (p.x < -10) p.x = W + 10; if (p.x > W + 10) p.x = -10;
+        L.fillStyle = col(p.p, 0.3 + A.treble * 0.6); L.beginPath(); L.arc(p.x, p.y, sz * (0.5 + p.p), 0, TAU); L.fill(); }
+    } },
+  { id: 'starfield', name: 'מהירות האור (כוכבים)', g: 'particles', ph: 'viz', fn: (L) => {
+      const s = st('stars', () => Array.from({ length: 400 }, () => ({ x: R(-1, 1), y: R(-1, 1), z: R(0.05, 1) })));
+      const sp = A.dt * (0.12 + A.bass * 1.6); L.lineCap = 'round';
+      for (const p of s) { const pz = p.z; p.z -= sp; if (p.z <= 0.02) { p.x = R(-1, 1); p.y = R(-1, 1); p.z = 1; continue; }
+        const x1 = CX + p.x / pz * MD * 0.5, y1 = CY + p.y / pz * MD * 0.5, x2 = CX + p.x / p.z * MD * 0.5, y2 = CY + p.y / p.z * MD * 0.5;
+        L.strokeStyle = `rgba(255,255,255,${clamp(1.2 - p.z)})`; L.lineWidth = (1 - p.z) * 3.5 + 0.5; L.beginPath(); L.moveTo(x1, y1); L.lineTo(x2, y2); L.stroke(); }
+    } },
+  { id: 'bubbles', name: 'בועות עולות', g: 'particles', ph: 'viz', fn: (L) => {
+      const s = st('bub', () => ({ a: [], acc: 0 })); s.acc += A.dt * (2 + A.energy * 25);
+      while (s.acc > 1 && s.a.length < 150) { s.acc--; s.a.push({ x: R(0, W), y: H + 30, r: R(MD * 0.008, MD * 0.03), ph: R(0, TAU), p: Math.random() }); }
+      L.lineWidth = 2;
+      for (let i = s.a.length - 1; i >= 0; i--) { const b = s.a[i]; b.y -= A.dt * MD * 0.15 * (1 + A.mid * 2); b.x += Math.sin(A.t * 2 + b.ph) * 0.8; if (b.y < -40) { s.a.splice(i, 1); continue; }
+        L.strokeStyle = col(b.p, 0.7); L.beginPath(); L.arc(b.x, b.y, b.r, 0, TAU); L.stroke(); L.fillStyle = 'rgba(255,255,255,0.5)'; L.beginPath(); L.arc(b.x - b.r * 0.35, b.y - b.r * 0.35, b.r * 0.2, 0, TAU); L.fill(); }
+    } },
+  { id: 'snow', name: 'שלג מוזיקלי', g: 'particles', ph: 'viz', fn: (L) => {
+      const s = st('snow', () => Array.from({ length: 220 }, () => ({ x: R(0, W), y: R(0, H), r: R(1, 4), ph: R(0, TAU), sp: R(0.5, 1.5) })));
+      L.fillStyle = 'rgba(255,255,255,0.85)';
+      for (const f of s) { f.y += A.dt * MD * 0.06 * f.sp * (0.5 + A.energy * 3); f.x += Math.sin(A.t + f.ph) * 0.6; if (f.y > H + 5) { f.y = -5; f.x = R(0, W); }
+        L.beginPath(); L.arc(f.x, f.y, f.r * (1 + A.treble), 0, TAU); L.fill(); }
+    } },
+  { id: 'rain', name: 'גשם', g: 'particles', ph: 'viz', fn: (L) => {
+      const s = st('rain', () => Array.from({ length: 260 }, () => ({ x: R(0, W), y: R(0, H), l: R(10, 30), sp: R(0.8, 1.4) })));
+      L.strokeStyle = 'rgba(190,210,255,0.45)'; L.lineWidth = 1.5; L.beginPath();
+      for (const d of s) { d.y += A.dt * H * 0.9 * d.sp * (0.6 + A.energy); d.x -= A.dt * 60; if (d.y > H) { d.y = -d.l; d.x = R(0, W + 100); } L.moveTo(d.x, d.y); L.lineTo(d.x - 3, d.y + d.l * (1 + A.bass)); }
+      L.stroke();
+    } },
+  { id: 'confetti', name: 'קונפטי על ביט', g: 'particles', ph: 'viz', fn: (L) => {
+      const s = st('conf', () => []);
+      if (A.beat) for (let i = 0; i < 40 && s.length < 500; i++) s.push({ x: R(0, W), y: R(-60, -10), vx: R(-60, 60), vy: R(100, 300), r: R(0, TAU), vr: R(-6, 6), h: R(0, 360), w: R(8, 18) });
+      for (let i = s.length - 1; i >= 0; i--) { const c = s[i]; c.x += c.vx * A.dt; c.y += c.vy * A.dt; c.vy += 200 * A.dt; c.r += c.vr * A.dt; if (c.y > H + 30) { s.splice(i, 1); continue; }
+        L.save(); L.translate(c.x, c.y); L.rotate(c.r); L.scale(1, Math.cos(c.r * 2)); L.fillStyle = `hsl(${c.h},90%,60%)`; L.fillRect(-c.w / 2, -c.w / 4, c.w, c.w / 2); L.restore(); }
+    } },
+  { id: 'bokeh', name: 'אורות בוקה', g: 'particles', ph: 'viz', fn: (L) => {
+      const s = st('bokeh', () => Array.from({ length: 28 }, () => ({ x: R(0, W), y: R(0, H), r: R(MD * 0.03, MD * 0.1), vx: R(-12, 12), vy: R(-12, 12), p: Math.random() })));
+      L.globalCompositeOperation = 'lighter';
+      for (const b of s) { b.x += b.vx * A.dt; b.y += b.vy * A.dt; if (b.x < -b.r) b.x = W + b.r; if (b.x > W + b.r) b.x = -b.r; if (b.y < -b.r) b.y = H + b.r; if (b.y > H + b.r) b.y = -b.r;
+        const r = b.r * (1 + A.bass * 0.4), g = L.createRadialGradient(b.x, b.y, 0, b.x, b.y, r); g.addColorStop(0, col(b.p, 0.35 * (0.35 + A.energy))); g.addColorStop(0.7, col(b.p, 0.15 * (0.35 + A.energy))); g.addColorStop(1, col(b.p, 0));
+        L.fillStyle = g; L.beginPath(); L.arc(b.x, b.y, r, 0, TAU); L.fill(); }
+    } },
+  { id: 'fireflies', name: 'גחליליות', g: 'particles', ph: 'viz', fn: (L) => {
+      const s = st('ff', () => Array.from({ length: 50 }, () => ({ x: R(0, W), y: R(0, H), a: R(0, TAU), ph: R(0, TAU) })));
+      L.globalCompositeOperation = 'lighter';
+      for (const f of s) { f.a += R(-1, 1) * A.dt * 3; const sp = MD * 0.05 * (1 + A.mid * 3); f.x = (f.x + Math.cos(f.a) * sp * A.dt + W) % W; f.y = (f.y + Math.sin(f.a) * sp * A.dt + H) % H;
+        const glow = 0.3 + 0.7 * Math.abs(Math.sin(A.t * 2 + f.ph)) * (0.4 + A.treble), r = MD * 0.012;
+        const g = L.createRadialGradient(f.x, f.y, 0, f.x, f.y, r * 3); g.addColorStop(0, `rgba(255,250,180,${glow})`); g.addColorStop(1, 'rgba(255,220,100,0)'); L.fillStyle = g; L.beginPath(); L.arc(f.x, f.y, r * 3, 0, TAU); L.fill(); }
+    } },
+
+  /* ---------- Scenes ---------- */
+  { id: 'synthSun', name: 'שמש סינת׳ווייב', g: 'scenes', ph: 'viz', fn: (L) => {
+      const hz = H * 0.62, r = MD * 0.26 * (1 + A.bass * 0.06), cy = hz - r * 0.45;
+      L.save(); L.shadowColor = col(1); L.shadowBlur = 60; L.beginPath(); L.arc(CX, cy, r, 0, TAU); L.clip();
+      const g = L.createLinearGradient(0, cy - r, 0, cy + r); g.addColorStop(0, col(1)); g.addColorStop(1, col(0)); L.fillStyle = g;
+      let y = cy - r; const stripeStart = cy; L.fillRect(CX - r, cy - r, r * 2, r);
+      for (let i = 0, yy = stripeStart; yy < cy + r; i++) { const gap = 3 + i * 3 * (1 + A.bass * 0.5), band = Math.max(4, 24 - i * 2); L.fillRect(CX - r, yy, r * 2, band); yy += band + gap; }
+      L.restore();
+    } },
+  { id: 'synthGrid', name: 'רצפת רשת רטרו', g: 'scenes', ph: 'viz', fn: (L) => {
+      const s = st('grid', () => ({ o: 0 })), hz = H * 0.62; s.o += A.dt * (0.5 + A.bass * 3);
+      L.fillStyle = 'rgba(10,0,25,0.85)'; L.fillRect(0, hz, W, H - hz);
+      L.strokeStyle = col(0); L.shadowColor = col(0); L.shadowBlur = 12; L.lineWidth = 2; L.beginPath();
+      for (let i = 0; i < 18; i++) { const p = (i + (s.o % 1)) / 18, y = hz + (H - hz) * p * p; L.moveTo(0, y); L.lineTo(W, y); }
+      for (let k = -20; k <= 20; k++) { L.moveTo(CX + k * W * 0.012, hz); L.lineTo(CX + k * W * 0.13, H); }
+      L.stroke(); L.strokeStyle = col(1); L.lineWidth = 3 + A.bass * 6; L.beginPath(); L.moveTo(0, hz); L.lineTo(W, hz); L.stroke();
+    } },
+  { id: 'lightning', name: 'ברקים על ביט', g: 'scenes', ph: 'viz', fn: (L) => {
+      const s = st('bolt', () => []);
+      if (A.beat && A.bass > 0.5) { const pts = []; let x = R(W * 0.1, W * 0.9), y = 0; const end = H * R(0.4, 0.85); pts.push([x, y]); while (y < end) { y += R(20, 60); x += R(-45, 45); pts.push([x, y]); } s.push({ pts, l: 0.3 }); }
+      L.lineJoin = 'round';
+      for (let i = s.length - 1; i >= 0; i--) { const b = s[i]; b.l -= A.dt; if (b.l <= 0) { s.splice(i, 1); continue; } const a = b.l / 0.3;
+        L.strokeStyle = `rgba(255,255,255,${a})`; L.shadowColor = col(0.5); L.shadowBlur = 30; L.lineWidth = 3 + a * 3; L.beginPath(); b.pts.forEach(([x, y], j) => j ? L.lineTo(x, y) : L.moveTo(x, y)); L.stroke(); }
+    } },
+  { id: 'lasers', name: 'לייזרים', g: 'scenes', ph: 'viz', fn: (L) => {
+      const b = A.bands(8); L.globalCompositeOperation = 'lighter'; L.lineCap = 'round';
+      for (let k = 0; k < 8; k++) { const v = b[k]; if (v < 0.05) continue; const a = -Math.PI / 2 + Math.sin(A.t * 1.2 + k * 0.8) * 0.75, len = H * 1.3;
+        L.strokeStyle = col(k / 7, 0.3 + v * 0.7); L.shadowColor = col(k / 7); L.shadowBlur = 25; L.lineWidth = 2 + v * 8; L.beginPath(); L.moveTo(CX, H); L.lineTo(CX + Math.cos(a) * len, H + Math.sin(a) * len); L.stroke(); }
+    } },
+  { id: 'spotlights', name: 'זרקורי במה', g: 'scenes', ph: 'viz', fn: (L) => {
+      const b = A.bands(4); L.globalCompositeOperation = 'lighter';
+      for (let k = 0; k < 4; k++) { const x = W * (0.15 + k * 0.233), a = Math.sin(A.t * 0.7 + k * 1.7) * 0.4, v = 0.15 + b[k] * 0.6, len = H * 1.1, wd = MD * 0.18;
+        L.save(); L.translate(x, -20); L.rotate(a); const g = L.createLinearGradient(0, 0, 0, len); g.addColorStop(0, col(k / 3, v)); g.addColorStop(1, col(k / 3, 0));
+        L.fillStyle = g; L.beginPath(); L.moveTo(-8, 0); L.lineTo(8, 0); L.lineTo(wd, len); L.lineTo(-wd, len); L.closePath(); L.fill(); L.restore(); }
+    } },
+  { id: 'matrix', name: 'גשם תווים (מטריקס)', g: 'scenes', ph: 'viz', fn: (L) => {
+      const fs = Math.round(MD * 0.024), cols = Math.ceil(W / fs), chars = 'アイウエオカキクケコサシスセソ01♪♫אבגדהוזחטיכלמנסעפצקרשת';
+      const s = st('mx', () => Array.from({ length: cols }, () => ({ y: R(-H, H), sp: R(0.6, 1.4) })));
+      L.font = `${fs}px monospace`; L.textAlign = 'center';
+      s.forEach((c, i) => { c.y += A.dt * H * 0.25 * c.sp * (0.3 + A.energy * 2.5); if (c.y - 15 * fs > H) c.y = R(-200, 0);
+        for (let j = 0; j < 15; j++) { const y = c.y - j * fs; if (y < -fs || y > H + fs) continue; L.fillStyle = j ? col(0.2, (1 - j / 15) * 0.8) : '#fff';
+          L.fillText(chars[(i * 7 + Math.floor(y / fs) * 13 + (A.frame >> 3)) % chars.length], i * fs + fs / 2, y); } });
+    } },
+  { id: 'tunnelRings', name: 'מנהרת טבעות', g: 'scenes', ph: 'viz', fn: (L) => {
+      const s = st('tr', () => ({ o: 0 })); s.o += A.dt * (0.3 + A.bass * 2); const b = A.bands(12);
+      for (let i = 0; i < 12; i++) { const z = 1 - ((i / 12 + s.o) % 1), r = MD * 0.05 / Math.max(0.04, z); if (r > Math.hypot(W, H)) continue;
+        L.strokeStyle = col(i / 11, clamp(1.1 - z) * (0.4 + b[i] * 0.6)); L.lineWidth = 2 + (1 - z) * 10 * (0.3 + b[i]); L.beginPath();
+        for (let k = 0; k <= 6; k++) { const a = k / 6 * TAU + s.o * 0.5; k ? L.lineTo(CX + Math.cos(a) * r, CY + Math.sin(a) * r) : L.moveTo(CX + Math.cos(a) * r, CY + Math.sin(a) * r); } L.stroke(); }
+    } },
+  { id: 'aurora', name: 'זוהר צפוני', g: 'scenes', ph: 'viz', fn: (L) => {
+      L.globalCompositeOperation = 'lighter';
+      for (let k = 0; k < 3; k++) { const y0 = H * (0.18 + k * 0.08), amp = H * (0.04 + A.mid * 0.06); const g = L.createLinearGradient(0, y0 - amp, 0, y0 + H * 0.25); g.addColorStop(0, col(k / 2, 0)); g.addColorStop(0.3, col(k / 2, 0.25 + A.energy * 0.3)); g.addColorStop(1, col(k / 2, 0));
+        L.fillStyle = g; L.beginPath(); L.moveTo(0, H * 0.7);
+        for (let x = 0; x <= W; x += W / 40) L.lineTo(x, y0 + Math.sin(x * 0.004 + A.t * (0.5 + k * 0.2)) * amp + Math.sin(x * 0.011 - A.t) * amp * 0.4);
+        L.lineTo(W, H * 0.7); L.closePath(); L.fill(); }
+    } },
+
+  /* ---------- Visualization-layer modifiers ---------- */
+  { id: 'glow', name: 'זוהר (Glow)', g: 'vfx', ph: 'vizfx', fn: NOOP },
+  { id: 'trails', name: 'שובל', g: 'vfx', ph: 'vizfx', fn: NOOP },
+  { id: 'zoomTrails', name: 'שובל מתרחב', g: 'vfx', ph: 'vizfx', fn: NOOP },
+  { id: 'vizPulse', name: 'ויזואליזציה פועמת', g: 'vfx', ph: 'vizfx', fn: NOOP },
+  { id: 'vizSpin', name: 'סיבוב ויזואליזציה', g: 'vfx', ph: 'vizfx', fn: NOOP },
+
+  /* ---------- Overlay / text ---------- */
+  { id: 'vignette', name: 'וינייטה', g: 'overlay', ph: 'top', fn: (c) => {
+      const g = c.createRadialGradient(CX, CY, MD * 0.3, CX, CY, Math.hypot(CX, CY)); g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, `rgba(0,0,0,${0.6 + A.bass * 0.25})`); c.fillStyle = g; c.fillRect(0, 0, W, H);
+    } },
+  { id: 'scanlines', name: 'קווי סריקה (VHS)', g: 'overlay', ph: 'top', fn: (c) => {
+      c.globalAlpha = 0.35; c.fillStyle = c.createPattern(scanTex, 'repeat'); c.fillRect(0, 0, W, H); c.globalAlpha = 1;
+      c.fillStyle = 'rgba(255,255,255,0.05)'; c.fillRect(0, (A.t * 220) % (H + 100) - 100, W, 80);
+    } },
+  { id: 'grain', name: 'גרעיניות פילם', g: 'overlay', ph: 'top', fn: (c) => {
+      c.save(); c.globalCompositeOperation = 'overlay'; c.globalAlpha = 0.22; c.translate(-R(0, 256), -R(0, 256)); c.fillStyle = c.createPattern(noiseTex[A.frame % 4], 'repeat'); c.fillRect(0, 0, W + 256, H + 256); c.restore();
+    } },
+  { id: 'lightLeak', name: 'דליפות אור', g: 'overlay', ph: 'top', fn: (c) => {
+      c.save(); c.globalCompositeOperation = 'screen'; const a = 0.22 + A.energy * 0.35;
+      [[0.2 + 0.15 * Math.sin(A.t * 0.3), 0.2, 'rgba(255,140,60,'], [0.8 + 0.1 * Math.cos(A.t * 0.25), 0.75, 'rgba(255,60,140,']].forEach(([x, y, cc]) => {
+        const g = c.createRadialGradient(x * W, y * H, 0, x * W, y * H, MD * 0.7); g.addColorStop(0, cc + a + ')'); g.addColorStop(1, cc + '0)'); c.fillStyle = g; c.fillRect(0, 0, W, H); });
+      c.restore();
+    } },
+  { id: 'letterbox', name: 'פסים קולנועיים', g: 'overlay', ph: 'top', fn: (c) => { const h = H * 0.07; c.fillStyle = '#000'; c.fillRect(0, 0, W, h); c.fillRect(0, H - h, W, h); } },
+  { id: 'progressBar', name: 'פס התקדמות + זמן', g: 'overlay', ph: 'top', fn: (c) => {
+      const y = H - MD * 0.07, w = W * 0.8, x = (W - w) / 2, h = Math.max(4, MD * 0.006);
+      c.fillStyle = 'rgba(255,255,255,0.25)'; c.fillRect(x, y, w, h); c.fillStyle = col(0.5); c.fillRect(x, y, w * A.prog, h);
+      c.beginPath(); c.arc(x + w * A.prog, y + h / 2, h * 1.6, 0, TAU); c.fillStyle = '#fff'; c.fill();
+      c.font = `400 ${MD * 0.028}px Heebo, sans-serif`; c.fillStyle = 'rgba(255,255,255,0.8)'; c.textBaseline = 'top'; c.direction = 'ltr';
+      const segLen = Math.max(0, seg.end - seg.start); c.textAlign = 'left'; c.fillText(fmt(A.prog * segLen), x, y + h * 3); c.textAlign = 'right'; c.fillText(fmt(segLen), x + w, y + h * 3);
+    } },
+  { id: 'textPulse', name: 'טקסט פועם', g: 'overlay', ph: 'top', fn: NOOP },
+  { id: 'textGlitch', name: 'טקסט גליץ׳', g: 'overlay', ph: 'top', fn: NOOP },
+  { id: 'textGlow', name: 'טקסט זוהר', g: 'overlay', ph: 'top', fn: NOOP },
+];
+
+/* =========================================================
+   Selection & UI
+   ========================================================= */
+const active = new Set();
+let phases = {};
+function rebuildPhases() {
+  phases = { transform: [], filter: [], bgpost: [], viz: [], vizfx: [], top: [] };
+  for (const e of EFFECTS) if (active.has(e.id)) phases[e.ph].push(e);
+  $('#fxCount').textContent = `נבחרו ${active.size} מתוך ${EFFECTS.length}`;
+  document.querySelectorAll('.fx').forEach(el => { const on = active.has(el.dataset.id); el.classList.toggle('on', on); el.querySelector('input').checked = on; });
+}
+
+const PRESETS = {
+  '🎧 קלאסי': ['zoomPulse', 'barsMirror', 'particlesBurst', 'glow', 'vignette'],
+  '💿 אלבום': ['blurredBg', 'zoomPulse', 'barsCircle', 'albumCircle', 'shockwave', 'floatingDust', 'glow', 'vignette', 'textPulse'],
+  '🎶 תקליט': ['blurredBg', 'kenburns', 'waveCircle', 'vinyl', 'bokeh', 'vignette', 'grain'],
+  '🌆 סינת׳ווייב': ['hueMusic', 'starfield', 'synthSun', 'synthGrid', 'glow', 'scanlines', 'vignette', 'textGlow'],
+  '⚡ ניאון': ['tripleWave', 'lasers', 'neonFrame', 'glow', 'trails', 'vignette', 'textGlow'],
+  '👾 גליץ׳': ['shake', 'rgbSplit', 'glitch', 'invert', 'ledEQ', 'scanlines', 'grain', 'textGlitch'],
+  '☁️ חלומי': ['kenburns', 'focusPull', 'blob', 'bokeh', 'floatingDust', 'lightLeak', 'glow', 'grain'],
+  '🌌 חלל': ['starfield', 'sunburst', 'spiral', 'zoomTrails', 'glow', 'vignette'],
+  '🎉 מסיבה': ['heartbeat', 'barsBottom', 'confetti', 'lasers', 'flash', 'glow', 'textPulse'],
+  '🖤 מינימלי': ['kenburns', 'waveLine', 'progressBar', 'vignette'],
+  '🎬 קולנועי': ['kenburns', 'vintage', 'ridgeline', 'letterbox', 'grain', 'vignette', 'lightLeak'],
+};
+function applyPreset(ids) { active.clear(); ids.forEach(i => active.add(i)); rebuildPhases(); }
+
+(function buildUI() {
+  const pr = $('#presets');
+  for (const [name, ids] of Object.entries(PRESETS)) { const b = document.createElement('button'); b.className = 'btn small'; b.textContent = name; b.onclick = () => applyPreset(ids); pr.appendChild(b); }
+  const box = $('#fxGroups');
+  for (const [g, title] of Object.entries(G)) {
+    const list = EFFECTS.filter(e => e.g === g); if (!list.length) continue;
+    const wrap = document.createElement('div'); wrap.className = 'fx-group'; wrap.innerHTML = `<h4>${title} (${list.length})</h4>`;
+    const grid = document.createElement('div'); grid.className = 'fx-list';
+    for (const e of list) {
+      const l = document.createElement('label'); l.className = 'fx'; l.dataset.id = e.id; l.dataset.name = e.name;
+      l.innerHTML = `<input type="checkbox"><span>${e.name}</span>`;
+      l.querySelector('input').onchange = ev => { ev.target.checked ? active.add(e.id) : active.delete(e.id); rebuildPhases(); };
+      grid.appendChild(l);
+    }
+    wrap.appendChild(grid); box.appendChild(wrap);
+  }
+  $('#fxSearch').oninput = e => { const q = e.target.value.trim(); document.querySelectorAll('.fx').forEach(el => el.style.display = !q || el.dataset.name.includes(q) ? '' : 'none'); };
+  $('#fxClear').onclick = () => { active.clear(); rebuildPhases(); };
+  $('#fxRandom').onclick = () => {
+    active.clear();
+    const pick = (g, n) => EFFECTS.filter(e => e.g === g).sort(() => Math.random() - 0.5).slice(0, n).forEach(e => active.add(e.id));
+    pick('motion', 1); pick('filter', Math.random() < 0.5 ? 1 : 0); pick('distort', Math.random() < 0.5 ? 1 : 0);
+    pick(['spectrum', 'wave', 'shapes'][Math.random() * 3 | 0], 1); pick('shapes', 1); pick('particles', 1); pick('vfx', 1); pick('overlay', 2);
+    rebuildPhases();
+  };
+  applyPreset(PRESETS['💿 אלבום']);
+})();
+
+/* =========================================================
+   Files
+   ========================================================= */
+function loadImage(file) {
+  if (!file) return;
+  const url = URL.createObjectURL(file), im = new Image();
+  im.onload = () => { imgEl = im; buildCover(); $('#imgName').textContent = file.name; $('#imgErr').style.display = 'none'; };
+  im.onerror = () => { const e = $('#imgErr'); e.style.display = 'block'; e.textContent = 'הדפדפן לא הצליח לפתוח את התמונה (למשל HEIC מאייפון). המר ל־JPG/PNG ונסה שוב.'; };
+  im.src = url;
+}
+async function loadAudio(file) {
+  if (!file) return;
+  stopPreview();
+  audio.src = URL.createObjectURL(file);
+  $('#audName').textContent = file.name;
+  peaks = null; drawTimeline();
+  audio.onloadedmetadata = () => {
+    seg.start = 0; seg.end = Math.min(audio.duration, 30); syncSegInputs(); drawTimeline();
+  };
+  try {
+    const ab = await file.arrayBuffer();
+    const oc = new (window.OfflineAudioContext || window.webkitOfflineAudioContext)(1, 2, 44100);
+    const decoded = await oc.decodeAudioData(ab);
+    const ch = decoded.getChannelData(0), n = 600, step = Math.floor(ch.length / n); peaks = new Float32Array(n);
+    for (let i = 0; i < n; i++) { let m = 0; for (let k = 0; k < step; k += 16) { const v = Math.abs(ch[i * step + k]); if (v > m) m = v; } peaks[i] = m; }
+    drawTimeline();
+  } catch (e) { /* overview waveform is optional */ }
+}
+$('#imgIn').onchange = e => loadImage(e.target.files[0]);
+$('#audIn').onchange = e => loadAudio(e.target.files[0]);
+for (const id of ['#dropImg', '#dropAud']) { const d = $(id); d.ondragover = () => d.classList.add('over'); d.ondragleave = d.ondrop = () => d.classList.remove('over'); }
+const stage = $('#stage');
+stage.ondragover = e => e.preventDefault();
+stage.ondrop = e => { e.preventDefault(); for (const f of e.dataTransfer.files) { if (f.type.startsWith('image/')) loadImage(f); else if (f.type.startsWith('audio/') || f.type.startsWith('video/')) loadAudio(f); } };
+
+/* =========================================================
+   Segment & timeline
+   ========================================================= */
+const seg = { start: 0, end: 30 };
+function syncSegInputs() { $('#segStart').value = seg.start.toFixed(1); $('#segEnd').value = seg.end.toFixed(1); updateSegLbl(); }
+function updateSegLbl() { $('#segLbl').textContent = `מקטע: ${fmt(seg.start)}–${fmt(seg.end)} (${Math.max(0, seg.end - seg.start).toFixed(1)} שנ׳)`; }
+function fixSeg() { const d = audio.duration || Infinity; seg.start = clamp(seg.start, 0, d); seg.end = clamp(seg.end, seg.start + 0.5, d); if (!isFinite(seg.end)) seg.end = seg.start + 30; syncSegInputs(); drawTimeline(); }
+$('#segStart').onchange = e => { seg.start = +e.target.value || 0; fixSeg(); };
+$('#segEnd').onchange = e => { seg.end = +e.target.value || 0; fixSeg(); };
+$('#setStart').onclick = () => { const len = seg.end - seg.start; seg.start = audio.currentTime; seg.end = seg.start + len; fixSeg(); };
+$('#setEnd').onclick = () => { seg.end = audio.currentTime; fixSeg(); };
+document.querySelectorAll('[data-len]').forEach(b => b.onclick = () => { seg.end = seg.start + +b.dataset.len; fixSeg(); });
+
+const tl = $('#timeline'), tlx = tl.getContext('2d');
+function drawTimeline() {
+  const w = tl.clientWidth * devicePixelRatio, h = 56 * devicePixelRatio; if (tl.width !== w) tl.width = w; tl.height = h;
+  tlx.clearRect(0, 0, w, h); const d = audio.duration;
+  if (d) { tlx.fillStyle = 'rgba(180,108,255,0.18)'; tlx.fillRect(seg.start / d * w, 0, (seg.end - seg.start) / d * w, h); }
+  if (peaks) { tlx.fillStyle = '#6d5a99'; const bw = w / peaks.length; for (let i = 0; i < peaks.length; i++) { const ph = peaks[i] * h * 0.9; tlx.fillRect(i * bw, (h - ph) / 2, Math.max(1, bw - 1), ph); } }
+  else { tlx.fillStyle = '#9a94b3'; tlx.font = `${12 * devicePixelRatio}px Heebo`; tlx.textAlign = 'center'; tlx.fillText(audio.src ? 'טוען גל קול…' : 'העלה שיר כדי לראות ציר זמן · לחיצה על הציר = קפיצה', w / 2, h / 2 + 4); }
+  if (d) { tlx.fillStyle = '#b46cff'; tlx.fillRect(seg.start / d * w - 1, 0, 2 * devicePixelRatio, h); tlx.fillRect(seg.end / d * w - 1, 0, 2 * devicePixelRatio, h);
+    tlx.fillStyle = '#fff'; tlx.fillRect(audio.currentTime / d * w, 0, 2 * devicePixelRatio, h); }
+}
+tl.onclick = e => { if (!audio.duration || recording) return; const r = tl.getBoundingClientRect(); audio.currentTime = clamp((e.clientX - r.left) / r.width) * audio.duration; };
+window.addEventListener('resize', drawTimeline);
+
+/* =========================================================
+   Playback
+   ========================================================= */
+let previewing = false;
+async function startPreview() {
+  if (!audio.src) { alert('קודם העלה קובץ שיר 🎵'); return; }
+  ensureAudio(); await actx.resume(); monitor.gain.value = 1;
+  if (audio.currentTime < seg.start || audio.currentTime >= seg.end) audio.currentTime = seg.start;
+  await audio.play(); previewing = true; $('#playBtn').textContent = '⏸ עצור';
+}
+function stopPreview() { audio.pause(); previewing = false; $('#playBtn').textContent = '▶ נגן מקטע'; }
+$('#playBtn').onclick = () => { if (recording) return; previewing ? stopPreview() : startPreview(); };
+document.addEventListener('keydown', e => { if (e.code === 'Space' && !/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName)) { e.preventDefault(); $('#playBtn').click(); } });
+
+/* =========================================================
+   Export
+   ========================================================= */
+let recording = false, recorder = null, recCancelled = false;
+async function exportVideo() {
+  if (!audio.src) { alert('קודם העלה קובץ שיר 🎵'); return; }
+  if (!window.MediaRecorder || !cv.captureStream) { alert('הדפדפן לא תומך בייצוא וידאו. מומלץ Chrome או Edge.'); return; }
+  ensureAudio(); await actx.resume(); stopPreview();
+  const types = ['video/mp4;codecs=avc1.640028,mp4a.40.2', 'video/mp4;codecs=avc1.42E01E,mp4a.40.2', 'video/mp4', 'video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm'];
+  const mime = types.find(t => MediaRecorder.isTypeSupported(t)) || '';
+  const stream = new MediaStream([...cv.captureStream(cfg.fps).getVideoTracks(), ...recDest.stream.getAudioTracks()]);
+  const chunks = [];
+  recorder = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: cfg.bitrate * 1e6, audioBitsPerSecond: 192000 });
+  recorder.ondataavailable = e => e.data.size && chunks.push(e.data);
+  recorder.onstop = () => {
+    recording = false; audio.pause(); monitor.gain.value = 1; stream.getTracks().forEach(t => t.kind === 'video' && t.stop());
+    $('#exportBtn').disabled = false; $('#cancelBtn').style.display = 'none'; $('#exportRow').style.display = 'none'; $('#playBtn').disabled = false;
+    if (recCancelled) { $('#dlBox').textContent = 'הייצוא בוטל.'; return; }
+    const type = (recorder.mimeType || mime || 'video/webm').split(';')[0], ext = type.includes('mp4') ? 'mp4' : 'webm';
+    const blob = new Blob(chunks, { type }), url = URL.createObjectURL(blob);
+    const name = `${(cfg.title || 'aria-visualizer').replace(/[\\/:*?"<>|]/g, '')}-${$('#format').value}.${ext}`;
+    $('#dlBox').innerHTML = `✅ מוכן! <a class="dl" href="${url}" download="${name}">הורד את ${name}</a> (${(blob.size / 1048576).toFixed(1)}MB)` + (ext === 'webm' ? '<br>הקובץ ב־WEBM. אם אינסטגרם לא מקבל אותו, ייצא מ־Chrome/Edge מעודכן (MP4) או המר בכלי חינמי.' : '');
+    const a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+  };
+  audio.currentTime = seg.start;
+  await new Promise(r => { if (!audio.seeking) return r(); audio.addEventListener('seeked', r, { once: true }); });
+  for (const k in S) delete S[k];
+  monitor.gain.value = $('#muteExport').checked ? 0 : 1;
+  recCancelled = false; recording = true;
+  $('#exportBtn').disabled = true; $('#cancelBtn').style.display = ''; $('#exportRow').style.display = ''; $('#playBtn').disabled = true; $('#dlBox').textContent = '';
+  recorder.start(250);
+  await audio.play();
+}
+function stopExport(cancel) { if (!recording) return; recCancelled = !!cancel; if (recorder.state !== 'inactive') recorder.stop(); }
+$('#exportBtn').onclick = exportVideo;
+$('#cancelBtn').onclick = () => stopExport(true);
+audio.addEventListener('ended', () => { if (recording) stopExport(false); else stopPreview(); });
+
+/* =========================================================
+   Format
+   ========================================================= */
+$('#format').onchange = e => { const [w, h] = e.target.value.split('x').map(Number); resize(w, h); };
+resize(1080, 1920);
+
+/* =========================================================
+   Text
+   ========================================================= */
+function drawText() {
+  if (!cfg.title && !cfg.sub) return;
+  const sc = active.has('textPulse') ? 1 + A.bass * 0.12 : 1;
+  const y = cfg.textPos === 'top' ? H * 0.13 : cfg.textPos === 'center' ? H * 0.5 : H * 0.83;
+  const fs = MD * 0.08 * cfg.fontScale;
+  ctx.save(); ctx.translate(CX, y); ctx.scale(sc, sc); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.direction = 'inherit';
+  ctx.font = `900 ${fs}px Heebo, sans-serif`;
+  if (cfg.title) {
+    if (active.has('textGlitch') && (A.pulse > 0.15 || Math.random() < 0.03)) {
+      const d = fs * 0.06 * (0.3 + A.pulse); ctx.globalCompositeOperation = 'lighter';
+      ctx.fillStyle = 'rgba(255,0,60,0.8)'; ctx.fillText(cfg.title, -d, 0); ctx.fillStyle = 'rgba(0,220,255,0.8)'; ctx.fillText(cfg.title, d, d * 0.3);
+      ctx.globalCompositeOperation = 'source-over';
+    }
+    if (active.has('textGlow')) { ctx.shadowColor = col(0.5); ctx.shadowBlur = 25 + A.bass * 40; } else { ctx.shadowColor = 'rgba(0,0,0,0.7)'; ctx.shadowBlur = 24; }
+    ctx.fillStyle = '#fff'; ctx.fillText(cfg.title, 0, 0);
+  }
+  if (cfg.sub) { ctx.shadowColor = 'rgba(0,0,0,0.7)'; ctx.shadowBlur = 14; ctx.font = `400 ${fs * 0.42}px Heebo, sans-serif`; ctx.fillStyle = 'rgba(255,255,255,0.9)'; ctx.fillText(cfg.sub, 0, cfg.title ? fs * 0.85 : 0); }
+  ctx.restore();
+}
+
+/* =========================================================
+   Render loop
+   ========================================================= */
+let last = performance.now();
+function resetCtx(c) { c.setTransform(1, 0, 0, 1, 0, 0); c.globalAlpha = 1; c.globalCompositeOperation = 'source-over'; c.filter = 'none'; c.shadowBlur = 0; c.shadowColor = 'transparent'; }
+
+function render(now) {
+  const dt = Math.min(0.1, Math.max(0.001, (now - last) / 1000)); last = now;
+  A.t += dt; A.dt = dt; A.frame++;
+  analyze(dt);
+  const segLen = Math.max(0.01, seg.end - seg.start);
+  A.prog = clamp((audio.currentTime - seg.start) / segLen);
+
+  if (recording) { const p = A.prog; $('#prog').style.width = (p * 100).toFixed(1) + '%'; $('#progLbl').textContent = `${fmt(audio.currentTime - seg.start)} / ${fmt(segLen)}`; if (audio.currentTime >= seg.end) stopExport(false); }
+  else if (previewing && audio.currentTime >= seg.end) audio.currentTime = seg.start;
+
+  /* background */
+  resetCtx(ctx);
+  const T = { scale: 1, x: 0, y: 0, rot: 0 }; for (const e of phases.transform) e.fn(T);
+  const F = []; for (const e of phases.filter) e.fn(F);
+  if (cover) {
+    const margin = phases.transform.length ? 1.12 : 1;
+    if (F.some(f => f.startsWith('blur'))) { ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H); }
+    ctx.save(); ctx.translate(CX + T.x, CY + T.y); ctx.rotate(T.rot); ctx.scale(T.scale * margin, T.scale * margin);
+    if (F.length) ctx.filter = F.join(' ');
+    const bl = F.some(f => f.startsWith('blur')) ? 1.08 : 1; // hide blurred edges
+    ctx.drawImage(cover, -W / 2 * bl, -H / 2 * bl, W * bl, H * bl); ctx.restore(); ctx.filter = 'none';
+  } else {
+    const g = ctx.createRadialGradient(CX, CY * 0.8, 0, CX, CY, Math.hypot(CX, CY)); g.addColorStop(0, '#2a1440'); g.addColorStop(1, '#07060b'); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  }
+  for (const e of phases.bgpost) { e.fn(ctx); resetCtx(ctx); }
+  if (cfg.dim > 0) { ctx.fillStyle = `rgba(0,0,0,${cfg.dim})`; ctx.fillRect(0, 0, W, H); }
+
+  /* visualization layer */
+  resetCtx(lctx);
+  if (active.has('zoomTrails')) {
+    trctx.clearRect(0, 0, W, H); trctx.drawImage(layer, 0, 0); lctx.clearRect(0, 0, W, H);
+    const s = 1.03 + A.bass * 0.03; lctx.globalAlpha = 0.86; lctx.drawImage(trailC, CX - W * s / 2, CY - H * s / 2, W * s, H * s); lctx.globalAlpha = 1;
+  } else if (active.has('trails')) {
+    lctx.globalCompositeOperation = 'destination-out'; lctx.fillStyle = 'rgba(0,0,0,0.25)'; lctx.fillRect(0, 0, W, H); lctx.globalCompositeOperation = 'source-over';
+  } else lctx.clearRect(0, 0, W, H);
+  for (const e of phases.viz) { lctx.save(); e.fn(lctx); lctx.restore(); resetCtx(lctx); }
+
+  /* composite */
+  ctx.save();
+  if (active.has('vizPulse') || active.has('vizSpin')) {
+    ctx.translate(CX, CY);
+    if (active.has('vizSpin')) ctx.rotate(A.t * 0.15);
+    if (active.has('vizPulse')) { const s = 1 + A.bass * 0.08 + A.pulse * 0.04; ctx.scale(s, s); }
+    ctx.translate(-CX, -CY);
+  }
+  if (active.has('glow')) { ctx.filter = `blur(${Math.round(MD * 0.012)}px)`; ctx.globalCompositeOperation = 'lighter'; ctx.drawImage(layer, 0, 0); ctx.filter = 'none'; ctx.globalCompositeOperation = 'source-over'; }
+  ctx.drawImage(layer, 0, 0);
+  ctx.restore();
+
+  for (const e of phases.top) { e.fn(ctx); resetCtx(ctx); }
+  drawText();
+
+  if (A.frame % 6 === 0) { $('#timeLbl').textContent = `${fmt(audio.currentTime)} / ${fmt(audio.duration)}`; drawTimeline(); }
+  requestAnimationFrame(render);
+}
+requestAnimationFrame(render);
+
+// expose for debugging/tests
+window.__viz = { EFFECTS, active, rebuildPhases, applyPreset, A, seg, audio, startPreview, exportVideo };
+</script>
+</body>
+</html>
