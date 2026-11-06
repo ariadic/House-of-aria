@@ -258,9 +258,6 @@ input[type=color]::-moz-color-swatch{border:0;border-radius:50%}
       <button class="row action" type="button" id="palAuto" disabled>החלה אוטומטית של הפלטה</button>
     </div>
     <input class="vh" type="file" id="fPal" accept="image/*">
-    <div class="group">
-      <label class="row"><span class="grow">גרעיניות קולנועית</span><input class="switch" type="checkbox" data-k="grain"></label>
-    </div>
   </section>
 
   <section data-title="תנועה">
@@ -289,6 +286,16 @@ input[type=color]::-moz-color-swatch{border:0;border-radius:50%}
       <div class="slider"><div class="sl-top"><span>אור מאחורי הכרטיס</span><span class="v" data-for="backlight"></span></div><input type="range" data-k="backlight" min="0" max="1" step="0.01"></div>
       <div class="slider"><div class="sl-top"><span>תזוזת עומק</span><span class="v" data-for="parallax"></span></div><input type="range" data-k="parallax" min="0" max="1.5" step="0.01"></div>
     </div>
+    <h2>מרקם</h2>
+    <div class="group">
+      <div class="slider"><div class="sl-top"><span>גרעיניות</span><span class="v" data-for="grainAmt"></span></div><input type="range" data-k="grainAmt" min="0" max="1" step="0.01"></div>
+      <div class="slider"><div class="sl-top"><span>גודל הגרעין</span><span class="v" data-for="grainSize"></span></div><input type="range" data-k="grainSize" min="0.5" max="3" step="0.05"></div>
+    </div>
+    <h2>הרקע זז עם השיר</h2>
+    <div class="group">
+      <div class="slider"><div class="sl-top"><span>הבהוב לפי השיר</span><span class="v" data-for="flicker"></span></div><input type="range" data-k="flicker" min="0" max="1" step="0.01"></div>
+    </div>
+    <p class="hint">הרקע מתכהה בחלקים השקטים, נדלק קלות על הביט ומהבהב בעדינות כמו מקרן קולנוע. הכרטיס עצמו לא מהבהב.</p>
     <h2>אבק באוויר</h2>
     <div class="group">
       <div class="slider"><div class="sl-top"><span>כמות</span><span class="v" data-for="particles"></span></div><input type="range" data-k="particles" min="0" max="1" step="0.01"></div>
@@ -366,7 +373,7 @@ const DEFAULTS = Object.assign({
   fontHead:'Anton', wHead:'400', headSize:1,
   fontTitle:'Inter', wTitle:'700', titleSize:1,
   fontSmall:'Inter', wSmall:'400',
-  bg:'#0b0708', glow:'#c4362f', card:'#2a2a2e', text:'#f2f2f2', head:'#ffffff', accent:'#e0412f', grain:true,
+  bg:'#0b0708', glow:'#c4362f', card:'#2a2a2e', text:'#f2f2f2', head:'#ffffff', accent:'#e0412f', grainAmt:0.35, grainSize:1, flicker:0.4,
   format:'9:16', expStart:0, expDur:15, expFull:false, fade:true, expRes:'1',
   bgImg:true, bgImgAmt:0.45, particles:0.45, pSize:1, backlight:0.35, parallax:0.7
 }, MOTION_DEFAULTS);
@@ -651,11 +658,17 @@ function stepDust(mdt, t, amount, sizeMul, boost) {
 }
 
 /* ---------- grain ---------- */
-const grainC = document.createElement('canvas'); grainC.width = grainC.height = 256;
-{ const c = grainC.getContext('2d'), id = c.createImageData(256, 256);
-  for (let i = 0; i < id.data.length; i += 4) { const v = Math.random() * 255; id.data[i] = id.data[i+1] = id.data[i+2] = v; id.data[i+3] = 255; }
-  c.putImageData(id, 0, 0); }
-const grainPat = ctx.createPattern(grainC, 'repeat');
+// a few frames of soft film grain (sum of randoms = gaussian-like), cycled so the grain lives like real film
+const grainPats = Array.from({length: 4}, () => {
+  const c = document.createElement('canvas'); c.width = c.height = 256;
+  const x = c.getContext('2d'), id = x.createImageData(256, 256), d = id.data;
+  for (let i = 0; i < d.length; i += 4) {
+    const v = 128 + ((Math.random() + Math.random() + Math.random() - 1.5) * 150);
+    d[i] = d[i+1] = d[i+2] = Math.max(0, Math.min(255, v)); d[i+3] = 255;
+  }
+  x.putImageData(id, 0, 0);
+  return ctx.createPattern(c, 'repeat');
+});
 
 /* ---------- layout ---------- */
 function setFormat(scale = PREVIEW_SCALE) {
@@ -731,13 +744,23 @@ function ensureAudioGraph() {
   srcNode.connect(expGain); expGain.connect(streamDest);
 }
 let level = 0, slowAvg = 0, pulse = 0;
-function readPulse() {
-  if (!analyser || aud.paused) { pulse *= .9; return; }
+let env = 0, peak = 0, floor = 1, flick = 1;
+function readPulse(dt = 1 / 60) {
+  if (!analyser || aud.paused) { pulse *= .9; flick += (1 - flick) * .05; return; }
   analyser.getByteFrequencyData(freq);
   let e = 0; for (let i = 1; i < 7; i++) e += freq[i]; e /= 6 * 255;
   slowAvg = slowAvg * .985 + e * .015;
   const hit = Math.max(0, Math.min(1, (e - slowAvg * .95) * 4));
   pulse = Math.max(hit, pulse * .9);
+  // loudness for the background flicker: the louder of the bass and the whole spectrum,
+  // placed between the song's own recent quietest and loudest moments so every song gets the full range
+  let all = 0; for (let i = 1; i < 160; i++) all += freq[i]; all /= 159 * 255;
+  env += (Math.max(e, all * 1.4) - env) * (1 - Math.exp(-dt / .05));
+  peak = Math.max(env, peak - .12 * dt);
+  floor = Math.min(env, floor + .25 * dt);
+  const lvl = Math.max(0, Math.min(1, (env - floor) / Math.max(.06, peak - floor)));
+  const target = lvl * .88 + Math.random() * .12;
+  flick += (target - flick) * (1 - Math.exp(-dt / .04));
 }
 const fmt = t => { t = Math.max(0, t || 0); return Math.floor(t / 60) + ':' + String(Math.floor(t % 60)).padStart(2, '0'); };
 
@@ -853,7 +876,7 @@ function syncInputs() {
   for (const el of ctrls) if (el.type === 'range') el.style.setProperty('--p', ((el.value - el.min) / (el.max - el.min) * 100) + '%');
   document.querySelectorAll('.v[data-for]').forEach(sp => {
     const k = sp.dataset.for, v = S[k];
-    sp.textContent = ['speed','float','react','size','headSize','titleSize','bgImgAmt','particles','pSize','backlight','parallax'].includes(k) ? (+v).toFixed(2) : v;
+    sp.textContent = ['speed','float','react','size','headSize','titleSize','bgImgAmt','particles','pSize','backlight','parallax','grainAmt','grainSize','flicker'].includes(k) ? (+v).toFixed(2) : v;
   });
 }
 function exportRange() {
@@ -924,7 +947,7 @@ let motionT = 0, last = performance.now(), exp = null;
 function render(now) {
   const dt = Math.min(.05, (now - last) / 1000); last = now;
   if (!paused || exp) motionT += dt * S.speed;
-  readPulse();
+  readPulse(dt);
   const t = motionT;
   const L = layout();
 
@@ -971,6 +994,13 @@ function render(now) {
   g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,.55)');
   ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
 
+  if (S.flicker > 0) {
+    const dark = S.flicker * .6 * (1 - flick);
+    if (dark > .003) { ctx.fillStyle = `rgba(0,0,0,${dark})`; ctx.fillRect(0, 0, W, H); }
+    const lift = S.flicker * Math.max(0, flick - .55) * .45;
+    if (lift > .003) { ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = rgba(S.glow, lift); ctx.fillRect(0, 0, W, H); ctx.globalCompositeOperation = 'source-over'; }
+  }
+
   if (S.backlight > 0) {
     const bx = W / 2 + ry * par * W * .12, by = L.cy - L.cardH * .05;
     g = ctx.createRadialGradient(bx, by, 0, bx, by, L.cardH * .85);
@@ -989,10 +1019,14 @@ function render(now) {
   renderer.render(scene, camera);
   ctx.drawImage(renderer.domElement, 0, 0);
 
-  if (S.grain) {
-    ctx.globalAlpha = .05; ctx.globalCompositeOperation = 'overlay';
-    ctx.translate(Math.random() * 256, Math.random() * 256);
-    ctx.fillStyle = grainPat; ctx.fillRect(-256, -256, W + 512, H + 512);
+  if (S.grainAmt > 0) {
+    const gs = S.grainSize * W / 1080, pat = grainPats[(Math.random() * grainPats.length) | 0];
+    ctx.setTransform(gs, 0, 0, gs, -Math.random() * 256 * gs, -Math.random() * 256 * gs);
+    ctx.fillStyle = pat;
+    ctx.globalCompositeOperation = 'overlay'; ctx.globalAlpha = Math.min(1, S.grainAmt * .55);
+    ctx.fillRect(0, 0, W / gs + 256, H / gs + 256);
+    ctx.globalCompositeOperation = 'soft-light'; ctx.globalAlpha = Math.min(1, S.grainAmt * .35);
+    ctx.fillRect(0, 0, W / gs + 256, H / gs + 256);
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
   }
