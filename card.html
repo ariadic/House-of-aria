@@ -194,11 +194,10 @@ input[type=color]{width:100%;height:34px;border:1px solid var(--line);border-rad
     <label class="chk"><input type="checkbox" data-k="bgImg">התמונה מטושטשת ברקע</label>
     <label>עוצמת התמונה ברקע <span class="v" data-for="bgImgAmt"></span></label>
     <input type="range" data-k="bgImgAmt" min="0" max="1" step="0.01">
-    <label>חלקיקי אור <span class="v" data-for="particles"></span></label>
+    <label>אבק באוויר <span class="v" data-for="particles"></span></label>
     <input type="range" data-k="particles" min="0" max="1" step="0.01">
-    <label>גודל החלקיקים <span class="v" data-for="pSize"></span></label>
-    <input type="range" data-k="pSize" min="0.3" max="2.5" step="0.01">
-    <label class="chk"><input type="checkbox" data-k="bokeh">בוקה מטושטש לפני הכרטיס</label>
+    <label>גודל גרגרי האבק <span class="v" data-for="pSize"></span></label>
+    <input type="range" data-k="pSize" min="0.4" max="2" step="0.01">
     <label>אור מאחורי הכרטיס <span class="v" data-for="backlight"></span></label>
     <input type="range" data-k="backlight" min="0" max="1" step="0.01">
     <label>תזוזת עומק (פרלקסה) <span class="v" data-for="parallax"></span></label>
@@ -263,14 +262,15 @@ const DEFAULTS = Object.assign({
   fontSmall:'Inter', wSmall:'400',
   bg:'#0b0708', glow:'#c4362f', card:'#2a2a2e', text:'#f2f2f2', head:'#ffffff', accent:'#e0412f', grain:true,
   format:'9:16', expStart:0, expDur:15, fade:true, expRes:'1',
-  bgImg:true, bgImgAmt:0.45, particles:0.55, pSize:1, bokeh:true, backlight:0.55, parallax:0.7
+  bgImg:true, bgImgAmt:0.45, particles:0.45, pSize:1, backlight:0.35, parallax:0.7
 }, MOTION_DEFAULTS);
 const IS_MOBILE = matchMedia('(max-width:900px), (pointer:coarse)').matches;
 const PREVIEW_SCALE = IS_MOBILE ? .5 : 1;
 if (navigator.audioSession) { try { navigator.audioSession.type = 'playback'; } catch (e) {} }
 const STORE = 'aria-card-v1';
 let S = Object.assign({}, DEFAULTS);
-try { const saved = JSON.parse(localStorage.getItem(STORE) || 'null'); if (saved) Object.assign(S, saved); } catch (e) {}
+try { const saved = JSON.parse(localStorage.getItem(STORE) || 'null'); if (saved) { if (!saved.dustV) { delete saved.particles; delete saved.pSize; delete saved.backlight; delete saved.bokeh; } Object.assign(S, saved); } } catch (e) {}
+S.dustV = 1;
 let saveTimer = 0;
 function save() { clearTimeout(saveTimer); saveTimer = setTimeout(() => { try { localStorage.setItem(STORE, JSON.stringify(S)); } catch (e) {} }, 300); }
 
@@ -431,7 +431,7 @@ function drawBase() {
   c.restore();
   if (sideMat) sideMat.color.set(shade(S.card, .22));
   bgBlur = coverImg ? makeBlur(S.bw ? (coverGray || (coverGray = makeGray(coverImg))) : coverImg) : null;
-  pLayers.forEach(colorLayer);
+  if (pLayers.length) colorDust();
 }
 
 function updateTexture(sheen, prog) {
@@ -491,61 +491,57 @@ const shadow = new THREE.Mesh(new THREE.PlaneGeometry(AR * 1.68, 1.54),
   new THREE.MeshBasicMaterial({map: new THREE.CanvasTexture(shC), transparent: true, opacity: .8, depthWrite: false}));
 scene.add(shadow);
 
-/* ---------- depth particles ---------- */
-function softTex(bokeh) {
-  const c = document.createElement('canvas'); c.width = c.height = 128;
-  const x = c.getContext('2d'), g = x.createRadialGradient(64, 64, 0, 64, 64, 64);
-  if (bokeh) { g.addColorStop(0, 'rgba(255,255,255,.45)'); g.addColorStop(.7, 'rgba(255,255,255,.6)'); g.addColorStop(.85, 'rgba(255,255,255,.3)'); g.addColorStop(1, 'rgba(255,255,255,0)'); }
-  else { g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(.2, 'rgba(255,255,255,.7)'); g.addColorStop(.5, 'rgba(255,255,255,.15)'); g.addColorStop(1, 'rgba(255,255,255,0)'); }
-  x.fillStyle = g; x.fillRect(0, 0, 128, 128);
-  return new THREE.CanvasTexture(c);
-}
+/* ---------- dust in the air ---------- */
+// fine specks drifting at many depths; they wander slowly and glint now and then as they turn in the light
 const pGroup = new THREE.Group(); scene.add(pGroup);
 function halfExt(z) { const h = (CAM_Z - z) * Math.tan(S.fov * Math.PI / 360); return [h * W / H, h]; }
-function spawn(L, i, init) {
-  const z = L.zMin + Math.random() * (L.zMax - L.zMin), [hw, hh] = halfExt(z);
-  L.pos[i*3] = (Math.random() * 2 - 1) * hw * 1.15;
-  L.pos[i*3+1] = init ? (Math.random() * 2 - 1) * hh * 1.15 : -hh * 1.2;
-  L.pos[i*3+2] = z;
-  const d = (CAM_Z - z) / CAM_Z;
-  L.vel[i*3] = (Math.random() - .5) * .06 * d;
-  L.vel[i*3+1] = (.04 + Math.random() * .1) * d;
-  L.ph[i] = Math.random() * 6.283;
+const DUST_N = 260;
+const dust = {pos: new Float32Array(DUST_N*3), vel: new Float32Array(DUST_N*3), base: new Float32Array(DUST_N*3), col: new Float32Array(DUST_N*3), ph: new Float32Array(DUST_N), sp: new Float32Array(DUST_N)};
+for (let i = 0; i < DUST_N; i++) {
+  const z = -7 + Math.random() * 12.5, [hw, hh] = halfExt(z), j = i * 3;
+  dust.pos[j] = (Math.random() * 2 - 1) * hw; dust.pos[j+1] = (Math.random() * 2 - 1) * hh; dust.pos[j+2] = z;
+  dust.vel[j] = (Math.random() - .5) * .04; dust.vel[j+1] = (Math.random() - .5) * .04; dust.vel[j+2] = (Math.random() - .5) * .02;
+  dust.ph[i] = Math.random() * 6.283; dust.sp[i] = .3 + Math.random() * .9;
 }
-function colorLayer(L) {
-  const a = hexToRgb(shade(S.glow, .35)), b = hexToRgb(S.text);
-  for (let i = 0; i < L.n; i++) { const t = L.mix[i]; for (let k = 0; k < 3; k++) L.col[i*3+k] = (a[k] + (b[k] - a[k]) * t) / 255; }
-  L.pts.geometry.attributes.color.needsUpdate = true;
+{ const c = document.createElement('canvas'); c.width = c.height = 64;
+  const x = c.getContext('2d'), g = x.createRadialGradient(32, 32, 0, 32, 32, 32);
+  g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(.3, 'rgba(255,255,255,.5)'); g.addColorStop(1, 'rgba(255,255,255,0)');
+  x.fillStyle = g; x.fillRect(0, 0, 64, 64);
+  const geo2 = new THREE.BufferGeometry();
+  geo2.setAttribute('position', new THREE.BufferAttribute(dust.pos, 3));
+  geo2.setAttribute('color', new THREE.BufferAttribute(dust.col, 3));
+  dust.pts = new THREE.Points(geo2, new THREE.PointsMaterial({size: .04, map: new THREE.CanvasTexture(c), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, vertexColors: true, opacity: .6}));
+  dust.pts.frustumCulled = false; pGroup.add(dust.pts); }
+function colorDust() {
+  const a = hexToRgb(S.text), b = hexToRgb(shade(S.glow, .55));
+  for (let i = 0; i < DUST_N * 3; i++) { const k = i % 3; dust.base[i] = (a[k] * .8 + b[k] * .2) / 255; }
 }
-function makeLayer(n, zMin, zMax, bokeh, size, opacity) {
-  const L = {n, zMin, zMax, size, opacity, pos: new Float32Array(n*3), vel: new Float32Array(n*3), col: new Float32Array(n*3), ph: new Float32Array(n), mix: new Float32Array(n)};
-  for (let i = 0; i < n; i++) { L.mix[i] = Math.random() < .55 ? Math.random() * .3 : .6 + Math.random() * .4; spawn(L, i, true); }
-  const g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.BufferAttribute(L.pos, 3));
-  g.setAttribute('color', new THREE.BufferAttribute(L.col, 3));
-  L.pts = new THREE.Points(g, new THREE.PointsMaterial({size, map: softTex(bokeh), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, vertexColors: true, opacity}));
-  L.pts.frustumCulled = false;
-  pGroup.add(L.pts); colorLayer(L);
-  return L;
-}
-const farLayer = makeLayer(320, -16, 2.2, false, .11, .9);
-const nearLayer = makeLayer(22, 3, 6.8, true, .55, .28);
-pLayers = [farLayer, nearLayer];
-function stepLayer(L, mdt, t, amount, sizeMul, glowBoost) {
-  const count = Math.round(L.n * amount);
-  L.pts.geometry.setDrawRange(0, count);
-  L.pts.visible = count > 0;
-  L.pts.material.size = L.size * sizeMul;
-  L.pts.material.opacity = Math.min(1, L.opacity * glowBoost);
+pLayers = [true];
+function stepDust(mdt, t, amount, sizeMul, boost) {
+  const count = Math.round(DUST_N * amount);
+  dust.pts.geometry.setDrawRange(0, count);
+  dust.pts.visible = count > 0;
   if (!count) return;
+  dust.pts.material.size = .04 * sizeMul;
+  dust.pts.material.opacity = Math.min(1, .75 * boost);
+  const P = dust.pos, V = dust.vel;
   for (let i = 0; i < count; i++) {
     const j = i * 3;
-    L.pos[j] += (L.vel[j] + Math.sin(t * .5 + L.ph[i]) * .015) * mdt;
-    L.pos[j+1] += L.vel[j+1] * mdt;
-    const [hw, hh] = halfExt(L.pos[j+2]);
-    if (L.pos[j+1] > hh * 1.2 || Math.abs(L.pos[j]) > hw * 1.4) spawn(L, i, false);
+    if (mdt) {
+      V[j] = V[j] * .995 + (Math.random() - .5) * .05 * mdt;
+      V[j+1] = V[j+1] * .995 + (Math.random() - .5) * .05 * mdt - .002 * mdt;
+      V[j+2] = V[j+2] * .995 + (Math.random() - .5) * .02 * mdt;
+      P[j] += V[j] * mdt; P[j+1] += V[j+1] * mdt; P[j+2] += V[j+2] * mdt;
+      if (P[j+2] > 5.5 || P[j+2] < -7) V[j+2] *= -1;
+      const [hw, hh] = halfExt(P[j+2]);
+      if (P[j] > hw) P[j] = -hw; else if (P[j] < -hw) P[j] = hw;
+      if (P[j+1] > hh) P[j+1] = -hh; else if (P[j+1] < -hh) P[j+1] = hh;
+    }
+    const w = .5 + .5 * Math.sin(t * dust.sp[i] + dust.ph[i]), glint = .35 + .65 * w * w * w;
+    dust.col[j] = dust.base[j] * glint; dust.col[j+1] = dust.base[j+1] * glint; dust.col[j+2] = dust.base[j+2] * glint;
   }
-  L.pts.geometry.attributes.position.needsUpdate = true;
+  dust.pts.geometry.attributes.position.needsUpdate = true;
+  dust.pts.geometry.attributes.color.needsUpdate = true;
 }
 
 /* ---------- grain ---------- */
@@ -821,9 +817,8 @@ function render(now) {
 
   const mdt = (!paused || exp) ? dt * S.speed : 0;
   pGroup.rotation.set(rx * par * .6, ry * par * .6, 0);
-  const boost = 1 + pulse * S.react * .8;
-  stepLayer(farLayer, mdt, t, S.particles, S.pSize, boost);
-  stepLayer(nearLayer, mdt, t, S.bokeh ? Math.min(1, S.particles * 1.6) : 0, S.pSize, boost);
+  const boost = 1 + pulse * S.react * .3;
+  stepDust(mdt, t, S.particles, S.pSize, boost);
 
   renderer.render(scene, camera);
   ctx.drawImage(renderer.domElement, 0, 0);
