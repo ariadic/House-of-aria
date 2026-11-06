@@ -9,253 +9,328 @@
 <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;700;900&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <style>
-:root{color-scheme:dark;--bg:#07060a;--panel:#100e16;--card:#16131f;--line:#262236;--text:#efeaf9;--muted:#8f88a8;--a1:#a66bff;--a2:#ff4f9a;--ok:#4ade80;--bad:#f87171}
+/* Layout: a black stage for the card, and an inspector of grouped lists (iOS Settings style).
+   Phone: one fixed screen, stage on top, a text tab strip, one group of settings scrolling below. */
+:root{
+  color-scheme:dark;
+  --bg:#000;
+  --grouped:#1c1c1e;
+  --fill:#2c2c2e;
+  --fill2:#3a3a3c;
+  --sep:rgba(84,84,88,.6);
+  --label:#fff;
+  --label2:rgba(235,235,245,.6);
+  --label3:rgba(235,235,245,.3);
+  --accent:#ffd60a;
+  --green:#30d158;
+  --red:#ff453a;
+  --track:rgba(120,120,128,.36);
+  --ui:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Hebrew","Helvetica Neue",Heebo,system-ui,sans-serif;
+}
 *{box-sizing:border-box}
-html,body{margin:0;height:100%}
-body{background:var(--bg);color:var(--text);font-family:Heebo,system-ui,sans-serif;font-size:14px}
-header{display:flex;align-items:center;gap:12px;padding:10px 18px;border-bottom:1px solid var(--line);flex-wrap:wrap}
-header h1{margin:0;font-size:19px;font-weight:900;letter-spacing:1px;background:linear-gradient(90deg,var(--a1),var(--a2));-webkit-background-clip:text;background-clip:text;color:transparent}
-header .sub{color:var(--muted);font-size:13px}
-header a{margin-inline-start:auto;color:var(--muted);font-size:13px}
-.app{display:grid;grid-template-columns:390px 1fr;height:calc(100% - 50px)}
-.panel{overflow-y:auto;border-left:1px solid var(--line);background:var(--panel);padding:12px}
-.stage{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;gap:12px;overflow:auto;min-width:0}
-.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:12px}
-.card h3{margin:0 0 10px;font-size:15px;display:flex;align-items:center;gap:8px}
-.card h3 .n{background:linear-gradient(135deg,var(--a1),var(--a2));color:#fff;border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:900}
-label{display:block;color:var(--muted);font-size:12px;margin:8px 0 4px}
-label .v{float:left;color:var(--text);font-variant-numeric:tabular-nums}
-input[type=text],input[type=number],select,textarea{width:100%;background:#0b0a10;color:var(--text);border:1px solid var(--line);border-radius:8px;padding:8px;font:inherit}
-textarea{resize:vertical;min-height:58px}
-input[type=range]{width:100%;accent-color:var(--a1)}
-input[type=color]{width:100%;height:34px;border:1px solid var(--line);border-radius:8px;background:#0b0a10;padding:2px;cursor:pointer}
-.row{display:flex;gap:8px}.row>*{flex:1;min-width:0}
-.btn{background:#221e31;color:var(--text);border:1px solid var(--line);border-radius:9px;padding:8px 12px;font:inherit;cursor:pointer;white-space:nowrap}
-.btn:hover{border-color:var(--a1)}
-.btn.primary{background:linear-gradient(90deg,var(--a1),var(--a2));border:0;font-weight:700;color:#fff}
-.btn.small{padding:5px 8px;font-size:12px}
-.btn:disabled{opacity:.5;cursor:not-allowed}
-.chk{display:flex;align-items:center;gap:6px;color:var(--text);font-size:13px;margin:8px 0 0;cursor:pointer}
-.chk input{accent-color:var(--a1);margin:0}
-.drop{display:block;margin:0;font-size:14px;border:2px dashed var(--line);border-radius:12px;padding:14px 8px;text-align:center;color:var(--muted);cursor:pointer;position:relative;-webkit-tap-highlight-color:transparent;user-select:none}
-.drop:active{border-color:var(--a1);color:var(--text)}
-.vh{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;clip:rect(0 0 0 0);pointer-events:none}
-.fname.bad{color:var(--bad)}
-.drop:hover{border-color:var(--a1);color:var(--text)}
-.fname{color:var(--ok);font-size:12px;margin-top:4px;word-break:break-all}
-.status{font-size:12px;margin-top:8px;color:var(--muted);min-height:16px}
-.status.ok{color:var(--ok)}.status.bad{color:var(--bad)}
-.font-row{display:grid;grid-template-columns:1fr 84px;gap:6px}
-.colors{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.colors label{margin-top:0}
-.swatches{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
-.sw{width:42px;height:42px;border-radius:9px;border:2px solid rgba(255,255,255,.15);cursor:pointer;position:relative}
-.sw:hover{border-color:#fff}
-.sw span{position:absolute;bottom:-15px;left:0;right:0;font-size:9px;color:var(--muted);text-align:center;direction:ltr}
-.hint{color:var(--muted);font-size:11px;margin-top:6px;line-height:1.5}
-.hint a{color:var(--a1)}
-#out{max-width:100%;max-height:calc(100vh - 170px);border-radius:12px;box-shadow:0 10px 40px rgba(0,0,0,.6);background:#000}
-.player{direction:ltr;display:flex;align-items:center;gap:10px;width:min(560px,100%)}
-.player input{flex:1}
-.player .t{color:var(--muted);font-size:12px;font-variant-numeric:tabular-nums;direction:ltr;min-width:84px;text-align:center}
-.bar{height:6px;background:#0b0a10;border-radius:4px;overflow:hidden;margin-top:8px}
-.bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--a1),var(--a2))}
-.after{display:none;gap:8px;margin-top:10px}
-.after.show{display:flex}
+html,body{margin:0;height:100%;overflow:hidden}
+body{background:var(--bg);color:var(--label);font:400 15px/1.35 var(--ui);-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.app{display:grid;grid-template-columns:380px minmax(0,1fr);height:100%}
+.stage{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:24px;min-width:0;min-height:0}
+#out{display:block;max-width:100%;max-height:calc(100% - 64px);border-radius:16px;background:#000}
+.panel{order:-1;overflow-y:auto;background:var(--bg);border-left:.5px solid var(--sep);padding:8px 16px 40px;min-height:0}
+.large-title{font-size:30px;font-weight:700;letter-spacing:-.4px;margin:18px 4px 0}
+.large-sub{color:var(--label2);font-size:14px;margin:4px 4px 0}
 .tabs{display:none}
+
+/* grouped lists */
+.panel h2{font-size:13px;font-weight:400;color:var(--label2);margin:26px 16px 7px}
+.group{background:var(--grouped);border-radius:12px;overflow:hidden}
+.group+.group{margin-top:14px}
+.group>*{position:relative}
+.group>*+*::after{content:"";position:absolute;top:0;left:0;right:16px;height:.5px;background:var(--sep);pointer-events:none}
+.row{display:flex;align-items:center;gap:12px;min-height:46px;padding:7px 16px;margin:0;font-size:16px;color:var(--label);background:none;border:0;width:100%;text-align:right;cursor:default}
+.row>.rt{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.row>.grow{flex:1;min-width:0}
+label.row,button.row{cursor:pointer}
+label.row:active,button.row:active{background:var(--fill)}
+.row.action{justify-content:center;color:var(--accent)}
+.row.action:disabled{color:var(--label3);cursor:default;background:none}
+.fname{font-size:13px;color:var(--label2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fname.bad{color:var(--red);white-space:normal}
+.thumb{width:40px;height:40px;border-radius:8px;background:var(--fill) center/cover no-repeat;flex:none;display:grid;place-items:center;color:var(--label2)}
+.thumb svg{width:20px;height:20px}
+.chev{width:8px;height:13px;flex:none;color:var(--label3)}
+.vh{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;clip:rect(0 0 0 0);pointer-events:none}
+
+/* fields */
+.field{display:block;padding:10px 16px}
+.field>label,.field>.lab{display:block;font-size:13px;color:var(--label2);margin-bottom:3px}
+.field input,.field textarea{width:100%;background:transparent;border:0;padding:2px 0;font-size:17px;color:var(--label);outline:none}
+.field textarea{resize:none;min-height:48px;line-height:1.3}
+.field input::placeholder{color:var(--label3)}
+select{appearance:none;-webkit-appearance:none;background:transparent url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='16' viewBox='0 0 10 16'%3E%3Cpath d='M2 6l3-3 3 3M2 10l3 3 3-3' fill='none' stroke='%23ebebf599' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat left center;border:0;color:var(--label2);font-size:16px;padding:4px 0 4px 18px;text-align:left;direction:rtl;cursor:pointer;max-width:62%}
+select option{background:var(--grouped);color:var(--label)}
+.row input[type=number]{width:72px;background:var(--fill);border:0;border-radius:8px;padding:6px 8px;text-align:center;font-size:16px;color:var(--label);font-variant-numeric:tabular-nums}
+.unit{color:var(--label2);font-size:14px}
+
+/* iOS switch */
+.switch{appearance:none;-webkit-appearance:none;width:51px;height:31px;border-radius:16px;background:var(--fill2);position:relative;flex:none;margin:0;cursor:pointer;transition:background .2s}
+.switch::before{content:"";position:absolute;top:2px;right:2px;width:27px;height:27px;border-radius:50%;background:#fff;box-shadow:0 3px 8px rgba(0,0,0,.15),0 3px 1px rgba(0,0,0,.06);transition:transform .22s cubic-bezier(.3,.7,.4,1)}
+.switch:checked{background:var(--green)}
+.switch:checked::before{transform:translateX(-20px)}
+
+/* sliders */
+.slider{padding:12px 16px 6px}
+.sl-top{display:flex;justify-content:space-between;align-items:baseline;font-size:15px}
+.v{color:var(--label2);font-size:14px;font-variant-numeric:tabular-nums;direction:ltr}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:30px;margin:0;background:transparent;cursor:pointer;--p:50%;--gdir:to left}
+input[type=range]::-webkit-slider-runnable-track{height:4px;border-radius:2px;background:linear-gradient(var(--gdir),var(--accent) var(--p),var(--track) var(--p))}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;height:26px;margin-top:-11px;border-radius:50%;background:#fff;border:0;box-shadow:0 .5px 4px rgba(0,0,0,.25),0 6px 13px rgba(0,0,0,.2)}
+input[type=range]::-moz-range-track{height:4px;border-radius:2px;background:var(--track)}
+input[type=range]::-moz-range-progress{height:4px;border-radius:2px;background:var(--accent)}
+input[type=range]::-moz-range-thumb{width:26px;height:26px;border-radius:50%;background:#fff;border:0;box-shadow:0 .5px 4px rgba(0,0,0,.25),0 6px 13px rgba(0,0,0,.2)}
+
+/* colors */
+.colors{display:grid;grid-template-columns:repeat(3,1fr);gap:14px 8px;padding:16px}
+.colors label{display:flex;flex-direction:column;align-items:center;gap:6px;font-size:12px;color:var(--label2);cursor:pointer}
+input[type=color]{-webkit-appearance:none;appearance:none;width:44px;height:44px;border:0;border-radius:50%;padding:0;background:none;cursor:pointer}
+input[type=color]::-webkit-color-swatch-wrapper{padding:0}
+input[type=color]::-webkit-color-swatch{border:0;border-radius:50%;box-shadow:inset 0 0 0 .5px rgba(255,255,255,.25)}
+input[type=color]::-moz-color-swatch{border:0;border-radius:50%}
+.swatches{display:flex;flex-wrap:wrap;gap:10px;padding:14px 16px}
+.swatches:empty{display:none}
+.swatches .hint{margin:0}
+.sw{width:34px;height:34px;border-radius:50%;cursor:pointer;box-shadow:inset 0 0 0 .5px rgba(255,255,255,.25);transition:transform .15s}
+.sw:active{transform:scale(.9)}
+
+/* buttons */
+.btn{flex:1;height:40px;border:0;border-radius:10px;background:var(--fill);color:var(--accent);font-size:15px;font-weight:500;cursor:pointer;padding:0 12px;white-space:nowrap}
+.btn:active{background:var(--fill2)}
+.btn:disabled{opacity:.4;cursor:default}
+.btns{display:flex;gap:10px;margin-top:14px}
+.cta{display:block;width:100%;height:50px;border:0;border-radius:12px;background:var(--accent);color:#000;font-size:17px;font-weight:600;cursor:pointer;margin-top:18px}
+.cta:active{opacity:.8}
+.cta.cancel{background:var(--fill);color:var(--red)}
+.bar{height:3px;background:var(--track);border-radius:2px;overflow:hidden;margin-top:12px}
+.bar i{display:block;height:100%;width:0;background:var(--accent)}
+.status{font-size:13px;margin:8px 16px 0;color:var(--label2);min-height:18px}
+.status.ok{color:var(--green)}.status.bad{color:var(--red)}
+.after{display:none;gap:10px;margin-top:10px}
+.after.show{display:flex}
+.hint{font-size:13px;color:var(--label2);margin:7px 16px 0;line-height:1.4}
+.hint a{color:var(--accent);text-decoration:none}
+.foot-link{display:block;text-align:center;margin-top:34px;font-size:13px;color:var(--label3);text-decoration:none}
+
+/* player */
+.player{direction:ltr;display:flex;align-items:center;gap:12px;width:min(480px,100%)}
+.player input[type=range]{flex:1;height:22px;--gdir:to right}
+.player input[type=range]::-webkit-slider-thumb{width:14px;height:14px;margin-top:-5px;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+.player input[type=range]::-moz-range-thumb{width:14px;height:14px}
+.t{color:var(--label2);font-size:12px;font-variant-numeric:tabular-nums;min-width:34px;text-align:center}
+.icon-btn{width:40px;height:40px;border:0;border-radius:50%;background:var(--fill);color:var(--label);display:grid;place-items:center;cursor:pointer;flex:none;padding:0}
+.icon-btn:active{background:var(--fill2)}
+.icon-btn svg{width:18px;height:18px}
+#playBtn{width:44px;height:44px;background:var(--label);color:#000}
+#playBtn .i-pause,#playBtn.playing .i-play{display:none}
+#playBtn.playing .i-pause{display:block}
+
+@media (min-width:901px){#sizeBtn{display:none}}
 /* phone: one fixed screen. Preview on top, tab strip, then only the chosen section scrolls */
 @media (max-width:900px){
-  html,body{height:100%;overflow:hidden}
   body{display:flex;flex-direction:column}
-  header{display:none}
   .app{display:flex;flex-direction:column;flex:1;min-height:0;height:auto}
-  .stage{order:-2;flex:0 0 46%;min-height:0;padding:8px 12px 6px;gap:6px;justify-content:flex-start;overflow:hidden;transition:flex-basis .25s ease}
-  .stage.big{flex-basis:72%}
-  #out{flex:1;min-height:0;width:100%;height:100%;max-height:none;object-fit:contain;border-radius:0;box-shadow:none;background:transparent}
-  .player{flex:none}
-  .tabs{order:-1;display:flex;gap:6px;overflow-x:auto;padding:8px 12px;flex:none;background:var(--panel);border-top:1px solid var(--line);border-bottom:1px solid var(--line);scrollbar-width:none}
+  .stage{order:-2;flex:0 0 47%;min-height:0;padding:10px 16px 8px;gap:8px;justify-content:flex-start;transition:flex-basis .3s cubic-bezier(.3,.7,.4,1)}
+  .stage.big{flex-basis:74%}
+  #out{flex:1;min-height:0;width:100%;height:100%;max-height:none;object-fit:contain;border-radius:0;background:transparent}
+  .player{flex:none;width:100%}
+  .tabs{order:-1;display:flex;gap:2px;overflow-x:auto;padding:2px 8px;flex:none;border-bottom:.5px solid var(--sep);scrollbar-width:none}
   .tabs::-webkit-scrollbar{display:none}
-  .tab{flex:none;background:#0b0a10;border:1px solid var(--line);color:var(--muted);border-radius:999px;padding:8px 14px;font:inherit;font-size:13px;cursor:pointer;-webkit-tap-highlight-color:transparent}
-  .tab.on{background:linear-gradient(90deg,var(--a1),var(--a2));color:#fff;border-color:transparent;font-weight:700}
-  .panel{flex:1;min-height:0;overflow-y:auto;border-left:0;padding:14px 14px 28px;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
-  .panel .card{display:none;margin:0;border:0;background:transparent;padding:0}
-  .panel .card.on{display:block}
-  .panel .card h3{display:none}
-  input[type=text],input[type=number],select,textarea{font-size:16px}
-  .btn{padding:10px 12px}
-  input[type=range]{height:28px}
-  .player .t{min-width:70px}
+  .tab{flex:none;background:none;border:0;color:var(--label2);padding:11px 12px;font-size:15px;cursor:pointer;position:relative}
+  .tab.on{color:var(--accent);font-weight:600}
+  .tab.on::after{content:"";position:absolute;left:12px;right:12px;bottom:0;height:2px;border-radius:1px;background:var(--accent)}
+  .panel{flex:1;min-height:0;border-left:0;padding:4px 16px 28px;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+  .large-title,.large-sub,.foot-link{display:none}
+  .panel>section{display:none}
+  .panel>section.on{display:block}
+  .panel h2{margin-top:16px}
+  .panel h2.sec{display:none}
+  .panel>section>.group:first-of-type{margin-top:12px}
+  .field input,.field textarea,.row input[type=number]{font-size:17px}
 }
-@media (min-width:901px){#sizeBtn{display:none}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
 <body>
-<header><h1>ARIA SONG CARD</h1><span class="sub">כרטיס שיר תלת־ממדי שמרחף, עם ייצוא לסרטון</span><a href="index.html">← Visualizer 3D</a></header>
 <div class="app">
 <nav class="tabs" id="tabs" aria-label="הגדרות"></nav>
 <aside class="panel" id="panel">
+  <h1 class="large-title">כרטיס שיר</h1>
+  <p class="large-sub">כרטיס תלת־ממדי שמרחף, וייצוא לסרטון.</p>
 
-  <div class="card">
-    <h3><span class="n">1</span>קבצים</h3>
-    <div class="row">
-      <div>
-        <label class="drop" for="fImg">🖼️ תמונה לכרטיס</label><input class="vh" type="file" id="fImg" accept="image/*">
-        <div class="fname" id="nImg"></div>
-      </div>
-      <div>
-        <label class="drop" for="fAud">🎵 קובץ שמע</label><input class="vh" type="file" id="fAud">
-        <div class="fname" id="nAud"></div>
-      </div>
+  <section data-title="קבצים">
+    <h2 class="sec">קבצים</h2>
+    <div class="group">
+      <label class="row" for="fImg">
+        <span class="thumb" id="thumbImg"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="1.8"/><path d="M21 16l-5-5-9 9"/></svg></span>
+        <span class="rt"><span>תמונה לכרטיס</span><span class="fname" id="nImg">לא נבחרה תמונה</span></span>
+        <svg class="chev" viewBox="0 0 8 13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 1.5L1.5 6.5l5 5"/></svg>
+      </label>
+      <label class="row" for="fAud">
+        <span class="thumb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/></svg></span>
+        <span class="rt"><span>השיר</span><span class="fname" id="nAud">לא נבחר קובץ שמע</span></span>
+        <svg class="chev" viewBox="0 0 8 13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 1.5L1.5 6.5l5 5"/></svg>
+      </label>
+      <label class="row"><span class="grow">תמונה בשחור־לבן</span><input class="switch" type="checkbox" data-k="bw"></label>
     </div>
-    <label class="chk"><input type="checkbox" data-k="bw">תמונה בשחור־לבן</label>
-  </div>
+    <input class="vh" type="file" id="fImg" accept="image/*">
+    <input class="vh" type="file" id="fAud">
+  </section>
 
-  <div class="card">
-    <h3><span class="n">2</span>טקסטים</h3>
-    <label class="chk"><input type="checkbox" data-k="showHead">להציג כותרת עליונה</label>
-    <label>כותרת עליונה (Enter = שורה חדשה)</label>
-    <textarea data-k="headline" rows="2"></textarea>
-    <label class="chk"><input type="checkbox" data-k="underline">קו מכחול מתחת לכותרת</label>
-    <label>טקסט קטן בראש הכרטיס</label>
-    <input type="text" data-k="label">
-    <label>שם השיר</label>
-    <input type="text" data-k="title">
-    <label>שורה מתחת לשם השיר</label>
-    <input type="text" data-k="subtitle">
-    <label class="chk"><input type="checkbox" data-k="showProg">פס התקדמות של השיר בכרטיס</label>
-  </div>
+  <section data-title="טקסט">
+    <h2>כותרת</h2>
+    <div class="group">
+      <label class="row"><span class="grow">כותרת מעל הכרטיס</span><input class="switch" type="checkbox" data-k="showHead"></label>
+      <div class="field"><label for="tHead">טקסט הכותרת</label><textarea id="tHead" data-k="headline" rows="2"></textarea></div>
+      <label class="row"><span class="grow">קו מכחול מתחת</span><input class="switch" type="checkbox" data-k="underline"></label>
+    </div>
+    <h2>הכרטיס</h2>
+    <div class="group">
+      <div class="field"><label for="tTitle">שם השיר</label><input type="text" id="tTitle" data-k="title"></div>
+      <div class="field"><label for="tSub">שורה מתחת לשם</label><input type="text" id="tSub" data-k="subtitle"></div>
+      <div class="field"><label for="tLabel">טקסט קטן בראש הכרטיס</label><input type="text" id="tLabel" data-k="label"></div>
+      <label class="row"><span class="grow">פס התקדמות של השיר</span><input class="switch" type="checkbox" data-k="showProg"></label>
+    </div>
+  </section>
 
-  <div class="card">
-    <h3><span class="n">3</span>פונטים (Google Fonts)</h3>
-    <label>כותרת עליונה <span class="v" data-for="headSize"></span></label>
-    <div class="font-row">
-      <input type="text" data-k="fontHead" list="fontList" placeholder="שם פונט">
-      <select data-k="wHead"><option value="400">רגיל</option><option value="700">בולד</option><option value="900">שחור</option></select>
+  <section data-title="פונטים">
+    <h2>פונט הכותרת</h2>
+    <div class="group">
+      <div class="field"><label for="fnHead">פונט</label><input type="text" id="fnHead" data-k="fontHead" list="fontList" autocomplete="off" spellcheck="false"></div>
+      <label class="row"><span class="grow">משקל</span><select data-k="wHead"><option value="400">רגיל</option><option value="700">מודגש</option><option value="900">שחור</option></select></label>
+      <div class="slider"><div class="sl-top"><span>גודל</span><span class="v" data-for="headSize"></span></div><input type="range" data-k="headSize" min="0.4" max="1.4" step="0.01"></div>
     </div>
-    <input type="range" data-k="headSize" min="0.4" max="1.4" step="0.01">
-    <label>שם השיר <span class="v" data-for="titleSize"></span></label>
-    <div class="font-row">
-      <input type="text" data-k="fontTitle" list="fontList" placeholder="שם פונט">
-      <select data-k="wTitle"><option value="400">רגיל</option><option value="700">בולד</option><option value="900">שחור</option></select>
+    <h2>פונט שם השיר</h2>
+    <div class="group">
+      <div class="field"><label for="fnTitle">פונט</label><input type="text" id="fnTitle" data-k="fontTitle" list="fontList" autocomplete="off" spellcheck="false"></div>
+      <label class="row"><span class="grow">משקל</span><select data-k="wTitle"><option value="400">רגיל</option><option value="700">מודגש</option><option value="900">שחור</option></select></label>
+      <div class="slider"><div class="sl-top"><span>גודל</span><span class="v" data-for="titleSize"></span></div><input type="range" data-k="titleSize" min="0.5" max="1.4" step="0.01"></div>
     </div>
-    <input type="range" data-k="titleSize" min="0.5" max="1.4" step="0.01">
-    <label>טקסטים קטנים</label>
-    <div class="font-row">
-      <input type="text" data-k="fontSmall" list="fontList" placeholder="שם פונט">
-      <select data-k="wSmall"><option value="400">רגיל</option><option value="700">בולד</option><option value="900">שחור</option></select>
+    <h2>פונט הטקסטים הקטנים</h2>
+    <div class="group">
+      <div class="field"><label for="fnSmall">פונט</label><input type="text" id="fnSmall" data-k="fontSmall" list="fontList" autocomplete="off" spellcheck="false"></div>
+      <label class="row"><span class="grow">משקל</span><select data-k="wSmall"><option value="400">רגיל</option><option value="700">מודגש</option><option value="900">שחור</option></select></label>
     </div>
     <datalist id="fontList"></datalist>
     <div class="status" id="fontStatus"></div>
-    <div class="hint">אפשר לבחור מהרשימה או להקליד שם של כל פונט מ־<a href="https://fonts.google.com" target="_blank" rel="noopener">fonts.google.com</a>, בדיוק כפי שהוא כתוב שם. לטקסט בעברית כדאי לבחור פונט שתומך בעברית (Heebo, Rubik, Secular One, Suez One, Frank Ruhl Libre ועוד).</div>
-  </div>
+    <p class="hint">אפשר לבחור מהרשימה, או להקליד שם של כל פונט מ־<a href="https://fonts.google.com" target="_blank" rel="noopener">Google Fonts</a> בדיוק כפי שהוא כתוב שם. לעברית: Heebo, Rubik, Secular One, Suez One או Frank Ruhl Libre.</p>
+  </section>
 
-  <div class="card">
-    <h3><span class="n">4</span>צבעים</h3>
-    <div class="colors">
-      <div><label>רקע</label><input type="color" data-k="bg"></div>
-      <div><label>הילה</label><input type="color" data-k="glow"></div>
-      <div><label>כרטיס</label><input type="color" data-k="card"></div>
-      <div><label>טקסט בכרטיס</label><input type="color" data-k="text"></div>
-      <div><label>כותרת</label><input type="color" data-k="head"></div>
-      <div><label>הדגשה</label><input type="color" data-k="accent"></div>
+  <section data-title="צבעים">
+    <h2 class="sec">צבעים</h2>
+    <div class="group">
+      <div class="colors">
+        <label>רקע<input type="color" data-k="bg"></label>
+        <label>הילה<input type="color" data-k="glow"></label>
+        <label>כרטיס<input type="color" data-k="card"></label>
+        <label>טקסט<input type="color" data-k="text"></label>
+        <label>כותרת<input type="color" data-k="head"></label>
+        <label>הדגשה<input type="color" data-k="accent"></label>
+      </div>
     </div>
-    <label style="margin-top:12px">פלטה מתוך תמונה</label>
-    <div class="row">
-      <div><label class="drop" for="fPal" style="padding:9px 6px">🎨 תמונה לפלטה</label><input class="vh" type="file" id="fPal" accept="image/*"></div>
-      <button class="btn" id="palFromCover">מתמונת הכרטיס</button>
+    <h2>פלטה מתוך תמונה</h2>
+    <div class="group">
+      <label class="row" for="fPal"><span class="grow">בחירת תמונה לפלטה</span><svg class="chev" viewBox="0 0 8 13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 1.5L1.5 6.5l5 5"/></svg></label>
+      <button class="row" type="button" id="palFromCover"><span class="grow">הצבעים מתמונת הכרטיס</span></button>
+      <div class="swatches" id="swatches"></div>
+      <label class="row"><span class="grow">לחיצה על צבע משנה את</span><select id="palTarget">
+        <option value="bg">הרקע</option>
+        <option value="glow" selected>ההילה</option>
+        <option value="card">הכרטיס</option>
+        <option value="text">הטקסט</option>
+        <option value="head">הכותרת</option>
+        <option value="accent">ההדגשה</option>
+      </select></label>
+      <button class="row action" type="button" id="palAuto" disabled>החלה אוטומטית של הפלטה</button>
     </div>
-    <div class="swatches" id="swatches"></div>
-    <div class="row" style="margin-top:20px;align-items:center">
-      <select id="palTarget">
-        <option value="bg">לחיצה על צבע ← רקע</option>
-        <option value="glow" selected>לחיצה על צבע ← הילה</option>
-        <option value="card">לחיצה על צבע ← כרטיס</option>
-        <option value="text">לחיצה על צבע ← טקסט בכרטיס</option>
-        <option value="head">לחיצה על צבע ← כותרת</option>
-        <option value="accent">לחיצה על צבע ← הדגשה</option>
-      </select>
-      <button class="btn primary" id="palAuto" disabled>החל אוטומטית</button>
+    <input class="vh" type="file" id="fPal" accept="image/*">
+    <div class="group">
+      <label class="row"><span class="grow">גרעיניות קולנועית</span><input class="switch" type="checkbox" data-k="grain"></label>
     </div>
-    <label class="chk"><input type="checkbox" data-k="grain">גרעיניות קולנועית</label>
-  </div>
+  </section>
 
-  <div class="card">
-    <h3><span class="n">5</span>תנועה</h3>
-    <label>מהירות <span class="v" data-for="speed"></span></label>
-    <input type="range" data-k="speed" min="0.1" max="2.5" step="0.05">
-    <label>סיבוב לצדדים (מעלות) <span class="v" data-for="tiltY"></span></label>
-    <input type="range" data-k="tiltY" min="0" max="35" step="0.5">
-    <label>הטיה קדימה ואחורה (מעלות) <span class="v" data-for="tiltX"></span></label>
-    <input type="range" data-k="tiltX" min="0" max="25" step="0.5">
-    <label>נטייה הצידה (מעלות) <span class="v" data-for="roll"></span></label>
-    <input type="range" data-k="roll" min="0" max="12" step="0.5">
-    <label>ריחוף למעלה ולמטה <span class="v" data-for="float"></span></label>
-    <input type="range" data-k="float" min="0" max="1" step="0.01">
-    <label>עומק פרספקטיבה <span class="v" data-for="fov"></span></label>
-    <input type="range" data-k="fov" min="15" max="70" step="1">
-    <label>גודל הכרטיס <span class="v" data-for="size"></span></label>
-    <input type="range" data-k="size" min="0.6" max="1.15" step="0.01">
-    <label>תגובה למוזיקה <span class="v" data-for="react"></span></label>
-    <input type="range" data-k="react" min="0" max="1" step="0.01">
-    <div class="row" style="margin-top:10px">
-      <button class="btn" id="pauseBtn">⏸ עצור תנועה</button>
-      <button class="btn" id="resetMotion">איפוס תנועה</button>
+  <section data-title="תנועה">
+    <h2 class="sec">תנועה</h2>
+    <div class="group">
+      <div class="slider"><div class="sl-top"><span>מהירות</span><span class="v" data-for="speed"></span></div><input type="range" data-k="speed" min="0.1" max="2.5" step="0.05"></div>
+      <div class="slider"><div class="sl-top"><span>סיבוב לצדדים</span><span class="v" data-for="tiltY"></span></div><input type="range" data-k="tiltY" min="0" max="35" step="0.5"></div>
+      <div class="slider"><div class="sl-top"><span>הטיה קדימה ואחורה</span><span class="v" data-for="tiltX"></span></div><input type="range" data-k="tiltX" min="0" max="25" step="0.5"></div>
+      <div class="slider"><div class="sl-top"><span>נטייה הצידה</span><span class="v" data-for="roll"></span></div><input type="range" data-k="roll" min="0" max="12" step="0.5"></div>
+      <div class="slider"><div class="sl-top"><span>ריחוף</span><span class="v" data-for="float"></span></div><input type="range" data-k="float" min="0" max="1" step="0.01"></div>
+      <div class="slider"><div class="sl-top"><span>עומק פרספקטיבה</span><span class="v" data-for="fov"></span></div><input type="range" data-k="fov" min="15" max="70" step="1"></div>
+      <div class="slider"><div class="sl-top"><span>גודל הכרטיס</span><span class="v" data-for="size"></span></div><input type="range" data-k="size" min="0.6" max="1.15" step="0.01"></div>
+      <div class="slider"><div class="sl-top"><span>תגובה למוזיקה</span><span class="v" data-for="react"></span></div><input type="range" data-k="react" min="0" max="1" step="0.01"></div>
     </div>
-  </div>
-
-  <div class="card">
-    <h3><span class="n">6</span>עומק ברקע</h3>
-    <label class="chk"><input type="checkbox" data-k="bgImg">התמונה מטושטשת ברקע</label>
-    <label>עוצמת התמונה ברקע <span class="v" data-for="bgImgAmt"></span></label>
-    <input type="range" data-k="bgImgAmt" min="0" max="1" step="0.01">
-    <label>אבק באוויר <span class="v" data-for="particles"></span></label>
-    <input type="range" data-k="particles" min="0" max="1" step="0.01">
-    <label>גודל גרגרי האבק <span class="v" data-for="pSize"></span></label>
-    <input type="range" data-k="pSize" min="0.4" max="2" step="0.01">
-    <label>אור מאחורי הכרטיס <span class="v" data-for="backlight"></span></label>
-    <input type="range" data-k="backlight" min="0" max="1" step="0.01">
-    <label>תזוזת עומק (פרלקסה) <span class="v" data-for="parallax"></span></label>
-    <input type="range" data-k="parallax" min="0" max="1.5" step="0.01">
-  </div>
-
-  <div class="card">
-    <h3><span class="n">7</span>ייצוא לסרטון</h3>
-    <label>פורמט</label>
-    <select data-k="format">
-      <option value="9:16">9:16 לרילס, טיקטוק ושורטס (1080×1920)</option>
-      <option value="4:5">4:5 לפוסט באינסטגרם (1080×1350)</option>
-      <option value="1:1">1:1 ריבוע (1080×1080)</option>
-      <option value="16:9">16:9 ליוטיוב (1920×1080)</option>
-    </select>
-    <div class="row">
-      <div><label>התחלה בשיר (שניות)</label><input type="number" data-k="expStart" min="0" step="0.5"></div>
-      <div><label>אורך (שניות)</label><input type="number" data-k="expDur" min="1" max="600" step="1"></div>
+    <div class="btns">
+      <button class="btn" type="button" id="pauseBtn">עצירת התנועה</button>
+      <button class="btn" type="button" id="resetMotion">איפוס</button>
     </div>
-    <button class="btn small" id="startHere" style="margin-top:6px">קבע התחלה מהמיקום הנוכחי בשיר</button>
-    <label>איכות</label>
-    <select data-k="expRes">
-      <option value="1">Full HD, איכות מלאה</option>
-      <option value="0.6667">720p, קל יותר לטלפונים ישנים</option>
-    </select>
-    <label class="chk"><input type="checkbox" data-k="fade">כניסה ויציאה בהדרגה (תמונה וסאונד)</label>
-    <button class="btn primary" id="expBtn" style="width:100%;margin-top:12px">🎬 ייצא סרטון</button>
+  </section>
+
+  <section data-title="עומק">
+    <h2>הרקע</h2>
+    <div class="group">
+      <label class="row"><span class="grow">התמונה מטושטשת ברקע</span><input class="switch" type="checkbox" data-k="bgImg"></label>
+      <div class="slider"><div class="sl-top"><span>עוצמת התמונה</span><span class="v" data-for="bgImgAmt"></span></div><input type="range" data-k="bgImgAmt" min="0" max="1" step="0.01"></div>
+      <div class="slider"><div class="sl-top"><span>אור מאחורי הכרטיס</span><span class="v" data-for="backlight"></span></div><input type="range" data-k="backlight" min="0" max="1" step="0.01"></div>
+      <div class="slider"><div class="sl-top"><span>תזוזת עומק</span><span class="v" data-for="parallax"></span></div><input type="range" data-k="parallax" min="0" max="1.5" step="0.01"></div>
+    </div>
+    <h2>אבק באוויר</h2>
+    <div class="group">
+      <div class="slider"><div class="sl-top"><span>כמות</span><span class="v" data-for="particles"></span></div><input type="range" data-k="particles" min="0" max="1" step="0.01"></div>
+      <div class="slider"><div class="sl-top"><span>גודל הגרגרים</span><span class="v" data-for="pSize"></span></div><input type="range" data-k="pSize" min="0.4" max="2" step="0.01"></div>
+    </div>
+  </section>
+
+  <section data-title="ייצוא">
+    <h2 class="sec">ייצוא לסרטון</h2>
+    <div class="group">
+      <label class="row"><span class="grow">פורמט</span><select data-k="format">
+        <option value="9:16">9:16 · רילס, טיקטוק</option>
+        <option value="4:5">4:5 · פוסט</option>
+        <option value="1:1">1:1 · ריבוע</option>
+        <option value="16:9">16:9 · יוטיוב</option>
+      </select></label>
+      <label class="row"><span class="grow">איכות</span><select data-k="expRes">
+        <option value="1">1080p</option>
+        <option value="0.6667">720p</option>
+      </select></label>
+      <label class="row"><span class="grow">התחלה בשיר</span><input type="number" data-k="expStart" min="0" step="0.5"><span class="unit">שנ׳</span></label>
+      <label class="row"><span class="grow">אורך</span><input type="number" data-k="expDur" min="1" max="600" step="1"><span class="unit">שנ׳</span></label>
+      <button class="row action" type="button" id="startHere">להתחיל מהמיקום הנוכחי בשיר</button>
+      <label class="row"><span class="grow">כניסה ויציאה בהדרגה</span><input class="switch" type="checkbox" data-k="fade"></label>
+    </div>
+    <button class="cta" type="button" id="expBtn">ייצוא סרטון</button>
     <div class="bar"><i id="expBar"></i></div>
     <div class="status" id="expStatus"></div>
     <div class="after" id="after">
-      <button class="btn primary" id="shareBtn">📲 שמור לגלריה או שתף</button>
-      <button class="btn" id="dlBtn">⬇ הורדה</button>
+      <button class="btn" type="button" id="shareBtn">שמירה לגלריה או שיתוף</button>
+      <button class="btn" type="button" id="dlBtn">הורדה</button>
     </div>
-    <div class="hint">הייצוא רץ בזמן אמת, כך ש־15 שניות של סרטון לוקחות 15 שניות. צריך להשאיר את המסך דלוק ואת הלשונית פתוחה עד הסוף. בנייד, אחרי הייצוא לוחצים על "שמור לגלריה או שתף" ובוחרים "שמור סרטון" או אינסטגרם. באייפון כדאי לכבות את מתג השקט כדי לשמוע את השיר.</div>
-  </div>
+    <p class="hint">הייצוא רץ בזמן אמת: 15 שניות של סרטון לוקחות 15 שניות. צריך להשאיר את המסך דלוק עד הסוף. באייפון, אם מתג השקט דלוק, השיר לא יישמע בתצוגה, אבל הוא יהיה בסרטון.</p>
+  </section>
 
+  <a class="foot-link" id="vizLink" href="index.html">Visualizer 3D</a>
 </aside>
 <main class="stage">
   <canvas id="out" width="1080" height="1920"></canvas>
   <div class="player">
-    <button class="btn" id="playBtn">▶</button>
-    <input type="range" id="seek" min="0" max="1000" value="0">
-    <span class="t" id="time">0:00 / 0:00</span>
-    <button class="btn" id="sizeBtn" title="הגדל או הקטן את התצוגה">⤢</button>
+    <button class="icon-btn" id="playBtn" type="button" aria-label="נגינה">
+      <svg class="i-play" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.2-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z"/></svg>
+      <svg class="i-pause" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1.2"/><rect x="14" y="5" width="4" height="14" rx="1.2"/></svg>
+    </button>
+    <span class="t" id="tCur">0:00</span>
+    <input type="range" id="seek" min="0" max="1000" value="0" aria-label="מיקום בשיר">
+    <span class="t" id="tDur">0:00</span>
+    <button class="icon-btn" id="sizeBtn" type="button" aria-label="הגדלת התצוגה"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4h5v5M9 20H4v-5M20 4l-6 6M4 20l6-6"/></svg></button>
   </div>
   <audio id="aud" preload="auto"></audio>
 </main>
@@ -343,7 +418,7 @@ async function ensureFonts(changedKey) {
     if (!fam) continue;
     st.className = 'status'; st.textContent = `טוען את ${fam}…`;
     const ok = await loadFont(fam);
-    if (ok) { st.className = 'status ok'; st.textContent = `✓ ${fam} נטען`; }
+    if (ok) { st.className = 'status ok'; st.textContent = `${fam} נטען`; }
     else { st.className = 'status bad'; st.textContent = `לא מצאתי את "${fam}" ב־Google Fonts. בדוק את האיות.`; }
   }
   drawBase();
@@ -654,8 +729,8 @@ $('playBtn').onclick = async () => {
   ensureAudioGraph(); await actx.resume();
   if (aud.paused) aud.play(); else aud.pause();
 };
-aud.onplay = () => $('playBtn').textContent = '⏸';
-aud.onpause = () => $('playBtn').textContent = '▶';
+aud.onplay = () => $('playBtn').classList.add('playing');
+aud.onpause = () => $('playBtn').classList.remove('playing');
 let seeking = false;
 $('seek').addEventListener('input', () => { seeking = true; if (aud.duration) aud.currentTime = $('seek').value / 1000 * aud.duration; });
 $('seek').addEventListener('change', () => seeking = false);
@@ -672,7 +747,7 @@ function loadImageFile(f, ok, id) {
 }
 $('fImg').onchange = e => {
   const f = e.target.files[0]; e.target.value = ''; if (!f) return;
-  loadImageFile(f, img => { coverImg = img; coverGray = null; drawBase(); if (!palImg) buildPalette(img); }, 'nImg');
+  loadImageFile(f, img => { $('thumbImg').style.backgroundImage = `url("${img.src}")`; $('thumbImg').innerHTML = ''; coverImg = img; coverGray = null; drawBase(); if (!palImg) buildPalette(img); }, 'nImg');
 };
 $('fAud').onchange = e => {
   const f = e.target.files[0]; e.target.value = ''; if (!f) return;
@@ -718,7 +793,6 @@ function buildPalette(img) {
   const box = $('swatches'); box.innerHTML = '';
   palette.forEach(hex => {
     const d = document.createElement('div'); d.className = 'sw'; d.style.background = hex; d.title = hex;
-    d.innerHTML = `<span>${hex}</span>`;
     d.onclick = () => { S[$('palTarget').value] = hex; syncInputs(); onChange($('palTarget').value); save(); };
     box.appendChild(d);
   });
@@ -753,6 +827,7 @@ function syncInputs() {
     const k = el.dataset.k;
     if (el.type === 'checkbox') el.checked = !!S[k]; else el.value = S[k];
   }
+  for (const el of ctrls) if (el.type === 'range') el.style.setProperty('--p', ((el.value - el.min) / (el.max - el.min) * 100) + '%');
   document.querySelectorAll('.v[data-for]').forEach(sp => {
     const k = sp.dataset.for, v = S[k];
     sp.textContent = ['speed','float','react','size','headSize','titleSize','bgImgAmt','particles','pSize','backlight','parallax'].includes(k) ? (+v).toFixed(2) : v;
@@ -774,7 +849,7 @@ for (const el of ctrls) {
 }
 let paused = false;
 /* phone tabs: one settings section at a time */
-const sections = [...document.querySelectorAll('#panel > .card')], tabBar = $('tabs');
+const sections = [...document.querySelectorAll('#panel > section')], tabBar = $('tabs');
 function showTab(i) {
   i = Math.max(0, Math.min(sections.length - 1, i | 0));
   sections.forEach((c, j) => c.classList.toggle('on', j === i));
@@ -787,14 +862,14 @@ function showTab(i) {
 sections.forEach((c, i) => {
   const b = document.createElement('button');
   b.type = 'button'; b.className = 'tab'; b.setAttribute('role', 'tab');
-  b.textContent = c.querySelector('h3').textContent.replace(/^\d+/, '').replace(/\(.*?\)/g, '').trim();
+  b.textContent = c.dataset.title;
   b.onclick = () => showTab(i);
   tabBar.appendChild(b);
 });
 let firstTab = 0; try { firstTab = +localStorage.getItem('aria-card-tab') || 0; } catch (e) {}
 showTab(firstTab);
 $('sizeBtn').onclick = () => document.querySelector('.stage').classList.toggle('big');
-$('pauseBtn').onclick = () => { paused = !paused; $('pauseBtn').textContent = paused ? '▶ המשך תנועה' : '⏸ עצור תנועה'; };
+$('pauseBtn').onclick = () => { paused = !paused; $('pauseBtn').textContent = paused ? 'המשך התנועה' : 'עצירת התנועה'; };
 $('resetMotion').onclick = () => { Object.assign(S, MOTION_DEFAULTS); syncInputs(); save(); };
 
 /* ---------- render loop ---------- */
@@ -888,7 +963,8 @@ function render(now) {
   ctx.restore();
 
   if (!seeking && aud.duration) $('seek').value = Math.round(prog * 1000);
-  $('time').textContent = `${fmt(aud.currentTime)} / ${fmt(aud.duration)}`;
+  $('tCur').textContent = fmt(aud.currentTime); $('tDur').textContent = fmt(aud.duration);
+  $('seek').style.setProperty('--p', ($('seek').value / 10) + '%');
   requestAnimationFrame(render);
 }
 
@@ -916,12 +992,12 @@ async function exportVideo() {
   }
   setFormat(parseFloat(S.expRes) || 1);
   ctrls.forEach(el => el.disabled = true);
-  $('expBtn').textContent = '✖ בטל ייצוא';
+  $('expBtn').textContent = 'ביטול הייצוא'; $('expBtn').classList.add('cancel');
 
   const restore = () => {
     aud.pause(); aud.onended = null;
     setFormat(); ctrls.forEach(el => el.disabled = false);
-    $('expBtn').textContent = '🎬 ייצא סרטון';
+    $('expBtn').textContent = 'ייצוא סרטון'; $('expBtn').classList.remove('cancel');
     if (wake) { wake.release().catch(() => {}); wake = null; }
   };
   let wake = null;
@@ -959,10 +1035,10 @@ async function exportVideo() {
   lastFile = new File([blob], `house-of-aria-${slug}-${S.format.replace(':','x')}.${ext}`, {type});
   $('expBar').style.width = '100%';
   st.className = 'status ok';
-  st.textContent = `✓ הסרטון מוכן (${ext.toUpperCase()}, ${(blob.size / 1048576).toFixed(1)}MB)`;
+  st.textContent = `הסרטון מוכן (${ext.toUpperCase()}, ${(blob.size / 1048576).toFixed(1)}MB)`;
   const canShare = !dlCap && !!(navigator.canShare && navigator.canShare({files: [lastFile]}));
-  $('dlBtn').textContent = dlCap ? '💾 שמור סרטון' : '⬇ הורדה';
-  $('dlBtn').className = dlCap ? 'btn primary' : 'btn';
+  $('dlBtn').textContent = dlCap ? 'שמירת הסרטון' : 'הורדה';
+  
   $('shareBtn').style.display = canShare ? '' : 'none';
   $('after').classList.add('show');
   if (dlCap || !IS_MOBILE || !canShare) downloadLast();
@@ -974,7 +1050,7 @@ async function downloadLast() {
   if (!lastFile) return;
   if (dlCap) {
     const st = $('expStatus');
-    try { await dlCap.save({filename: lastFile.name, data: lastFile}); st.className = 'status ok'; st.textContent = '✓ הסרטון נשמר'; }
+    try { await dlCap.save({filename: lastFile.name, data: lastFile}); st.className = 'status ok'; st.textContent = 'הסרטון נשמר'; }
     catch (e) {
       if (e && e.code === 'declined') return;
       st.className = 'status bad';
