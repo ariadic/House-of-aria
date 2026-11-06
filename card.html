@@ -58,12 +58,22 @@ input[type=color]{width:100%;height:34px;border:1px solid var(--line);border-rad
 .player .t{color:var(--muted);font-size:12px;font-variant-numeric:tabular-nums;direction:ltr;min-width:84px;text-align:center}
 .bar{height:6px;background:#0b0a10;border-radius:4px;overflow:hidden;margin-top:8px}
 .bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--a1),var(--a2))}
+.after{display:none;gap:8px;margin-top:10px}
+.after.show{display:flex}
 @media (max-width:900px){
+  header{padding:8px 12px}
+  header .sub{display:none}
   .app{grid-template-columns:1fr;height:auto}
-  .stage{order:-1;padding:16px}
-  .panel{border-left:0;border-top:1px solid var(--line)}
-  #out{max-height:70vh}
+  .stage{order:-1;padding:10px 12px;position:sticky;top:0;z-index:5;background:var(--bg);border-bottom:1px solid var(--line);gap:8px;overflow:visible}
+  .stage.big #out{max-height:78vh}
+  .panel{border-left:0;padding:12px 12px 40px}
+  #out{max-height:42vh;border-radius:10px}
+  input[type=text],input[type=number],select,textarea{font-size:16px}
+  .btn{padding:10px 12px}
+  input[type=range]{height:28px}
+  .player .t{min-width:70px}
 }
+@media (min-width:901px){#sizeBtn{display:none}}
 </style>
 </head>
 <body>
@@ -193,11 +203,20 @@ input[type=color]{width:100%;height:34px;border:1px solid var(--line);border-rad
       <div><label>אורך (שניות)</label><input type="number" data-k="expDur" min="1" max="600" step="1"></div>
     </div>
     <button class="btn small" id="startHere" style="margin-top:6px">קבע התחלה מהמיקום הנוכחי בשיר</button>
+    <label>איכות</label>
+    <select data-k="expRes">
+      <option value="1">Full HD, איכות מלאה</option>
+      <option value="0.6667">720p, קל יותר לטלפונים ישנים</option>
+    </select>
     <label class="chk"><input type="checkbox" data-k="fade">כניסה ויציאה בהדרגה (תמונה וסאונד)</label>
     <button class="btn primary" id="expBtn" style="width:100%;margin-top:12px">🎬 ייצא סרטון</button>
     <div class="bar"><i id="expBar"></i></div>
     <div class="status" id="expStatus"></div>
-    <div class="hint">הייצוא רץ בזמן אמת, כך ש־15 שניות של סרטון לוקחות 15 שניות. צריך להשאיר את הלשונית פתוחה וגלויה עד הסוף. ב־Chrome וב־Edge הקובץ יוצא כ־MP4, ובדפדפנים אחרים כ־WebM.</div>
+    <div class="after" id="after">
+      <button class="btn primary" id="shareBtn">📲 שמור לגלריה או שתף</button>
+      <button class="btn" id="dlBtn">⬇ הורדה</button>
+    </div>
+    <div class="hint">הייצוא רץ בזמן אמת, כך ש־15 שניות של סרטון לוקחות 15 שניות. צריך להשאיר את המסך דלוק ואת הלשונית פתוחה עד הסוף. בנייד, אחרי הייצוא לוחצים על "שמור לגלריה או שתף" ובוחרים "שמור סרטון" או אינסטגרם. באייפון כדאי לכבות את מתג השקט כדי לשמוע את השיר.</div>
   </div>
 
 </aside>
@@ -207,6 +226,7 @@ input[type=color]{width:100%;height:34px;border:1px solid var(--line);border-rad
     <button class="btn" id="playBtn">▶</button>
     <input type="range" id="seek" min="0" max="1000" value="0">
     <span class="t" id="time">0:00 / 0:00</span>
+    <button class="btn" id="sizeBtn" title="הגדל או הקטן את התצוגה">⤢</button>
   </div>
   <audio id="aud" preload="auto"></audio>
 </main>
@@ -226,8 +246,11 @@ const DEFAULTS = Object.assign({
   fontTitle:'Inter', wTitle:'700', titleSize:1,
   fontSmall:'Inter', wSmall:'400',
   bg:'#0b0708', glow:'#c4362f', card:'#2a2a2e', text:'#f2f2f2', head:'#ffffff', accent:'#e0412f', grain:true,
-  format:'9:16', expStart:0, expDur:15, fade:true
+  format:'9:16', expStart:0, expDur:15, fade:true, expRes:'1'
 }, MOTION_DEFAULTS);
+const IS_MOBILE = matchMedia('(max-width:900px), (pointer:coarse)').matches;
+const PREVIEW_SCALE = IS_MOBILE ? .5 : 1;
+if (navigator.audioSession) { try { navigator.audioSession.type = 'playback'; } catch (e) {} }
 const STORE = 'aria-card-v1';
 let S = Object.assign({}, DEFAULTS);
 try { const saved = JSON.parse(localStorage.getItem(STORE) || 'null'); if (saved) Object.assign(S, saved); } catch (e) {}
@@ -304,7 +327,22 @@ const base = document.createElement('canvas'); base.width = TW; base.height = TH
 const bctx = base.getContext('2d');
 const texC = document.createElement('canvas'); texC.width = TW; texC.height = TH;
 const tctx = texC.getContext('2d');
-let coverImg = null;
+let coverImg = null, coverGray = null;
+// manual grayscale (ctx.filter is missing in Safari)
+function makeGray(img) {
+  const sc = Math.min(1, 1400 / Math.max(img.naturalWidth, img.naturalHeight));
+  const c = document.createElement('canvas');
+  c.width = Math.round(img.naturalWidth * sc); c.height = Math.round(img.naturalHeight * sc);
+  const x = c.getContext('2d'); x.drawImage(img, 0, 0, c.width, c.height);
+  const id = x.getImageData(0, 0, c.width, c.height), d = id.data;
+  for (let i = 0; i < d.length; i += 4) {
+    let v = .299 * d[i] + .587 * d[i+1] + .114 * d[i+2];
+    v = (v - 128) * 1.08 + 128;
+    d[i] = d[i+1] = d[i+2] = v;
+  }
+  x.putImageData(id, 0, 0);
+  return c;
+}
 const PAD = 60, IMG_Y = 140, IMG_S = TW - 2 * PAD;
 
 function rr(c,x,y,w,h,r){ c.beginPath(); c.moveTo(x+r,y); c.arcTo(x+w,y,x+w,y+h,r); c.arcTo(x+w,y+h,x,y+h,r); c.arcTo(x,y+h,x,y,r); c.arcTo(x,y,x+w,y,r); c.closePath(); }
@@ -340,9 +378,8 @@ function drawBase() {
   if (coverImg) {
     const iw = coverImg.naturalWidth, ih = coverImg.naturalHeight, sc = Math.max(IMG_S / iw, IMG_S / ih);
     const dw = iw * sc, dh = ih * sc;
-    if (S.bw) c.filter = 'grayscale(1) contrast(1.08)';
-    c.drawImage(coverImg, PAD + (IMG_S - dw) / 2, IMG_Y + (IMG_S - dh) / 2, dw, dh);
-    c.filter = 'none';
+    if (S.bw && !coverGray) coverGray = makeGray(coverImg);
+    c.drawImage(S.bw ? coverGray : coverImg, PAD + (IMG_S - dw) / 2, IMG_Y + (IMG_S - dh) / 2, dw, dh);
   } else {
     const pg = c.createLinearGradient(PAD, IMG_Y, PAD + IMG_S, IMG_Y + IMG_S);
     pg.addColorStop(0, shade(S.glow, -.2)); pg.addColorStop(1, shade(S.bg, .05));
@@ -418,7 +455,9 @@ const cardMesh = new THREE.Mesh(geo, [faceMat, sideMat]);
 const pivot = new THREE.Group(); pivot.add(cardMesh); scene.add(pivot);
 
 const shC = document.createElement('canvas'); shC.width = 256; shC.height = 320;
-{ const c = shC.getContext('2d'); c.filter = 'blur(22px)'; c.fillStyle = '#000'; rr(c, 52, 56, 152, 208, 14); c.fill(); }
+{ const c = shC.getContext('2d'); // blur via shadow (works in Safari too)
+  c.shadowColor = '#000'; c.shadowBlur = 40; c.shadowOffsetX = 1000;
+  c.fillStyle = '#000'; rr(c, 52 - 1000, 56, 152, 208, 14); c.fill(); }
 const shadow = new THREE.Mesh(new THREE.PlaneGeometry(AR * 1.68, 1.54),
   new THREE.MeshBasicMaterial({map: new THREE.CanvasTexture(shC), transparent: true, opacity: .8, depthWrite: false}));
 scene.add(shadow);
@@ -431,8 +470,9 @@ const grainC = document.createElement('canvas'); grainC.width = grainC.height = 
 const grainPat = ctx.createPattern(grainC, 'repeat');
 
 /* ---------- layout ---------- */
-function setFormat() {
-  [W, H] = FORMATS[S.format] || FORMATS['9:16'];
+function setFormat(scale = PREVIEW_SCALE) {
+  const [fw, fh] = FORMATS[S.format] || FORMATS['9:16'];
+  W = Math.round(fw * scale / 2) * 2; H = Math.round(fh * scale / 2) * 2;
   out.width = W; out.height = H;
   renderer.setSize(W, H, false);
   camera.aspect = W / H; camera.updateProjectionMatrix();
@@ -529,7 +569,7 @@ $('startHere').onclick = () => { S.expStart = Math.round(aud.currentTime * 10) /
 $('fImg').onchange = e => {
   const f = e.target.files[0]; if (!f) return;
   const img = new Image();
-  img.onload = () => { coverImg = img; $('nImg').textContent = f.name; drawBase(); if (!palImg) buildPalette(img); };
+  img.onload = () => { coverImg = img; coverGray = null; $('nImg').textContent = f.name; drawBase(); if (!palImg) buildPalette(img); };
   img.src = URL.createObjectURL(f);
 };
 $('fAud').onchange = e => {
@@ -627,6 +667,7 @@ for (const el of ctrls) {
   });
 }
 let paused = false;
+$('sizeBtn').onclick = () => document.querySelector('.stage').classList.toggle('big');
 $('pauseBtn').onclick = () => { paused = !paused; $('pauseBtn').textContent = paused ? '▶ המשך תנועה' : '⏸ עצור תנועה'; };
 $('resetMotion').onclick = () => { Object.assign(S, MOTION_DEFAULTS); syncInputs(); save(); };
 
@@ -705,55 +746,91 @@ function render(now) {
 }
 
 /* ---------- export ---------- */
-const MIMES = ['video/mp4;codecs=avc1.640028,mp4a.40.2','video/mp4;codecs=avc1.4D401F,mp4a.40.2','video/mp4;codecs=avc1,mp4a','video/mp4',
+const MIMES = ['video/mp4;codecs=avc1.640028,mp4a.40.2','video/mp4;codecs=avc1,mp4a.40.2','video/mp4;codecs=avc1.4D401F,mp4a.40.2','video/mp4;codecs=avc1,mp4a','video/mp4',
   'video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm'];
+let lastFile = null;
 async function exportVideo() {
   if (exp) { exp.cancel(); return; }
-  if (!window.MediaRecorder || !out.captureStream) { $('expStatus').className = 'status bad'; $('expStatus').textContent = 'הדפדפן הזה לא תומך בייצוא. כדאי לנסות ב־Chrome או ב־Edge.'; return; }
+  const st = $('expStatus'); st.className = 'status';
+  if (!window.MediaRecorder || !out.captureStream) { st.className = 'status bad'; st.textContent = 'הדפדפן הזה לא תומך בייצוא. כדאי לעדכן אותו, או לנסות ב־Chrome, ב־Edge או ב־Safari.'; return; }
   const hasAudio = !!aud.src && isFinite(aud.duration);
   const start = hasAudio ? Math.min(Math.max(0, S.expStart), Math.max(0, aud.duration - 1)) : 0;
   const dur = Math.max(1, hasAudio ? Math.min(S.expDur, aud.duration - start) : S.expDur);
-  const st = $('expStatus'); st.className = 'status';
+  $('after').classList.remove('show');
+
+  // everything that needs the tap (iPhone) happens synchronously here
+  let playP = null;
+  if (hasAudio) {
+    ensureAudioGraph(); actx.resume();
+    expGain.gain.cancelScheduledValues(actx.currentTime);
+    expGain.gain.setValueAtTime(S.fade ? 0 : 1, actx.currentTime);
+    aud.pause(); aud.currentTime = start;
+    playP = aud.play();
+  }
+  setFormat(parseFloat(S.expRes) || 1);
+  ctrls.forEach(el => el.disabled = true);
+  $('expBtn').textContent = '✖ בטל ייצוא';
+
+  const restore = () => {
+    aud.pause(); aud.onended = null;
+    setFormat(); ctrls.forEach(el => el.disabled = false);
+    $('expBtn').textContent = '🎬 ייצא סרטון';
+    if (wake) { wake.release().catch(() => {}); wake = null; }
+  };
+  let wake = null;
+  try { if (navigator.wakeLock) wake = await navigator.wakeLock.request('screen'); } catch (e) {}
 
   const tracks = [...out.captureStream(30).getVideoTracks()];
-  if (hasAudio) {
-    ensureAudioGraph(); await actx.resume();
-    tracks.push(...streamDest.stream.getAudioTracks());
-    aud.pause(); aud.currentTime = start;
-    await new Promise(r => { aud.onseeked = () => { aud.onseeked = null; r(); }; setTimeout(r, 1500); });
-    const g = expGain.gain, n = actx.currentTime;
-    g.cancelScheduledValues(n);
-    if (S.fade) { g.setValueAtTime(0, n); g.linearRampToValueAtTime(1, n + .6); g.setValueAtTime(1, n + Math.max(.6, dur - .8)); g.linearRampToValueAtTime(0, n + dur); }
-    else g.setValueAtTime(1, n);
-  }
+  if (hasAudio) tracks.push(...streamDest.stream.getAudioTracks());
   const mime = MIMES.find(m => MediaRecorder.isTypeSupported(m)) || '';
-  const rec = new MediaRecorder(new MediaStream(tracks), {mimeType: mime || undefined, videoBitsPerSecond: 14e6, audioBitsPerSecond: 256000});
+  let rec;
+  try { rec = new MediaRecorder(new MediaStream(tracks), {mimeType: mime || undefined, videoBitsPerSecond: 12e6, audioBitsPerSecond: 192000}); }
+  catch (e) { restore(); st.className = 'status bad'; st.textContent = 'לא הצלחתי להתחיל את ההקלטה: ' + e.message; return; }
   const chunks = []; let cancelled = false;
   rec.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
   const done = new Promise(r => rec.onstop = r);
+
+  if (playP) {
+    try { await playP; }
+    catch (e) { restore(); st.className = 'status bad'; st.textContent = 'השיר לא התחיל להתנגן. כדאי ללחוץ שוב על "ייצא סרטון".'; return; }
+    const g = expGain.gain, n = actx.currentTime;
+    if (S.fade) { g.setValueAtTime(0, n); g.linearRampToValueAtTime(1, n + .6); g.setValueAtTime(1, n + Math.max(.6, dur - .8)); g.linearRampToValueAtTime(0, n + dur); }
+    else g.setValueAtTime(1, n);
+  }
   motionT = 0;
-  exp = {hasAudio, start, dur, t0: performance.now(),
+  exp = {hasAudio, start: hasAudio ? aud.currentTime : 0, dur, t0: performance.now(),
     finish() { if (rec.state !== 'inactive') rec.stop(); exp = null; },
     cancel() { cancelled = true; this.finish(); }};
-  ctrls.forEach(el => { if (el.dataset.k === 'format') el.disabled = true; });
-  $('expBtn').textContent = '✖ בטל ייצוא';
+  if (hasAudio) aud.onended = () => exp && exp.finish();
   rec.start(500);
-  if (hasAudio) { aud.onended = () => exp && exp.finish(); await aud.play(); exp && (exp.t0 = performance.now()); }
   await done;
-  aud.pause(); aud.onended = null;
-  ctrls.forEach(el => el.disabled = false);
-  $('expBtn').textContent = '🎬 ייצא סרטון';
+  restore();
   if (cancelled) { st.textContent = 'הייצוא בוטל'; $('expBar').style.width = '0'; return; }
-  const type = (mime || 'video/webm').split(';')[0], ext = type.includes('mp4') ? 'mp4' : 'webm';
+  const type = (mime || chunks[0]?.type || 'video/webm').split(';')[0], ext = type.includes('mp4') ? 'mp4' : 'webm';
   const blob = new Blob(chunks, {type});
   const slug = (S.title || 'song').toLowerCase().replace(/[^\w֐-׿]+/g, '-').replace(/^-|-$/g, '') || 'song';
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob); a.download = `house-of-aria-${slug}-${S.format.replace(':','x')}.${ext}`;
-  document.body.appendChild(a); a.click(); a.remove();
+  lastFile = new File([blob], `house-of-aria-${slug}-${S.format.replace(':','x')}.${ext}`, {type});
   $('expBar').style.width = '100%';
   st.className = 'status ok';
-  st.textContent = `✓ הסרטון נשמר (${ext.toUpperCase()}, ${(blob.size / 1048576).toFixed(1)}MB)` + (ext === 'webm' ? '. אם צריך MP4, כדאי לייצא ב־Chrome או ב־Edge.' : '');
+  st.textContent = `✓ הסרטון מוכן (${ext.toUpperCase()}, ${(blob.size / 1048576).toFixed(1)}MB)`;
+  const canShare = !!(navigator.canShare && navigator.canShare({files: [lastFile]}));
+  $('shareBtn').style.display = canShare ? '' : 'none';
+  $('after').classList.add('show');
+  if (!IS_MOBILE || !canShare) downloadLast();
 }
+function downloadLast() {
+  if (!lastFile) return;
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(lastFile); a.download = lastFile.name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+}
+$('dlBtn').onclick = downloadLast;
+$('shareBtn').onclick = async () => {
+  if (!lastFile) return;
+  try { await navigator.share({files: [lastFile], title: S.title}); }
+  catch (e) { if (e.name !== 'AbortError') downloadLast(); }
+};
 $('expBtn').onclick = exportVideo;
 document.addEventListener('visibilitychange', () => {
   if (document.hidden && exp) { $('expStatus').className = 'status bad'; $('expStatus').textContent = 'הלשונית מוסתרת, וזה פוגע בהקלטה. כדאי לחזור אליה.'; }
