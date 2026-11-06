@@ -190,7 +190,23 @@ input[type=color]{width:100%;height:34px;border:1px solid var(--line);border-rad
   </div>
 
   <div class="card">
-    <h3><span class="n">6</span>ייצוא לסרטון</h3>
+    <h3><span class="n">6</span>עומק ברקע</h3>
+    <label class="chk"><input type="checkbox" data-k="bgImg">התמונה מטושטשת ברקע</label>
+    <label>עוצמת התמונה ברקע <span class="v" data-for="bgImgAmt"></span></label>
+    <input type="range" data-k="bgImgAmt" min="0" max="1" step="0.01">
+    <label>חלקיקי אור <span class="v" data-for="particles"></span></label>
+    <input type="range" data-k="particles" min="0" max="1" step="0.01">
+    <label>גודל החלקיקים <span class="v" data-for="pSize"></span></label>
+    <input type="range" data-k="pSize" min="0.3" max="2.5" step="0.01">
+    <label class="chk"><input type="checkbox" data-k="bokeh">בוקה מטושטש לפני הכרטיס</label>
+    <label>אור מאחורי הכרטיס <span class="v" data-for="backlight"></span></label>
+    <input type="range" data-k="backlight" min="0" max="1" step="0.01">
+    <label>תזוזת עומק (פרלקסה) <span class="v" data-for="parallax"></span></label>
+    <input type="range" data-k="parallax" min="0" max="1.5" step="0.01">
+  </div>
+
+  <div class="card">
+    <h3><span class="n">7</span>ייצוא לסרטון</h3>
     <label>פורמט</label>
     <select data-k="format">
       <option value="9:16">9:16 לרילס, טיקטוק ושורטס (1080×1920)</option>
@@ -246,7 +262,8 @@ const DEFAULTS = Object.assign({
   fontTitle:'Inter', wTitle:'700', titleSize:1,
   fontSmall:'Inter', wSmall:'400',
   bg:'#0b0708', glow:'#c4362f', card:'#2a2a2e', text:'#f2f2f2', head:'#ffffff', accent:'#e0412f', grain:true,
-  format:'9:16', expStart:0, expDur:15, fade:true, expRes:'1'
+  format:'9:16', expStart:0, expDur:15, fade:true, expRes:'1',
+  bgImg:true, bgImgAmt:0.45, particles:0.55, pSize:1, bokeh:true, backlight:0.55, parallax:0.7
 }, MOTION_DEFAULTS);
 const IS_MOBILE = matchMedia('(max-width:900px), (pointer:coarse)').matches;
 const PREVIEW_SCALE = IS_MOBILE ? .5 : 1;
@@ -327,7 +344,17 @@ const base = document.createElement('canvas'); base.width = TW; base.height = TH
 const bctx = base.getContext('2d');
 const texC = document.createElement('canvas'); texC.width = TW; texC.height = TH;
 const tctx = texC.getContext('2d');
-let coverImg = null, coverGray = null;
+let coverImg = null, coverGray = null, bgBlur = null;
+let pLayers = [];
+// cheap blur that also works in Safari: shrink hard, then scale up smoothly in two steps
+function makeBlur(src) {
+  const w0 = src.naturalWidth || src.width, h0 = src.naturalHeight || src.height, ar = w0 / h0;
+  const a = document.createElement('canvas'); a.width = Math.max(2, Math.round(20 * ar)); a.height = 20;
+  const ax = a.getContext('2d'); ax.imageSmoothingQuality = 'high'; ax.drawImage(src, 0, 0, a.width, a.height);
+  const b = document.createElement('canvas'); b.width = Math.round(160 * ar); b.height = 160;
+  const bx = b.getContext('2d'); bx.imageSmoothingQuality = 'high'; bx.drawImage(a, 0, 0, b.width, b.height);
+  return b;
+}
 // manual grayscale (ctx.filter is missing in Safari)
 function makeGray(img) {
   const sc = Math.min(1, 1400 / Math.max(img.naturalWidth, img.naturalHeight));
@@ -403,6 +430,8 @@ function drawBase() {
   c.fillText(S.subtitle, rtlS ? TW - PAD : PAD, IMG_Y + IMG_S + 148);
   c.restore();
   if (sideMat) sideMat.color.set(shade(S.card, .22));
+  bgBlur = coverImg ? makeBlur(S.bw ? (coverGray || (coverGray = makeGray(coverImg))) : coverImg) : null;
+  pLayers.forEach(colorLayer);
 }
 
 function updateTexture(sheen, prog) {
@@ -461,6 +490,63 @@ const shC = document.createElement('canvas'); shC.width = 256; shC.height = 320;
 const shadow = new THREE.Mesh(new THREE.PlaneGeometry(AR * 1.68, 1.54),
   new THREE.MeshBasicMaterial({map: new THREE.CanvasTexture(shC), transparent: true, opacity: .8, depthWrite: false}));
 scene.add(shadow);
+
+/* ---------- depth particles ---------- */
+function softTex(bokeh) {
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const x = c.getContext('2d'), g = x.createRadialGradient(64, 64, 0, 64, 64, 64);
+  if (bokeh) { g.addColorStop(0, 'rgba(255,255,255,.45)'); g.addColorStop(.7, 'rgba(255,255,255,.6)'); g.addColorStop(.85, 'rgba(255,255,255,.3)'); g.addColorStop(1, 'rgba(255,255,255,0)'); }
+  else { g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(.2, 'rgba(255,255,255,.7)'); g.addColorStop(.5, 'rgba(255,255,255,.15)'); g.addColorStop(1, 'rgba(255,255,255,0)'); }
+  x.fillStyle = g; x.fillRect(0, 0, 128, 128);
+  return new THREE.CanvasTexture(c);
+}
+const pGroup = new THREE.Group(); scene.add(pGroup);
+function halfExt(z) { const h = (CAM_Z - z) * Math.tan(S.fov * Math.PI / 360); return [h * W / H, h]; }
+function spawn(L, i, init) {
+  const z = L.zMin + Math.random() * (L.zMax - L.zMin), [hw, hh] = halfExt(z);
+  L.pos[i*3] = (Math.random() * 2 - 1) * hw * 1.15;
+  L.pos[i*3+1] = init ? (Math.random() * 2 - 1) * hh * 1.15 : -hh * 1.2;
+  L.pos[i*3+2] = z;
+  const d = (CAM_Z - z) / CAM_Z;
+  L.vel[i*3] = (Math.random() - .5) * .06 * d;
+  L.vel[i*3+1] = (.04 + Math.random() * .1) * d;
+  L.ph[i] = Math.random() * 6.283;
+}
+function colorLayer(L) {
+  const a = hexToRgb(shade(S.glow, .35)), b = hexToRgb(S.text);
+  for (let i = 0; i < L.n; i++) { const t = L.mix[i]; for (let k = 0; k < 3; k++) L.col[i*3+k] = (a[k] + (b[k] - a[k]) * t) / 255; }
+  L.pts.geometry.attributes.color.needsUpdate = true;
+}
+function makeLayer(n, zMin, zMax, bokeh, size, opacity) {
+  const L = {n, zMin, zMax, size, opacity, pos: new Float32Array(n*3), vel: new Float32Array(n*3), col: new Float32Array(n*3), ph: new Float32Array(n), mix: new Float32Array(n)};
+  for (let i = 0; i < n; i++) { L.mix[i] = Math.random() < .55 ? Math.random() * .3 : .6 + Math.random() * .4; spawn(L, i, true); }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(L.pos, 3));
+  g.setAttribute('color', new THREE.BufferAttribute(L.col, 3));
+  L.pts = new THREE.Points(g, new THREE.PointsMaterial({size, map: softTex(bokeh), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, vertexColors: true, opacity}));
+  L.pts.frustumCulled = false;
+  pGroup.add(L.pts); colorLayer(L);
+  return L;
+}
+const farLayer = makeLayer(320, -16, 2.2, false, .11, .9);
+const nearLayer = makeLayer(22, 3, 6.8, true, .55, .28);
+pLayers = [farLayer, nearLayer];
+function stepLayer(L, mdt, t, amount, sizeMul, glowBoost) {
+  const count = Math.round(L.n * amount);
+  L.pts.geometry.setDrawRange(0, count);
+  L.pts.visible = count > 0;
+  L.pts.material.size = L.size * sizeMul;
+  L.pts.material.opacity = Math.min(1, L.opacity * glowBoost);
+  if (!count) return;
+  for (let i = 0; i < count; i++) {
+    const j = i * 3;
+    L.pos[j] += (L.vel[j] + Math.sin(t * .5 + L.ph[i]) * .015) * mdt;
+    L.pos[j+1] += L.vel[j+1] * mdt;
+    const [hw, hh] = halfExt(L.pos[j+2]);
+    if (L.pos[j+1] > hh * 1.2 || Math.abs(L.pos[j]) > hw * 1.4) spawn(L, i, false);
+  }
+  L.pts.geometry.attributes.position.needsUpdate = true;
+}
 
 /* ---------- grain ---------- */
 const grainC = document.createElement('canvas'); grainC.width = grainC.height = 256;
@@ -649,10 +735,10 @@ function syncInputs() {
   }
   document.querySelectorAll('.v[data-for]').forEach(sp => {
     const k = sp.dataset.for, v = S[k];
-    sp.textContent = ['speed','float','react','size','headSize','titleSize'].includes(k) ? (+v).toFixed(2) : v;
+    sp.textContent = ['speed','float','react','size','headSize','titleSize','bgImgAmt','particles','pSize','backlight','parallax'].includes(k) ? (+v).toFixed(2) : v;
   });
 }
-const TEXT_KEYS = ['bw','label','title','subtitle','wTitle','wSmall','titleSize','card','text','accent','headline'];
+const TEXT_KEYS = ['bg','glow','bw','label','title','subtitle','wTitle','wSmall','titleSize','card','text','accent','headline'];
 function onChange(k) {
   if (k.startsWith('font')) ensureFonts(k);
   else if (TEXT_KEYS.includes(k)) drawBase();
@@ -702,6 +788,14 @@ function render(now) {
   ctx.save();
   ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
   ctx.fillStyle = S.bg; ctx.fillRect(0, 0, W, H);
+  const par = S.parallax;
+  if (S.bgImg && bgBlur && S.bgImgAmt > 0) {
+    const sc2 = Math.max(W / bgBlur.width, H / bgBlur.height) * 1.3;
+    const bw2 = bgBlur.width * sc2, bh2 = bgBlur.height * sc2;
+    ctx.globalAlpha = S.bgImgAmt;
+    ctx.drawImage(bgBlur, (W - bw2) / 2 - ry * par * W * .25, (H - bh2) / 2 + rx * par * H * .12 + Math.sin(t * .23) * H * .01, bw2, bh2);
+    ctx.globalAlpha = 1;
+  }
   const R = Math.max(W, H);
   const gx = W * (.84 + .05 * Math.sin(t * .21)), gy = H * (.12 + .04 * Math.cos(t * .17));
   let g = ctx.createRadialGradient(gx, gy, 0, gx, gy, R * .85);
@@ -715,7 +809,21 @@ function render(now) {
   g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,.55)');
   ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
 
-  drawHeadline(L, -ry * W * .02);
+  if (S.backlight > 0) {
+    const bx = W / 2 + ry * par * W * .12, by = L.cy - L.cardH * .05;
+    g = ctx.createRadialGradient(bx, by, 0, bx, by, L.cardH * .85);
+    g.addColorStop(0, rgba(shade(S.glow, .25), Math.min(1, S.backlight * (.5 + pulse * S.react * .4))));
+    g.addColorStop(.5, rgba(S.glow, S.backlight * .18)); g.addColorStop(1, rgba(S.glow, 0));
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  }
+
+  drawHeadline(L, -ry * W * .02 * (.5 + par));
+
+  const mdt = (!paused || exp) ? dt * S.speed : 0;
+  pGroup.rotation.set(rx * par * .6, ry * par * .6, 0);
+  const boost = 1 + pulse * S.react * .8;
+  stepLayer(farLayer, mdt, t, S.particles, S.pSize, boost);
+  stepLayer(nearLayer, mdt, t, S.bokeh ? Math.min(1, S.particles * 1.6) : 0, S.pSize, boost);
 
   renderer.render(scene, camera);
   ctx.drawImage(renderer.domElement, 0, 0);
