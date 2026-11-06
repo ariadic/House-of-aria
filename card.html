@@ -71,6 +71,12 @@ select{appearance:none;-webkit-appearance:none;background:transparent url("data:
 select option{background:var(--grouped);color:var(--label)}
 .row input[type=number]{width:72px;background:var(--fill);border:0;border-radius:8px;padding:6px 8px;text-align:center;font-size:16px;color:var(--label);font-variant-numeric:tabular-nums}
 .unit{color:var(--label2);font-size:14px}
+.seg-row{padding:12px 16px}
+.seg-label{font-size:16px;margin-bottom:10px}
+.seg{display:flex;background:rgba(118,118,128,.24);border-radius:9px;padding:2px;gap:2px}
+.seg button{flex:1;min-width:0;border:0;background:none;color:var(--label);font-size:13px;font-weight:500;padding:7px 2px;border-radius:7px;cursor:pointer;white-space:nowrap;transition:background .2s}
+.seg button.on{background:#636366;box-shadow:0 3px 8px rgba(0,0,0,.12),0 3px 1px rgba(0,0,0,.04);font-weight:600}
+#startRow.off{opacity:.4;pointer-events:none}
 
 /* iOS switch */
 .switch{appearance:none;-webkit-appearance:none;width:51px;height:31px;border-radius:16px;background:var(--fill2);position:relative;flex:none;margin:0;cursor:pointer;transition:background .2s}
@@ -303,11 +309,22 @@ input[type=color]::-moz-color-swatch{border:0;border-radius:50%}
         <option value="1">1080p</option>
         <option value="0.6667">720p</option>
       </select></label>
-      <label class="row"><span class="grow">התחלה בשיר</span><input type="number" data-k="expStart" min="0" step="0.5"><span class="unit">שנ׳</span></label>
-      <label class="row"><span class="grow">אורך</span><input type="number" data-k="expDur" min="1" max="600" step="1"><span class="unit">שנ׳</span></label>
+      <div class="seg-row">
+        <div class="seg-label">אורך הסרטון</div>
+        <div class="seg" id="durSeg" role="radiogroup" aria-label="אורך הסרטון">
+          <button type="button" data-d="15">15 שנ׳</button>
+          <button type="button" data-d="30">30 שנ׳</button>
+          <button type="button" data-d="60">דקה</button>
+          <button type="button" data-d="90">1:30</button>
+          <button type="button" data-d="full">כל השיר</button>
+        </div>
+      </div>
+      <label class="row"><span class="grow">אורך מותאם</span><input type="number" data-k="expDur" min="1" max="900" step="1"><span class="unit">שנ׳</span></label>
+      <label class="row" id="startRow"><span class="grow">התחלה בשיר</span><input type="number" data-k="expStart" min="0" step="0.5"><span class="unit">שנ׳</span></label>
       <button class="row action" type="button" id="startHere">להתחיל מהמיקום הנוכחי בשיר</button>
       <label class="row"><span class="grow">כניסה ויציאה בהדרגה</span><input class="switch" type="checkbox" data-k="fade"></label>
     </div>
+    <p class="hint" id="expLen"></p>
     <button class="cta" type="button" id="expBtn">ייצוא סרטון</button>
     <div class="bar"><i id="expBar"></i></div>
     <div class="status" id="expStatus"></div>
@@ -350,7 +367,7 @@ const DEFAULTS = Object.assign({
   fontTitle:'Inter', wTitle:'700', titleSize:1,
   fontSmall:'Inter', wSmall:'400',
   bg:'#0b0708', glow:'#c4362f', card:'#2a2a2e', text:'#f2f2f2', head:'#ffffff', accent:'#e0412f', grain:true,
-  format:'9:16', expStart:0, expDur:15, fade:true, expRes:'1',
+  format:'9:16', expStart:0, expDur:15, expFull:false, fade:true, expRes:'1',
   bgImg:true, bgImgAmt:0.45, particles:0.45, pSize:1, backlight:0.35, parallax:0.7
 }, MOTION_DEFAULTS);
 const IS_MOBILE = matchMedia('(max-width:900px), (pointer:coarse)').matches;
@@ -734,7 +751,7 @@ aud.onpause = () => $('playBtn').classList.remove('playing');
 let seeking = false;
 $('seek').addEventListener('input', () => { seeking = true; if (aud.duration) aud.currentTime = $('seek').value / 1000 * aud.duration; });
 $('seek').addEventListener('change', () => seeking = false);
-$('startHere').onclick = () => { S.expStart = Math.round(aud.currentTime * 10) / 10; syncInputs(); save(); };
+$('startHere').onclick = () => { S.expStart = Math.round(aud.currentTime * 10) / 10; S.expFull = false; syncInputs(); save(); };
 
 /* ---------- files ---------- */
 function note(id, text, bad) { const el = $(id); el.textContent = text; el.className = 'fname' + (bad ? ' bad' : ''); }
@@ -753,7 +770,7 @@ $('fAud').onchange = e => {
   const f = e.target.files[0]; e.target.value = ''; if (!f) return;
   if (f.type && !/^(audio|video)\//.test(f.type)) { note('nAud', 'זה לא נראה כמו קובץ שמע. כדאי לבחור MP3, M4A או WAV.', true); return; }
   note('nAud', 'טוען את ' + f.name + '…');
-  aud.onloadedmetadata = () => note('nAud', f.name + ' (' + fmt(aud.duration) + ')');
+  aud.onloadedmetadata = () => { note('nAud', f.name + ' (' + fmt(aud.duration) + ')'); updateLen(); };
   aud.onerror = () => note('nAud', 'הטלפון לא מצליח לנגן את הקובץ הזה. כדאי לנסות MP3 או M4A.', true);
   aud.src = URL.createObjectURL(f); aud.load();
 };
@@ -827,17 +844,47 @@ function syncInputs() {
     const k = el.dataset.k;
     if (el.type === 'checkbox') el.checked = !!S[k]; else el.value = S[k];
   }
+  document.querySelectorAll('#durSeg button').forEach(b => {
+    const on = S.expFull ? b.dataset.d === 'full' : (!S.expFull && b.dataset.d !== 'full' && +b.dataset.d === S.expDur);
+    b.classList.toggle('on', on); b.setAttribute('aria-checked', on);
+  });
+  $('startRow').classList.toggle('off', !!S.expFull);
+  updateLen();
   for (const el of ctrls) if (el.type === 'range') el.style.setProperty('--p', ((el.value - el.min) / (el.max - el.min) * 100) + '%');
   document.querySelectorAll('.v[data-for]').forEach(sp => {
     const k = sp.dataset.for, v = S[k];
     sp.textContent = ['speed','float','react','size','headSize','titleSize','bgImgAmt','particles','pSize','backlight','parallax'].includes(k) ? (+v).toFixed(2) : v;
   });
 }
+function exportRange() {
+  const hasAudio = !!aud.src && isFinite(aud.duration);
+  if (hasAudio && S.expFull) return {hasAudio, start: 0, dur: aud.duration, toEnd: true};
+  const start = hasAudio ? Math.min(Math.max(0, S.expStart), Math.max(0, aud.duration - 1)) : 0;
+  const want = Math.max(1, S.expDur);
+  const dur = hasAudio ? Math.min(want, aud.duration - start) : want;
+  return {hasAudio, start, dur: Math.max(1, dur), toEnd: hasAudio && want > aud.duration - start};
+}
+function updateLen() {
+  const el = $('expLen'); if (!el) return;
+  const r = exportRange();
+  let t = 'אורך הסרטון: ' + fmt(r.dur);
+  if (r.hasAudio && !S.expFull) t += ' (מ־' + fmt(r.start) + ' בשיר)';
+  if (r.toEnd && !S.expFull) t += '. השיר נגמר לפני האורך שבחרת, אז הסרטון יסתיים בסוף השיר.';
+  if (S.expFull && !r.hasAudio) t = 'כדי לייצא את כל השיר, צריך קודם להעלות שיר בלשונית קבצים.';
+  if (r.dur > 60) t += ' סרטון ארוך לוקח זמן כמו האורך שלו, ונשמר באיכות קצת נמוכה יותר כדי שהקובץ לא יהיה כבד מדי.';
+  el.textContent = t;
+}
+document.querySelectorAll('#durSeg button').forEach(b => b.onclick = () => {
+  if (b.dataset.d === 'full') S.expFull = true;
+  else { S.expFull = false; S.expDur = +b.dataset.d; }
+  syncInputs(); save();
+});
 const TEXT_KEYS = ['bg','glow','bw','label','title','subtitle','wTitle','wSmall','titleSize','card','text','accent','headline'];
 function onChange(k) {
   if (k.startsWith('font')) ensureFonts(k);
   else if (TEXT_KEYS.includes(k)) drawBase();
   if (k === 'format') setFormat();
+  if (k === 'expDur') { S.expFull = false; syncInputs(); }
 }
 for (const el of ctrls) {
   const ev = (el.type === 'text' || el.tagName === 'TEXTAREA') && !el.dataset.k.startsWith('font') ? 'input' : (el.type === 'range' ? 'input' : 'change');
@@ -976,9 +1023,7 @@ async function exportVideo() {
   if (exp) { exp.cancel(); return; }
   const st = $('expStatus'); st.className = 'status';
   if (!window.MediaRecorder || !out.captureStream) { st.className = 'status bad'; st.textContent = 'הדפדפן הזה לא תומך בייצוא. כדאי לעדכן אותו, או לנסות ב־Chrome, ב־Edge או ב־Safari.'; return; }
-  const hasAudio = !!aud.src && isFinite(aud.duration);
-  const start = hasAudio ? Math.min(Math.max(0, S.expStart), Math.max(0, aud.duration - 1)) : 0;
-  const dur = Math.max(1, hasAudio ? Math.min(S.expDur, aud.duration - start) : S.expDur);
+  const {hasAudio, start, dur} = exportRange();
   $('after').classList.remove('show');
 
   // everything that needs the tap (iPhone) happens synchronously here
@@ -1007,7 +1052,7 @@ async function exportVideo() {
   if (hasAudio) tracks.push(...streamDest.stream.getAudioTracks());
   const mime = MIMES.find(m => MediaRecorder.isTypeSupported(m)) || '';
   let rec;
-  try { rec = new MediaRecorder(new MediaStream(tracks), {mimeType: mime || undefined, videoBitsPerSecond: 12e6, audioBitsPerSecond: 192000}); }
+  try { rec = new MediaRecorder(new MediaStream(tracks), {mimeType: mime || undefined, videoBitsPerSecond: dur > 60 ? 7e6 : 12e6, audioBitsPerSecond: 192000}); }
   catch (e) { restore(); st.className = 'status bad'; st.textContent = 'לא הצלחתי להתחיל את ההקלטה: ' + e.message; return; }
   const chunks = []; let cancelled = false;
   rec.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
