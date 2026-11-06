@@ -1,0 +1,771 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aria Song Card</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;700;900&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+:root{--bg:#07060a;--panel:#100e16;--card:#16131f;--line:#262236;--text:#efeaf9;--muted:#8f88a8;--a1:#a66bff;--a2:#ff4f9a;--ok:#4ade80;--bad:#f87171}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{background:var(--bg);color:var(--text);font-family:Heebo,system-ui,sans-serif;font-size:14px}
+header{display:flex;align-items:center;gap:12px;padding:10px 18px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+header h1{margin:0;font-size:19px;font-weight:900;letter-spacing:1px;background:linear-gradient(90deg,var(--a1),var(--a2));-webkit-background-clip:text;background-clip:text;color:transparent}
+header .sub{color:var(--muted);font-size:13px}
+header a{margin-inline-start:auto;color:var(--muted);font-size:13px}
+.app{display:grid;grid-template-columns:390px 1fr;height:calc(100% - 50px)}
+.panel{overflow-y:auto;border-left:1px solid var(--line);background:var(--panel);padding:12px}
+.stage{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;gap:12px;overflow:auto;min-width:0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:12px}
+.card h3{margin:0 0 10px;font-size:15px;display:flex;align-items:center;gap:8px}
+.card h3 .n{background:linear-gradient(135deg,var(--a1),var(--a2));color:#fff;border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:900}
+label{display:block;color:var(--muted);font-size:12px;margin:8px 0 4px}
+label .v{float:left;color:var(--text);font-variant-numeric:tabular-nums}
+input[type=text],input[type=number],select,textarea{width:100%;background:#0b0a10;color:var(--text);border:1px solid var(--line);border-radius:8px;padding:8px;font:inherit}
+textarea{resize:vertical;min-height:58px}
+input[type=range]{width:100%;accent-color:var(--a1)}
+input[type=color]{width:100%;height:34px;border:1px solid var(--line);border-radius:8px;background:#0b0a10;padding:2px;cursor:pointer}
+.row{display:flex;gap:8px}.row>*{flex:1;min-width:0}
+.btn{background:#221e31;color:var(--text);border:1px solid var(--line);border-radius:9px;padding:8px 12px;font:inherit;cursor:pointer;white-space:nowrap}
+.btn:hover{border-color:var(--a1)}
+.btn.primary{background:linear-gradient(90deg,var(--a1),var(--a2));border:0;font-weight:700;color:#fff}
+.btn.small{padding:5px 8px;font-size:12px}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.chk{display:flex;align-items:center;gap:6px;color:var(--text);font-size:13px;margin:8px 0 0;cursor:pointer}
+.chk input{accent-color:var(--a1);margin:0}
+.drop{border:2px dashed var(--line);border-radius:12px;padding:14px 8px;text-align:center;color:var(--muted);cursor:pointer;position:relative}
+.drop:hover{border-color:var(--a1);color:var(--text)}
+.drop input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.fname{color:var(--ok);font-size:12px;margin-top:4px;word-break:break-all}
+.status{font-size:12px;margin-top:8px;color:var(--muted);min-height:16px}
+.status.ok{color:var(--ok)}.status.bad{color:var(--bad)}
+.font-row{display:grid;grid-template-columns:1fr 84px;gap:6px}
+.colors{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.colors label{margin-top:0}
+.swatches{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.sw{width:42px;height:42px;border-radius:9px;border:2px solid rgba(255,255,255,.15);cursor:pointer;position:relative}
+.sw:hover{border-color:#fff}
+.sw span{position:absolute;bottom:-15px;left:0;right:0;font-size:9px;color:var(--muted);text-align:center;direction:ltr}
+.hint{color:var(--muted);font-size:11px;margin-top:6px;line-height:1.5}
+.hint a{color:var(--a1)}
+#out{max-width:100%;max-height:calc(100vh - 170px);border-radius:12px;box-shadow:0 10px 40px rgba(0,0,0,.6);background:#000}
+.player{direction:ltr;display:flex;align-items:center;gap:10px;width:min(560px,100%)}
+.player input{flex:1}
+.player .t{color:var(--muted);font-size:12px;font-variant-numeric:tabular-nums;direction:ltr;min-width:84px;text-align:center}
+.bar{height:6px;background:#0b0a10;border-radius:4px;overflow:hidden;margin-top:8px}
+.bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--a1),var(--a2))}
+@media (max-width:900px){
+  .app{grid-template-columns:1fr;height:auto}
+  .stage{order:-1;padding:16px}
+  .panel{border-left:0;border-top:1px solid var(--line)}
+  #out{max-height:70vh}
+}
+</style>
+</head>
+<body>
+<header><h1>ARIA SONG CARD</h1><span class="sub">כרטיס שיר תלת־ממדי שמרחף, עם ייצוא לסרטון</span><a href="index.html">← Visualizer 3D</a></header>
+<div class="app">
+<aside class="panel">
+
+  <div class="card">
+    <h3><span class="n">1</span>קבצים</h3>
+    <div class="row">
+      <div>
+        <div class="drop">🖼️ תמונה לכרטיס<input type="file" id="fImg" accept="image/*"></div>
+        <div class="fname" id="nImg"></div>
+      </div>
+      <div>
+        <div class="drop">🎵 קובץ שמע<input type="file" id="fAud" accept="audio/*"></div>
+        <div class="fname" id="nAud"></div>
+      </div>
+    </div>
+    <label class="chk"><input type="checkbox" data-k="bw">תמונה בשחור־לבן</label>
+  </div>
+
+  <div class="card">
+    <h3><span class="n">2</span>טקסטים</h3>
+    <label class="chk"><input type="checkbox" data-k="showHead">להציג כותרת עליונה</label>
+    <label>כותרת עליונה (Enter = שורה חדשה)</label>
+    <textarea data-k="headline" rows="2"></textarea>
+    <label class="chk"><input type="checkbox" data-k="underline">קו מכחול מתחת לכותרת</label>
+    <label>טקסט קטן בראש הכרטיס</label>
+    <input type="text" data-k="label">
+    <label>שם השיר</label>
+    <input type="text" data-k="title">
+    <label>שורה מתחת לשם השיר</label>
+    <input type="text" data-k="subtitle">
+    <label class="chk"><input type="checkbox" data-k="showProg">פס התקדמות של השיר בכרטיס</label>
+  </div>
+
+  <div class="card">
+    <h3><span class="n">3</span>פונטים (Google Fonts)</h3>
+    <label>כותרת עליונה <span class="v" data-for="headSize"></span></label>
+    <div class="font-row">
+      <input type="text" data-k="fontHead" list="fontList" placeholder="שם פונט">
+      <select data-k="wHead"><option value="400">רגיל</option><option value="700">בולד</option><option value="900">שחור</option></select>
+    </div>
+    <input type="range" data-k="headSize" min="0.4" max="1.4" step="0.01">
+    <label>שם השיר <span class="v" data-for="titleSize"></span></label>
+    <div class="font-row">
+      <input type="text" data-k="fontTitle" list="fontList" placeholder="שם פונט">
+      <select data-k="wTitle"><option value="400">רגיל</option><option value="700">בולד</option><option value="900">שחור</option></select>
+    </div>
+    <input type="range" data-k="titleSize" min="0.5" max="1.4" step="0.01">
+    <label>טקסטים קטנים</label>
+    <div class="font-row">
+      <input type="text" data-k="fontSmall" list="fontList" placeholder="שם פונט">
+      <select data-k="wSmall"><option value="400">רגיל</option><option value="700">בולד</option><option value="900">שחור</option></select>
+    </div>
+    <datalist id="fontList"></datalist>
+    <div class="status" id="fontStatus"></div>
+    <div class="hint">אפשר לבחור מהרשימה או להקליד שם של כל פונט מ־<a href="https://fonts.google.com" target="_blank" rel="noopener">fonts.google.com</a>, בדיוק כפי שהוא כתוב שם. לטקסט בעברית כדאי לבחור פונט שתומך בעברית (Heebo, Rubik, Secular One, Suez One, Frank Ruhl Libre ועוד).</div>
+  </div>
+
+  <div class="card">
+    <h3><span class="n">4</span>צבעים</h3>
+    <div class="colors">
+      <div><label>רקע</label><input type="color" data-k="bg"></div>
+      <div><label>הילה</label><input type="color" data-k="glow"></div>
+      <div><label>כרטיס</label><input type="color" data-k="card"></div>
+      <div><label>טקסט בכרטיס</label><input type="color" data-k="text"></div>
+      <div><label>כותרת</label><input type="color" data-k="head"></div>
+      <div><label>הדגשה</label><input type="color" data-k="accent"></div>
+    </div>
+    <label style="margin-top:12px">פלטה מתוך תמונה</label>
+    <div class="row">
+      <div class="drop" style="padding:9px 6px">🎨 תמונה לפלטה<input type="file" id="fPal" accept="image/*"></div>
+      <button class="btn" id="palFromCover">מתמונת הכרטיס</button>
+    </div>
+    <div class="swatches" id="swatches"></div>
+    <div class="row" style="margin-top:20px;align-items:center">
+      <select id="palTarget">
+        <option value="bg">לחיצה על צבע ← רקע</option>
+        <option value="glow" selected>לחיצה על צבע ← הילה</option>
+        <option value="card">לחיצה על צבע ← כרטיס</option>
+        <option value="text">לחיצה על צבע ← טקסט בכרטיס</option>
+        <option value="head">לחיצה על צבע ← כותרת</option>
+        <option value="accent">לחיצה על צבע ← הדגשה</option>
+      </select>
+      <button class="btn primary" id="palAuto" disabled>החל אוטומטית</button>
+    </div>
+    <label class="chk"><input type="checkbox" data-k="grain">גרעיניות קולנועית</label>
+  </div>
+
+  <div class="card">
+    <h3><span class="n">5</span>תנועה</h3>
+    <label>מהירות <span class="v" data-for="speed"></span></label>
+    <input type="range" data-k="speed" min="0.1" max="2.5" step="0.05">
+    <label>סיבוב לצדדים (מעלות) <span class="v" data-for="tiltY"></span></label>
+    <input type="range" data-k="tiltY" min="0" max="35" step="0.5">
+    <label>הטיה קדימה ואחורה (מעלות) <span class="v" data-for="tiltX"></span></label>
+    <input type="range" data-k="tiltX" min="0" max="25" step="0.5">
+    <label>נטייה הצידה (מעלות) <span class="v" data-for="roll"></span></label>
+    <input type="range" data-k="roll" min="0" max="12" step="0.5">
+    <label>ריחוף למעלה ולמטה <span class="v" data-for="float"></span></label>
+    <input type="range" data-k="float" min="0" max="1" step="0.01">
+    <label>עומק פרספקטיבה <span class="v" data-for="fov"></span></label>
+    <input type="range" data-k="fov" min="15" max="70" step="1">
+    <label>גודל הכרטיס <span class="v" data-for="size"></span></label>
+    <input type="range" data-k="size" min="0.6" max="1.15" step="0.01">
+    <label>תגובה למוזיקה <span class="v" data-for="react"></span></label>
+    <input type="range" data-k="react" min="0" max="1" step="0.01">
+    <div class="row" style="margin-top:10px">
+      <button class="btn" id="pauseBtn">⏸ עצור תנועה</button>
+      <button class="btn" id="resetMotion">איפוס תנועה</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3><span class="n">6</span>ייצוא לסרטון</h3>
+    <label>פורמט</label>
+    <select data-k="format">
+      <option value="9:16">9:16 לרילס, טיקטוק ושורטס (1080×1920)</option>
+      <option value="4:5">4:5 לפוסט באינסטגרם (1080×1350)</option>
+      <option value="1:1">1:1 ריבוע (1080×1080)</option>
+      <option value="16:9">16:9 ליוטיוב (1920×1080)</option>
+    </select>
+    <div class="row">
+      <div><label>התחלה בשיר (שניות)</label><input type="number" data-k="expStart" min="0" step="0.5"></div>
+      <div><label>אורך (שניות)</label><input type="number" data-k="expDur" min="1" max="600" step="1"></div>
+    </div>
+    <button class="btn small" id="startHere" style="margin-top:6px">קבע התחלה מהמיקום הנוכחי בשיר</button>
+    <label class="chk"><input type="checkbox" data-k="fade">כניסה ויציאה בהדרגה (תמונה וסאונד)</label>
+    <button class="btn primary" id="expBtn" style="width:100%;margin-top:12px">🎬 ייצא סרטון</button>
+    <div class="bar"><i id="expBar"></i></div>
+    <div class="status" id="expStatus"></div>
+    <div class="hint">הייצוא רץ בזמן אמת, כך ש־15 שניות של סרטון לוקחות 15 שניות. צריך להשאיר את הלשונית פתוחה וגלויה עד הסוף. ב־Chrome וב־Edge הקובץ יוצא כ־MP4, ובדפדפנים אחרים כ־WebM.</div>
+  </div>
+
+</aside>
+<main class="stage">
+  <canvas id="out" width="1080" height="1920"></canvas>
+  <div class="player">
+    <button class="btn" id="playBtn">▶</button>
+    <input type="range" id="seek" min="0" max="1000" value="0">
+    <span class="t" id="time">0:00 / 0:00</span>
+  </div>
+  <audio id="aud" preload="auto"></audio>
+</main>
+</div>
+
+<script>
+(() => {
+'use strict';
+const $ = id => document.getElementById(id);
+
+/* ---------- state ---------- */
+const MOTION_DEFAULTS = {speed:1, tiltY:12, tiltX:6, roll:2, float:0.35, fov:38, size:1, react:0.3};
+const DEFAULTS = Object.assign({
+  bw:false, showHead:true, headline:'HOUSE OF ARIA', underline:true,
+  label:'House of Aria', title:'Catch Me Before I Fall', subtitle:'House of Aria • Song', showProg:true,
+  fontHead:'Anton', wHead:'400', headSize:1,
+  fontTitle:'Inter', wTitle:'700', titleSize:1,
+  fontSmall:'Inter', wSmall:'400',
+  bg:'#0b0708', glow:'#c4362f', card:'#2a2a2e', text:'#f2f2f2', head:'#ffffff', accent:'#e0412f', grain:true,
+  format:'9:16', expStart:0, expDur:15, fade:true
+}, MOTION_DEFAULTS);
+const STORE = 'aria-card-v1';
+let S = Object.assign({}, DEFAULTS);
+try { const saved = JSON.parse(localStorage.getItem(STORE) || 'null'); if (saved) Object.assign(S, saved); } catch (e) {}
+let saveTimer = 0;
+function save() { clearTimeout(saveTimer); saveTimer = setTimeout(() => { try { localStorage.setItem(STORE, JSON.stringify(S)); } catch (e) {} }, 300); }
+
+const FORMATS = {'9:16':[1080,1920], '4:5':[1080,1350], '1:1':[1080,1080], '16:9':[1920,1080]};
+const FONT_LIST = ['Anton','Bebas Neue','Oswald','League Gothic','Archivo Black','Staatliches','Big Shoulders Display','Fjalla One','Teko',
+  'Inter','Montserrat','Poppins','Space Grotesk','Syne','Unbounded','DM Sans','Manrope',
+  'Playfair Display','DM Serif Display','Abril Fatface','Cinzel','Cormorant Garamond','Bodoni Moda',
+  'Righteous','Permanent Marker','Monoton','Bungee','Caveat',
+  'Heebo','Rubik','Assistant','Secular One','Suez One','Frank Ruhl Libre','Varela Round','Alef','Amatic SC','Karantina','Bellefair','David Libre','Noto Sans Hebrew','Noto Serif Hebrew'];
+$('fontList').innerHTML = FONT_LIST.map(f => `<option value="${f}">`).join('');
+
+/* ---------- color helpers ---------- */
+const hexToRgb = h => { h = h.replace('#',''); if (h.length === 3) h = h.split('').map(c => c + c).join(''); const n = parseInt(h, 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; };
+const rgbToHex = (r,g,b) => '#' + [r,g,b].map(v => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2,'0')).join('');
+const rgba = (h,a) => { const [r,g,b] = hexToRgb(h); return `rgba(${r},${g},${b},${a})`; };
+const shade = (h,amt) => { const c = hexToRgb(h); const t = amt < 0 ? 0 : 255, p = Math.abs(amt); return rgbToHex(...c.map(v => v + (t - v) * p)); };
+function rgbToHsl(r,g,b){ r/=255; g/=255; b/=255; const mx=Math.max(r,g,b), mn=Math.min(r,g,b); let h=0,s=0; const l=(mx+mn)/2;
+  if (mx !== mn) { const d = mx - mn; s = l > .5 ? d/(2-mx-mn) : d/(mx+mn);
+    h = mx === r ? (g-b)/d + (g<b?6:0) : mx === g ? (b-r)/d + 2 : (r-g)/d + 4; h /= 6; }
+  return [h,s,l]; }
+function hslToHex(h,s,l){ const f = n => { const k = (n + h*12) % 12, a = s*Math.min(l,1-l); return l - a*Math.max(-1, Math.min(k-3, 9-k, 1)); };
+  return rgbToHex(f(0)*255, f(8)*255, f(4)*255); }
+
+/* ---------- fonts ---------- */
+const fontState = {};  // family -> Promise
+function loadFont(fam) {
+  fam = (fam || '').trim();
+  if (!fam) return Promise.resolve(false);
+  if (fontState[fam]) return fontState[fam];
+  const enc = fam.replace(/\s+/g, '+');
+  const variants = [':wght@400;700;900', ':wght@400;700', ':wght@400', ''];
+  fontState[fam] = new Promise(resolve => {
+    const tryAt = i => {
+      if (i >= variants.length) { resolve(false); return; }
+      const l = document.createElement('link');
+      l.rel = 'stylesheet';
+      l.href = `https://fonts.googleapis.com/css2?family=${enc}${variants[i]}&display=swap`;
+      l.onload = () => resolve(true);
+      l.onerror = () => { l.remove(); tryAt(i + 1); };
+      document.head.appendChild(l);
+    };
+    tryAt(0);
+  }).then(async ok => {
+    if (!ok) { delete fontState[fam]; return false; }
+    const sample = 'AaBb אבג ' + [S.headline, S.label, S.title, S.subtitle].join(' ');
+    await Promise.all(['400','700','900'].map(w => document.fonts.load(`${w} 40px "${fam}"`, sample).catch(() => {})));
+    return true;
+  });
+  return fontState[fam];
+}
+async function ensureFonts(changedKey) {
+  const keys = changedKey ? [changedKey] : ['fontHead','fontTitle','fontSmall'];
+  const st = $('fontStatus');
+  for (const k of keys) {
+    const fam = S[k];
+    if (!fam) continue;
+    st.className = 'status'; st.textContent = `טוען את ${fam}…`;
+    const ok = await loadFont(fam);
+    if (ok) { st.className = 'status ok'; st.textContent = `✓ ${fam} נטען`; }
+    else { st.className = 'status bad'; st.textContent = `לא מצאתי את "${fam}" ב־Google Fonts. בדוק את האיות.`; }
+  }
+  drawBase();
+}
+document.fonts.addEventListener && document.fonts.addEventListener('loadingdone', () => drawBase());
+const fontStr = (fam, w, px) => `${w} ${Math.round(px)}px "${fam}", Heebo, system-ui, sans-serif`;
+const isHeb = s => /[֐-׿]/.test(s || '');
+
+/* ---------- card texture ---------- */
+const TW = 1000, TH = 1300, AR = TW / TH;
+const base = document.createElement('canvas'); base.width = TW; base.height = TH;
+const bctx = base.getContext('2d');
+const texC = document.createElement('canvas'); texC.width = TW; texC.height = TH;
+const tctx = texC.getContext('2d');
+let coverImg = null;
+const PAD = 60, IMG_Y = 140, IMG_S = TW - 2 * PAD;
+
+function rr(c,x,y,w,h,r){ c.beginPath(); c.moveTo(x+r,y); c.arcTo(x+w,y,x+w,y+h,r); c.arcTo(x+w,y+h,x,y+h,r); c.arcTo(x,y+h,x,y,r); c.arcTo(x,y,x+w,y,r); c.closePath(); }
+function fitSize(c, text, fam, w, maxPx, maxW) {
+  let px = maxPx;
+  c.font = fontStr(fam, w, px);
+  const mw = c.measureText(text).width;
+  if (mw > maxW) px = Math.max(10, px * maxW / mw);
+  return px;
+}
+function drawBase() {
+  const c = bctx;
+  c.save();
+  c.clearRect(0, 0, TW, TH);
+  const g = c.createLinearGradient(0, 0, TW * .4, TH);
+  g.addColorStop(0, shade(S.card, .12)); g.addColorStop(1, shade(S.card, -.18));
+  c.fillStyle = g; c.fillRect(0, 0, TW, TH);
+  c.strokeStyle = 'rgba(255,255,255,.12)'; c.lineWidth = 4; rr(c, 2, 2, TW - 4, TH - 4, 56); c.stroke();
+
+  // label row
+  const ly = 82;
+  const rtlL = isHeb(S.label);
+  const ix = rtlL ? TW - PAD - 22 : PAD + 22;
+  c.fillStyle = S.accent; c.beginPath(); c.arc(ix, ly, 22, 0, Math.PI * 2); c.fill();
+  c.fillStyle = '#fff'; c.beginPath(); c.moveTo(ix - 7, ly - 10); c.lineTo(ix + 11, ly); c.lineTo(ix - 7, ly + 10); c.closePath(); c.fill();
+  c.direction = rtlL ? 'rtl' : 'ltr'; c.textAlign = rtlL ? 'right' : 'left'; c.textBaseline = 'middle';
+  const lpx = fitSize(c, S.label, S.fontSmall, S.wSmall, 34, IMG_S - 70);
+  c.font = fontStr(S.fontSmall, S.wSmall, lpx); c.fillStyle = rgba(S.text, .85);
+  c.fillText(S.label, rtlL ? TW - PAD - 58 : PAD + 58, ly + 1);
+
+  // image
+  c.save(); rr(c, PAD, IMG_Y, IMG_S, IMG_S, 22); c.clip();
+  if (coverImg) {
+    const iw = coverImg.naturalWidth, ih = coverImg.naturalHeight, sc = Math.max(IMG_S / iw, IMG_S / ih);
+    const dw = iw * sc, dh = ih * sc;
+    if (S.bw) c.filter = 'grayscale(1) contrast(1.08)';
+    c.drawImage(coverImg, PAD + (IMG_S - dw) / 2, IMG_Y + (IMG_S - dh) / 2, dw, dh);
+    c.filter = 'none';
+  } else {
+    const pg = c.createLinearGradient(PAD, IMG_Y, PAD + IMG_S, IMG_Y + IMG_S);
+    pg.addColorStop(0, shade(S.glow, -.2)); pg.addColorStop(1, shade(S.bg, .05));
+    c.fillStyle = pg; c.fillRect(PAD, IMG_Y, IMG_S, IMG_S);
+    c.fillStyle = 'rgba(255,255,255,.55)'; c.textAlign = 'center'; c.direction = 'rtl'; c.textBaseline = 'middle';
+    c.font = fontStr('Heebo', 700, 46); c.fillText('העלה תמונה', TW / 2, IMG_Y + IMG_S / 2);
+  }
+  c.restore();
+  c.strokeStyle = 'rgba(0,0,0,.35)'; c.lineWidth = 3; rr(c, PAD, IMG_Y, IMG_S, IMG_S, 22); c.stroke();
+
+  // title + subtitle
+  const rtlT = isHeb(S.title);
+  c.direction = rtlT ? 'rtl' : 'ltr'; c.textAlign = rtlT ? 'right' : 'left'; c.textBaseline = 'alphabetic';
+  const tpx = fitSize(c, S.title, S.fontTitle, S.wTitle, 74 * S.titleSize, IMG_S);
+  c.font = fontStr(S.fontTitle, S.wTitle, tpx); c.fillStyle = S.text;
+  c.fillText(S.title, rtlT ? TW - PAD : PAD, IMG_Y + IMG_S + 92);
+  const rtlS = isHeb(S.subtitle);
+  c.direction = rtlS ? 'rtl' : 'ltr'; c.textAlign = rtlS ? 'right' : 'left';
+  const spx = fitSize(c, S.subtitle, S.fontSmall, S.wSmall, 36, IMG_S);
+  c.font = fontStr(S.fontSmall, S.wSmall, spx); c.fillStyle = rgba(S.text, .6);
+  c.fillText(S.subtitle, rtlS ? TW - PAD : PAD, IMG_Y + IMG_S + 148);
+  c.restore();
+  if (sideMat) sideMat.color.set(shade(S.card, .22));
+}
+
+function updateTexture(sheen, prog) {
+  const c = tctx;
+  c.drawImage(base, 0, 0);
+  if (S.showProg) {
+    const y = 1212, w = IMG_S;
+    c.fillStyle = rgba(S.text, .18); rr(c, PAD, y, w, 8, 4); c.fill();
+    if (prog > 0) { c.fillStyle = S.accent; rr(c, PAD, y, Math.max(8, w * prog), 8, 4); c.fill();
+      c.beginPath(); c.arc(PAD + w * prog, y + 4, 11, 0, Math.PI * 2); c.fillStyle = S.text; c.fill(); }
+  }
+  const x = TW * (.5 + sheen);
+  const g = c.createLinearGradient(x - 420, -200, x + 420, TH * .55);
+  g.addColorStop(0, 'rgba(255,255,255,0)'); g.addColorStop(.5, 'rgba(255,255,255,.11)'); g.addColorStop(1, 'rgba(255,255,255,0)');
+  c.globalCompositeOperation = 'screen'; c.fillStyle = g; c.fillRect(0, 0, TW, TH);
+  c.globalCompositeOperation = 'source-over';
+  cardTex.needsUpdate = true;
+}
+
+/* ---------- three.js scene ---------- */
+const out = $('out'), ctx = out.getContext('2d');
+let W = 1080, H = 1920;
+const renderer = new THREE.WebGLRenderer({antialias: true, alpha: true, preserveDrawingBuffer: true});
+renderer.setPixelRatio(1);
+renderer.setClearColor(0x000000, 0);
+const scene = new THREE.Scene();
+const CAM_Z = 10;
+const camera = new THREE.PerspectiveCamera(S.fov, W / H, .1, 100);
+camera.position.z = CAM_Z;
+
+function roundedShape(w, h, r) {
+  const s = new THREE.Shape(), x = -w / 2, y = -h / 2;
+  s.moveTo(x + r, y); s.lineTo(x + w - r, y); s.quadraticCurveTo(x + w, y, x + w, y + r);
+  s.lineTo(x + w, y + h - r); s.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  s.lineTo(x + r, y + h); s.quadraticCurveTo(x, y + h, x, y + h - r);
+  s.lineTo(x, y + r); s.quadraticCurveTo(x, y, x + r, y);
+  return s;
+}
+const DEPTH = .028;
+const geo = new THREE.ExtrudeGeometry(roundedShape(AR, 1, .045), {depth: DEPTH, bevelEnabled: false, curveSegments: 14});
+geo.translate(0, 0, -DEPTH / 2);
+{ const p = geo.attributes.position, uv = geo.attributes.uv;
+  for (let i = 0; i < p.count; i++) uv.setXY(i, p.getX(i) / AR + .5, p.getY(i) + .5);
+  uv.needsUpdate = true; }
+const cardTex = new THREE.CanvasTexture(texC);
+cardTex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+const faceMat = new THREE.MeshBasicMaterial({map: cardTex});
+const sideMat = new THREE.MeshBasicMaterial({color: shade(S.card, .22)});
+const cardMesh = new THREE.Mesh(geo, [faceMat, sideMat]);
+const pivot = new THREE.Group(); pivot.add(cardMesh); scene.add(pivot);
+
+const shC = document.createElement('canvas'); shC.width = 256; shC.height = 320;
+{ const c = shC.getContext('2d'); c.filter = 'blur(22px)'; c.fillStyle = '#000'; rr(c, 52, 56, 152, 208, 14); c.fill(); }
+const shadow = new THREE.Mesh(new THREE.PlaneGeometry(AR * 1.68, 1.54),
+  new THREE.MeshBasicMaterial({map: new THREE.CanvasTexture(shC), transparent: true, opacity: .8, depthWrite: false}));
+scene.add(shadow);
+
+/* ---------- grain ---------- */
+const grainC = document.createElement('canvas'); grainC.width = grainC.height = 256;
+{ const c = grainC.getContext('2d'), id = c.createImageData(256, 256);
+  for (let i = 0; i < id.data.length; i += 4) { const v = Math.random() * 255; id.data[i] = id.data[i+1] = id.data[i+2] = v; id.data[i+3] = 255; }
+  c.putImageData(id, 0, 0); }
+const grainPat = ctx.createPattern(grainC, 'repeat');
+
+/* ---------- layout ---------- */
+function setFormat() {
+  [W, H] = FORMATS[S.format] || FORMATS['9:16'];
+  out.width = W; out.height = H;
+  renderer.setSize(W, H, false);
+  camera.aspect = W / H; camera.updateProjectionMatrix();
+}
+function hasHead() { return S.showHead && S.headline.trim().length > 0; }
+function layout() {
+  const top = hasHead() ? H * .22 : H * .07, bottom = H * .95;
+  const availH = bottom - top;
+  const cardH = Math.min(availH * .9, W * .78 / AR) * S.size;
+  const cy = (top + bottom) / 2 + (hasHead() ? H * .015 : 0);
+  return {cardH, cardW: cardH * AR, cy, headTop: H * .045, headBottom: cy - cardH / 2 - H * .03};
+}
+
+/* ---------- headline ---------- */
+function drawHeadline(L, shiftX) {
+  if (!hasHead()) return;
+  const lines = S.headline.split('\n').map(s => s.trim()).filter(Boolean);
+  if (!lines.length) return;
+  const areaH = Math.max(H * .08, L.headBottom - L.headTop), maxW = W * .86;
+  const lh = 1.0;
+  let px = Math.min(areaH / (lines.length * lh), H * .1) * S.headSize;
+  ctx.font = fontStr(S.fontHead, S.wHead, px);
+  const widest = Math.max(...lines.map(l => ctx.measureText(l).width));
+  if (widest > maxW) px *= maxW / widest;
+  ctx.font = fontStr(S.fontHead, S.wHead, px);
+  const blockH = lines.length * px * lh;
+  let y = L.headTop + (areaH - blockH) / 2 + px * .86;
+  ctx.save();
+  ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+  ctx.shadowColor = 'rgba(0,0,0,.45)'; ctx.shadowBlur = px * .25; ctx.shadowOffsetY = px * .06;
+  const cx = W / 2 + shiftX;
+  lines.forEach((ln, i) => {
+    ctx.direction = isHeb(ln) ? 'rtl' : 'ltr';
+    ctx.fillStyle = S.head; ctx.fillText(ln, cx, y);
+    if (S.underline && i === lines.length - 1) {
+      const w = ctx.measureText(ln).width, x0 = cx - w / 2, x1 = cx + w / 2, uy = y + px * .14, th = px * .085;
+      ctx.shadowColor = 'transparent';
+      ctx.fillStyle = S.accent;
+      ctx.beginPath();
+      ctx.moveTo(x0 - px * .02, uy + th * .3);
+      ctx.quadraticCurveTo(cx, uy - th * .9, x1 + px * .04, uy - th * .2);
+      ctx.lineTo(x1 - px * .05, uy + th * .55);
+      ctx.quadraticCurveTo(cx, uy + th * .1, x0 + px * .06, uy + th * 1.1);
+      ctx.closePath(); ctx.fill();
+      ctx.globalAlpha = .55;
+      ctx.beginPath();
+      ctx.moveTo(x0 + px * .1, uy + th * 1.0);
+      ctx.quadraticCurveTo(cx, uy + th * .35, x1 - px * .12, uy + th * .75);
+      ctx.lineWidth = th * .35; ctx.strokeStyle = S.accent; ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+    y += px * lh;
+  });
+  ctx.restore();
+}
+
+/* ---------- audio ---------- */
+const aud = $('aud');
+let actx = null, srcNode, analyser, expGain, streamDest, freq;
+function ensureAudioGraph() {
+  if (actx) return;
+  actx = new (window.AudioContext || window.webkitAudioContext)();
+  srcNode = actx.createMediaElementSource(aud);
+  analyser = actx.createAnalyser(); analyser.fftSize = 1024; analyser.smoothingTimeConstant = .75;
+  freq = new Uint8Array(analyser.frequencyBinCount);
+  srcNode.connect(analyser); analyser.connect(actx.destination);
+  expGain = actx.createGain(); streamDest = actx.createMediaStreamDestination();
+  srcNode.connect(expGain); expGain.connect(streamDest);
+}
+let level = 0, slowAvg = 0, pulse = 0;
+function readPulse() {
+  if (!analyser || aud.paused) { pulse *= .9; return; }
+  analyser.getByteFrequencyData(freq);
+  let e = 0; for (let i = 1; i < 7; i++) e += freq[i]; e /= 6 * 255;
+  slowAvg = slowAvg * .985 + e * .015;
+  const hit = Math.max(0, Math.min(1, (e - slowAvg * .95) * 4));
+  pulse = Math.max(hit, pulse * .9);
+}
+const fmt = t => { t = Math.max(0, t || 0); return Math.floor(t / 60) + ':' + String(Math.floor(t % 60)).padStart(2, '0'); };
+
+$('playBtn').onclick = async () => {
+  if (!aud.src) { $('nAud').textContent = 'קודם צריך להעלות קובץ שמע'; return; }
+  ensureAudioGraph(); await actx.resume();
+  if (aud.paused) aud.play(); else aud.pause();
+};
+aud.onplay = () => $('playBtn').textContent = '⏸';
+aud.onpause = () => $('playBtn').textContent = '▶';
+let seeking = false;
+$('seek').addEventListener('input', () => { seeking = true; if (aud.duration) aud.currentTime = $('seek').value / 1000 * aud.duration; });
+$('seek').addEventListener('change', () => seeking = false);
+$('startHere').onclick = () => { S.expStart = Math.round(aud.currentTime * 10) / 10; syncInputs(); save(); };
+
+/* ---------- files ---------- */
+$('fImg').onchange = e => {
+  const f = e.target.files[0]; if (!f) return;
+  const img = new Image();
+  img.onload = () => { coverImg = img; $('nImg').textContent = f.name; drawBase(); if (!palImg) buildPalette(img); };
+  img.src = URL.createObjectURL(f);
+};
+$('fAud').onchange = e => {
+  const f = e.target.files[0]; if (!f) return;
+  aud.src = URL.createObjectURL(f); $('nAud').textContent = f.name;
+};
+
+/* ---------- palette ---------- */
+let palImg = null, palette = [];
+function extractPalette(img, k = 7) {
+  const N = 72, c = document.createElement('canvas'); c.width = c.height = N;
+  const x = c.getContext('2d'); x.drawImage(img, 0, 0, N, N);
+  const d = x.getImageData(0, 0, N, N).data, pts = [];
+  for (let i = 0; i < d.length; i += 4) if (d[i+3] > 128) pts.push([d[i], d[i+1], d[i+2]]);
+  if (!pts.length) return [];
+  pts.sort((a, b) => (a[0]+a[1]+a[2]) - (b[0]+b[1]+b[2]));
+  let cents = Array.from({length: k}, (_, i) => pts[Math.floor((i + .5) / k * pts.length)].slice());
+  // seed one center with the most saturated pixel so accents are not lost
+  let best = 0, bp = pts[0];
+  for (const p of pts) { const s = Math.max(...p) - Math.min(...p); if (s > best) { best = s; bp = p; } }
+  cents[k - 1] = bp.slice();
+  let counts = [];
+  for (let it = 0; it < 12; it++) {
+    const sums = cents.map(() => [0, 0, 0]); counts = cents.map(() => 0);
+    for (const p of pts) {
+      let bi = 0, bd = 1e9;
+      for (let j = 0; j < cents.length; j++) { const c2 = cents[j], dd = (p[0]-c2[0])**2 + (p[1]-c2[1])**2 + (p[2]-c2[2])**2; if (dd < bd) { bd = dd; bi = j; } }
+      sums[bi][0] += p[0]; sums[bi][1] += p[1]; sums[bi][2] += p[2]; counts[bi]++;
+    }
+    cents = cents.map((c2, j) => counts[j] ? sums[j].map(v => v / counts[j]) : c2);
+  }
+  const res = [];
+  cents.map((c2, j) => ({c: c2, n: counts[j]})).filter(o => o.n > 0).sort((a, b) => b.n - a.n).forEach(o => {
+    if (!res.some(r => (r.c[0]-o.c[0])**2 + (r.c[1]-o.c[1])**2 + (r.c[2]-o.c[2])**2 < 600)) res.push(o);
+  });
+  return res.map(o => rgbToHex(...o.c));
+}
+function buildPalette(img) {
+  palette = extractPalette(img);
+  const box = $('swatches'); box.innerHTML = '';
+  palette.forEach(hex => {
+    const d = document.createElement('div'); d.className = 'sw'; d.style.background = hex; d.title = hex;
+    d.innerHTML = `<span>${hex}</span>`;
+    d.onclick = () => { S[$('palTarget').value] = hex; syncInputs(); onChange($('palTarget').value); save(); };
+    box.appendChild(d);
+  });
+  $('palAuto').disabled = !palette.length;
+}
+function autoApply() {
+  if (!palette.length) return;
+  const info = palette.map(h => { const [hh, s, l] = rgbToHsl(...hexToRgb(h)); return {h, hh, s, l, score: s * (1 - Math.abs(l - .5) * 1.4)}; });
+  const byL = [...info].sort((a, b) => a.l - b.l);
+  const bySat = [...info].sort((a, b) => b.score - a.score);
+  const dark = byL[0], light = byL[byL.length - 1], vivid = bySat[0], vivid2 = bySat[1] || vivid;
+  S.bg = hslToHex(dark.hh, Math.min(dark.s, .5), Math.min(dark.l, .06));
+  S.glow = hslToHex(vivid.hh, Math.max(vivid.s, .35), Math.min(Math.max(vivid.l, .38), .55));
+  S.accent = hslToHex(vivid2.hh, Math.max(vivid2.s, .45), Math.min(Math.max(vivid2.l, .45), .62));
+  const cardSrc = byL[1] || dark;
+  S.card = hslToHex(cardSrc.hh, Math.min(cardSrc.s, .18), Math.min(Math.max(cardSrc.l, .13), .2));
+  S.text = light.l > .8 ? hslToHex(light.hh, Math.min(light.s, .25), Math.max(light.l, .92)) : '#f4f4f4';
+  S.head = S.text;
+  syncInputs(); drawBase(); save();
+}
+$('fPal').onchange = e => {
+  const f = e.target.files[0]; if (!f) return;
+  const img = new Image(); img.onload = () => { palImg = img; buildPalette(img); }; img.src = URL.createObjectURL(f);
+};
+$('palFromCover').onclick = () => { if (coverImg) { palImg = null; buildPalette(coverImg); } else $('nImg').textContent = 'קודם צריך להעלות תמונה'; };
+$('palAuto').onclick = autoApply;
+
+/* ---------- controls binding ---------- */
+const ctrls = [...document.querySelectorAll('[data-k]')];
+function syncInputs() {
+  for (const el of ctrls) {
+    const k = el.dataset.k;
+    if (el.type === 'checkbox') el.checked = !!S[k]; else el.value = S[k];
+  }
+  document.querySelectorAll('.v[data-for]').forEach(sp => {
+    const k = sp.dataset.for, v = S[k];
+    sp.textContent = ['speed','float','react','size','headSize','titleSize'].includes(k) ? (+v).toFixed(2) : v;
+  });
+}
+const TEXT_KEYS = ['bw','label','title','subtitle','wTitle','wSmall','titleSize','card','text','accent','headline'];
+function onChange(k) {
+  if (k.startsWith('font')) ensureFonts(k);
+  else if (TEXT_KEYS.includes(k)) drawBase();
+  if (k === 'format') setFormat();
+}
+for (const el of ctrls) {
+  const ev = (el.type === 'text' || el.tagName === 'TEXTAREA') && !el.dataset.k.startsWith('font') ? 'input' : (el.type === 'range' ? 'input' : 'change');
+  el.addEventListener(ev, () => {
+    const k = el.dataset.k;
+    S[k] = el.type === 'checkbox' ? el.checked : (el.type === 'range' || el.type === 'number') ? parseFloat(el.value) || 0 : el.value;
+    syncInputs(); onChange(k); save();
+  });
+}
+let paused = false;
+$('pauseBtn').onclick = () => { paused = !paused; $('pauseBtn').textContent = paused ? '▶ המשך תנועה' : '⏸ עצור תנועה'; };
+$('resetMotion').onclick = () => { Object.assign(S, MOTION_DEFAULTS); syncInputs(); save(); };
+
+/* ---------- render loop ---------- */
+let motionT = 0, last = performance.now(), exp = null;
+function render(now) {
+  const dt = Math.min(.05, (now - last) / 1000); last = now;
+  if (!paused || exp) motionT += dt * S.speed;
+  readPulse();
+  const t = motionT;
+  const L = layout();
+
+  if (camera.fov !== S.fov) { camera.fov = S.fov; camera.updateProjectionMatrix(); }
+  const visH = 2 * CAM_Z * Math.tan(S.fov * Math.PI / 360), k = visH / H;
+  const D = Math.PI / 180;
+  const ry = S.tiltY * D * (.75 * Math.sin(t * .6) + .25 * Math.sin(t * 1.23 + 1.3));
+  const rx = S.tiltX * D * (.7 * Math.sin(t * .47 + .7) + .3 * Math.sin(t * 1.05 + 2.1));
+  const rz = S.roll * D * Math.sin(t * .38 + .4);
+  const fy = S.float * .035 * Math.sin(t * .85 + .3);
+  const sc = L.cardH * k * (1 + pulse * S.react * .045);
+  pivot.rotation.set(rx, ry, rz);
+  pivot.scale.setScalar(sc);
+  pivot.position.set(0, (H / 2 - L.cy) * k + fy * sc, 0);
+  shadow.scale.setScalar(sc);
+  shadow.position.set(ry * sc * .35, pivot.position.y - sc * (.05 + fy * .5), -sc * .7);
+  shadow.material.opacity = .8 - fy * 2;
+
+  const prog = aud.duration ? aud.currentTime / aud.duration : 0;
+  updateTexture(-ry * 1.9 + rx * .6, prog);
+
+  // background
+  ctx.save();
+  ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
+  ctx.fillStyle = S.bg; ctx.fillRect(0, 0, W, H);
+  const R = Math.max(W, H);
+  const gx = W * (.84 + .05 * Math.sin(t * .21)), gy = H * (.12 + .04 * Math.cos(t * .17));
+  let g = ctx.createRadialGradient(gx, gy, 0, gx, gy, R * .85);
+  g.addColorStop(0, rgba(S.glow, Math.min(1, .62 + pulse * S.react * .35))); g.addColorStop(.45, rgba(S.glow, .22)); g.addColorStop(1, rgba(S.glow, 0));
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  const g2x = W * (.1 + .04 * Math.cos(t * .19)), g2y = H * .92;
+  g = ctx.createRadialGradient(g2x, g2y, 0, g2x, g2y, R * .55);
+  g.addColorStop(0, rgba(S.glow, .25)); g.addColorStop(1, rgba(S.glow, 0));
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  g = ctx.createRadialGradient(W / 2, H / 2, R * .3, W / 2, H / 2, R * .8);
+  g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,.55)');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+
+  drawHeadline(L, -ry * W * .02);
+
+  renderer.render(scene, camera);
+  ctx.drawImage(renderer.domElement, 0, 0);
+
+  if (S.grain) {
+    ctx.globalAlpha = .05; ctx.globalCompositeOperation = 'overlay';
+    ctx.translate(Math.random() * 256, Math.random() * 256);
+    ctx.fillStyle = grainPat; ctx.fillRect(-256, -256, W + 512, H + 512);
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
+  }
+
+  if (exp) {
+    const el = exp.hasAudio ? aud.currentTime - exp.start : (now - exp.t0) / 1000;
+    if (S.fade) {
+      const a = Math.min(1, Math.max(0, el / .6), Math.max(0, (exp.dur - el) / .8));
+      if (a < 1) { ctx.fillStyle = `rgba(0,0,0,${1 - a})`; ctx.fillRect(0, 0, W, H); }
+    }
+    $('expBar').style.width = Math.min(100, el / exp.dur * 100) + '%';
+    $('expStatus').textContent = `מקליט… ${fmt(el)} / ${fmt(exp.dur)}`;
+    if (el >= exp.dur) exp.finish();
+  }
+  ctx.restore();
+
+  if (!seeking && aud.duration) $('seek').value = Math.round(prog * 1000);
+  $('time').textContent = `${fmt(aud.currentTime)} / ${fmt(aud.duration)}`;
+  requestAnimationFrame(render);
+}
+
+/* ---------- export ---------- */
+const MIMES = ['video/mp4;codecs=avc1.640028,mp4a.40.2','video/mp4;codecs=avc1.4D401F,mp4a.40.2','video/mp4;codecs=avc1,mp4a','video/mp4',
+  'video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm'];
+async function exportVideo() {
+  if (exp) { exp.cancel(); return; }
+  if (!window.MediaRecorder || !out.captureStream) { $('expStatus').className = 'status bad'; $('expStatus').textContent = 'הדפדפן הזה לא תומך בייצוא. כדאי לנסות ב־Chrome או ב־Edge.'; return; }
+  const hasAudio = !!aud.src && isFinite(aud.duration);
+  const start = hasAudio ? Math.min(Math.max(0, S.expStart), Math.max(0, aud.duration - 1)) : 0;
+  const dur = Math.max(1, hasAudio ? Math.min(S.expDur, aud.duration - start) : S.expDur);
+  const st = $('expStatus'); st.className = 'status';
+
+  const tracks = [...out.captureStream(30).getVideoTracks()];
+  if (hasAudio) {
+    ensureAudioGraph(); await actx.resume();
+    tracks.push(...streamDest.stream.getAudioTracks());
+    aud.pause(); aud.currentTime = start;
+    await new Promise(r => { aud.onseeked = () => { aud.onseeked = null; r(); }; setTimeout(r, 1500); });
+    const g = expGain.gain, n = actx.currentTime;
+    g.cancelScheduledValues(n);
+    if (S.fade) { g.setValueAtTime(0, n); g.linearRampToValueAtTime(1, n + .6); g.setValueAtTime(1, n + Math.max(.6, dur - .8)); g.linearRampToValueAtTime(0, n + dur); }
+    else g.setValueAtTime(1, n);
+  }
+  const mime = MIMES.find(m => MediaRecorder.isTypeSupported(m)) || '';
+  const rec = new MediaRecorder(new MediaStream(tracks), {mimeType: mime || undefined, videoBitsPerSecond: 14e6, audioBitsPerSecond: 256000});
+  const chunks = []; let cancelled = false;
+  rec.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
+  const done = new Promise(r => rec.onstop = r);
+  motionT = 0;
+  exp = {hasAudio, start, dur, t0: performance.now(),
+    finish() { if (rec.state !== 'inactive') rec.stop(); exp = null; },
+    cancel() { cancelled = true; this.finish(); }};
+  ctrls.forEach(el => { if (el.dataset.k === 'format') el.disabled = true; });
+  $('expBtn').textContent = '✖ בטל ייצוא';
+  rec.start(500);
+  if (hasAudio) { aud.onended = () => exp && exp.finish(); await aud.play(); exp && (exp.t0 = performance.now()); }
+  await done;
+  aud.pause(); aud.onended = null;
+  ctrls.forEach(el => el.disabled = false);
+  $('expBtn').textContent = '🎬 ייצא סרטון';
+  if (cancelled) { st.textContent = 'הייצוא בוטל'; $('expBar').style.width = '0'; return; }
+  const type = (mime || 'video/webm').split(';')[0], ext = type.includes('mp4') ? 'mp4' : 'webm';
+  const blob = new Blob(chunks, {type});
+  const slug = (S.title || 'song').toLowerCase().replace(/[^\w֐-׿]+/g, '-').replace(/^-|-$/g, '') || 'song';
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = `house-of-aria-${slug}-${S.format.replace(':','x')}.${ext}`;
+  document.body.appendChild(a); a.click(); a.remove();
+  $('expBar').style.width = '100%';
+  st.className = 'status ok';
+  st.textContent = `✓ הסרטון נשמר (${ext.toUpperCase()}, ${(blob.size / 1048576).toFixed(1)}MB)` + (ext === 'webm' ? '. אם צריך MP4, כדאי לייצא ב־Chrome או ב־Edge.' : '');
+}
+$('expBtn').onclick = exportVideo;
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden && exp) { $('expStatus').className = 'status bad'; $('expStatus').textContent = 'הלשונית מוסתרת, וזה פוגע בהקלטה. כדאי לחזור אליה.'; }
+});
+
+/* ---------- init ---------- */
+syncInputs();
+setFormat();
+drawBase();
+ensureFonts();
+requestAnimationFrame(render);
+})();
+</script>
+</body>
+</html>
