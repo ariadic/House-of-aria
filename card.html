@@ -62,14 +62,25 @@ input[type=color]{width:100%;height:34px;border:1px solid var(--line);border-rad
 .bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--a1),var(--a2))}
 .after{display:none;gap:8px;margin-top:10px}
 .after.show{display:flex}
+.tabs{display:none}
+/* phone: one fixed screen. Preview on top, tab strip, then only the chosen section scrolls */
 @media (max-width:900px){
-  header{padding:8px 12px}
-  header .sub{display:none}
-  .app{grid-template-columns:1fr;height:auto}
-  .stage{order:-1;padding:10px 12px;position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);border-bottom:1px solid var(--line);gap:8px;overflow:visible}
-  .stage.big #out{max-height:78vh}
-  .panel{border-left:0;padding:12px 12px 40px}
-  #out{max-height:42vh;border-radius:10px}
+  html,body{height:100%;overflow:hidden}
+  body{display:flex;flex-direction:column}
+  header{display:none}
+  .app{display:flex;flex-direction:column;flex:1;min-height:0;height:auto}
+  .stage{order:-2;flex:0 0 46%;min-height:0;padding:8px 12px 6px;gap:6px;justify-content:flex-start;overflow:hidden;transition:flex-basis .25s ease}
+  .stage.big{flex-basis:72%}
+  #out{flex:1;min-height:0;width:100%;height:100%;max-height:none;object-fit:contain;border-radius:0;box-shadow:none;background:transparent}
+  .player{flex:none}
+  .tabs{order:-1;display:flex;gap:6px;overflow-x:auto;padding:8px 12px;flex:none;background:var(--panel);border-top:1px solid var(--line);border-bottom:1px solid var(--line);scrollbar-width:none}
+  .tabs::-webkit-scrollbar{display:none}
+  .tab{flex:none;background:#0b0a10;border:1px solid var(--line);color:var(--muted);border-radius:999px;padding:8px 14px;font:inherit;font-size:13px;cursor:pointer;-webkit-tap-highlight-color:transparent}
+  .tab.on{background:linear-gradient(90deg,var(--a1),var(--a2));color:#fff;border-color:transparent;font-weight:700}
+  .panel{flex:1;min-height:0;overflow-y:auto;border-left:0;padding:14px 14px 28px;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+  .panel .card{display:none;margin:0;border:0;background:transparent;padding:0}
+  .panel .card.on{display:block}
+  .panel .card h3{display:none}
   input[type=text],input[type=number],select,textarea{font-size:16px}
   .btn{padding:10px 12px}
   input[type=range]{height:28px}
@@ -81,7 +92,8 @@ input[type=color]{width:100%;height:34px;border:1px solid var(--line);border-rad
 <body>
 <header><h1>ARIA SONG CARD</h1><span class="sub">כרטיס שיר תלת־ממדי שמרחף, עם ייצוא לסרטון</span><a href="index.html">← Visualizer 3D</a></header>
 <div class="app">
-<aside class="panel">
+<nav class="tabs" id="tabs" aria-label="הגדרות"></nav>
+<aside class="panel" id="panel">
 
   <div class="card">
     <h3><span class="n">1</span>קבצים</h3>
@@ -731,7 +743,7 @@ $('fPal').onchange = e => {
   const f = e.target.files[0]; e.target.value = ''; if (!f) return;
   const img = new Image(); img.onload = () => { palImg = img; buildPalette(img); }; img.src = URL.createObjectURL(f);
 };
-$('palFromCover').onclick = () => { if (coverImg) { palImg = null; buildPalette(coverImg); } else $('nImg').textContent = 'קודם צריך להעלות תמונה'; };
+$('palFromCover').onclick = () => { if (coverImg) { palImg = null; buildPalette(coverImg); } else $('swatches').innerHTML = '<div class="hint">קודם צריך להעלות תמונה לכרטיס בלשונית קבצים.</div>'; };
 $('palAuto').onclick = autoApply;
 
 /* ---------- controls binding ---------- */
@@ -761,6 +773,26 @@ for (const el of ctrls) {
   });
 }
 let paused = false;
+/* phone tabs: one settings section at a time */
+const sections = [...document.querySelectorAll('#panel > .card')], tabBar = $('tabs');
+function showTab(i) {
+  i = Math.max(0, Math.min(sections.length - 1, i | 0));
+  sections.forEach((c, j) => c.classList.toggle('on', j === i));
+  [...tabBar.children].forEach((b, j) => { b.classList.toggle('on', j === i); b.setAttribute('aria-selected', j === i); });
+  const b = tabBar.children[i];
+  if (b) tabBar.scrollLeft += (b.getBoundingClientRect().left + b.offsetWidth / 2) - (tabBar.getBoundingClientRect().left + tabBar.clientWidth / 2);
+  $('panel').scrollTop = 0;
+  try { localStorage.setItem('aria-card-tab', i); } catch (e) {}
+}
+sections.forEach((c, i) => {
+  const b = document.createElement('button');
+  b.type = 'button'; b.className = 'tab'; b.setAttribute('role', 'tab');
+  b.textContent = c.querySelector('h3').textContent.replace(/^\d+/, '').replace(/\(.*?\)/g, '').trim();
+  b.onclick = () => showTab(i);
+  tabBar.appendChild(b);
+});
+let firstTab = 0; try { firstTab = +localStorage.getItem('aria-card-tab') || 0; } catch (e) {}
+showTab(firstTab);
 $('sizeBtn').onclick = () => document.querySelector('.stage').classList.toggle('big');
 $('pauseBtn').onclick = () => { paused = !paused; $('pauseBtn').textContent = paused ? '▶ המשך תנועה' : '⏸ עצור תנועה'; };
 $('resetMotion').onclick = () => { Object.assign(S, MOTION_DEFAULTS); syncInputs(); save(); };
