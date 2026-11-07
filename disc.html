@@ -262,18 +262,18 @@ input[type=color]::-moz-color-swatch{border:0;border-radius:50%}
     <div class="group">
       <label class="row"><span class="grow">שוט</span><select data-k="shot">
         <option value="auto">רצף מלא, אוטומטי</option>
-        <option value="0">מלמעלה</option>
-        <option value="2">זווית נמוכה על הדיסק</option>
-        <option value="5">הציר והלוגו</option>
-        <option value="7">מתחת לדיסק</option>
+        <option value="1">מלמעלה, הדיסק מסתובב</option>
+        <option value="5">בתוך המכשיר, הלוגו יוצא מהציר</option>
+        <option value="8">כל הדיסק מלמטה</option>
+        <option value="14">תמונת הסיום</option>
       </select></label>
       <div class="slider"><div class="sl-top"><span>מהירות המצלמה</span><span class="v" data-for="speed"></span></div><input type="range" data-k="speed" min="0.3" max="2.5" step="0.05"></div>
-      <div class="slider"><div class="sl-top"><span>מהירות הסיבוב של הדיסק</span><span class="v" data-for="spin"></span></div><input type="range" data-k="spin" min="0" max="3" step="0.05"></div>
+      <div class="slider"><div class="sl-top"><span>מהירות הסיבוב של הדיסק</span><span class="v" data-for="spin"></span></div><input type="range" data-k="spin" min="0" max="2" step="0.05"></div>
       <div class="slider"><div class="sl-top"><span>תנודה של המצלמה</span><span class="v" data-for="sway"></span></div><input type="range" data-k="sway" min="0" max="1" step="0.01"></div>
       <div class="slider"><div class="sl-top"><span>תגובה למוזיקה</span><span class="v" data-for="react"></span></div><input type="range" data-k="react" min="0" max="1" step="0.01"></div>
       <label class="row"><span class="grow">קפיצה לשוט הבא על הביט</span><input class="switch" type="checkbox" data-k="cuts"></label>
     </div>
-    <p class="hint">ברצף המלא המצלמה מתחילה מלמעלה, יורדת לגובה הדיסק, הדיסק מתרומם והלוגו עולה מהציר באור, ואז הדיסק חוזר למקום. סיבוב אחד לוקח כ־16 שניות במהירות 1.</p>
+    <p class="hint">ברצף המלא הדיסק מאיץ כשרואים אותו מלמעלה, המצלמה גולשת מעבר לשפה ונכנסת לרווח שבין הדיסק למכשיר, אור והלוגו יוצאים מהציר והלוגו עולה דרך החור, רואים את כל הדיסק מלמטה, המצלמה צוללת לתוך החור, מסך שחור, והדיסק נעצר בתמונת סיום. הרצף לוקח כ־10 שניות במהירות 1, ותמונת הסיום מתחברת להתחלה.</p>
     <div class="btns">
       <button class="btn" type="button" id="pauseBtn">עצירת המצלמה</button>
       <button class="btn" type="button" id="resetMotion">איפוס</button>
@@ -370,7 +370,7 @@ input[type=color]::-moz-color-swatch{border:0;border-radius:50%}
 const $ = id => document.getElementById(id);
 
 /* ---------- state ---------- */
-const MOTION_DEFAULTS = {shot:'auto', speed:1, spin:.55, sway:0.4, react:0.4, cuts:false};
+const MOTION_DEFAULTS = {shot:'auto', speed:1, spin:1, sway:0.25, react:0.4, cuts:false};
 const DEFAULTS = Object.assign({
   bw:true, word:'NOVEMBER', top:'RELEASE PREVIEW', brand:'house of aria.', logo:'house of aria.', wordAlpha:0.6, logoSize:1,
   fontWord:'Syncopate', wWord:'700', fontSmall:'Inter', wSmall:'400', fontLogo:'Unbounded', wLogo:'700',
@@ -384,10 +384,10 @@ if (navigator.audioSession) { try { navigator.audioSession.type = 'playback'; } 
 const STORE = 'aria-disc-v1';
 let S = Object.assign({}, DEFAULTS);
 // lookV: when the default look changes, saved values for the look settings are dropped so the new look shows
-const LOOK_V = 2, LOOK_KEYS = ['bloom','halo','haze','deck','dof','mblur','rays','spin','spinBlur','light'];
+const LOOK_V = 3, LOOK_KEYS = ['bloom','halo','haze','deck','dof','mblur','rays','spin','spinBlur','light','speed','sway'];
 try { const saved = JSON.parse(localStorage.getItem(STORE) || 'null'); if (saved) { if (saved.lookV !== LOOK_V) LOOK_KEYS.forEach(k => delete saved[k]); Object.assign(S, saved); } } catch (e) {}
 S.lookV = LOOK_V;
-if (!['auto','0','2','5','7'].includes(String(S.shot))) S.shot = 'auto';
+if (!['auto','1','5','8','14'].includes(String(S.shot))) S.shot = 'auto';
 let saveTimer = 0;
 function save() { clearTimeout(saveTimer); saveTimer = setTimeout(() => { try { localStorage.setItem(STORE, JSON.stringify(S)); } catch (e) {} }, 300); }
 
@@ -578,7 +578,7 @@ function drawPrint() {
   printTex.needsUpdate = true;
 
   // a copy smeared around the centre, faded in on top while the disc spins fast
-  const b = blctx, N = 20, spread = .14;
+  const b = blctx, N = 28, spread = 1.0;
   b.clearRect(0, 0, BT, BT);
   for (let i = 0; i < N; i++) {
     b.save(); b.globalAlpha = 1 / (i + 1);
@@ -609,7 +609,8 @@ function drawLogo() {
   } else if (S.logo.trim()) {
     c.textAlign = 'center'; c.textBaseline = 'middle'; c.direction = isHeb(S.logo) ? 'rtl' : 'ltr';
     const px = fitFont(c, S.logo, S.fontLogo, S.wLogo, LH * .26, LW * .86);
-    c.fillStyle = S.logoCol; c.fillText(S.logo, LW / 2, LH / 2);
+    c.shadowColor = rgba(S.light, .75); c.shadowBlur = 40; c.fillStyle = S.logoCol; c.fillText(S.logo, LW / 2, LH / 2);
+    c.shadowBlur = 0; c.fillText(S.logo, LW / 2, LH / 2);
     drew = false;
   }
   if (drew && S.logoCol.toLowerCase() !== '#ffffff') {
@@ -641,7 +642,6 @@ const camera = new THREE.PerspectiveCamera(40, W / H, .03, 40);
     m.position.set(x, y, z); m.lookAt(0, 0, 0); env.add(m);
   };
   box(7, 7, 0, 9, 0, 1.6); box(12, 1.2, 7, 2, 1, 1.1); box(12, .8, -7, 1.5, -2, .6); box(3, 9, 1, 2, -8, .7); box(4, .6, -2, -3, 6, .3);
-  for (let i = 0; i < 7; i++) box(.25, 14, Math.cos(i * .9) * 8, -1 + i * .3, Math.sin(i * .9) * 8, .35 + (i % 3) * .25);
   box(14, 14, 0, -8, 0, .12);
   for (let i = 0; i < 6; i++) box(16, .35 + i * .08, (i - 2.5) * 1.6, -5, (i % 2 ? 1 : -1) * .8, .9 - i * .08); // strips below, so the mirror side shows streaks from under the disc
   const pm = new THREE.PMREMGenerator(renderer);
@@ -651,7 +651,7 @@ const camera = new THREE.PerspectiveCamera(40, W / H, .03, 40);
 // a soft spot from above: a pool of light on the disc, the rest of the player falls off into the dark
 const key = new THREE.SpotLight(0xffffff, .75, 0, .24, 1, 0); key.position.set(1.2, 7, 2.2); key.target.position.set(0, 0, 0); scene.add(key, key.target);
 scene.add(new THREE.AmbientLight(0xffffff, .06));
-const coreLight = new THREE.PointLight(0xffffff, 0, 3.5, 1.6); coreLight.position.set(0, .25, 0); scene.add(coreLight);
+const coreLight = new THREE.PointLight(0xffffff, 0, 1.2, 2); coreLight.position.set(0, -.03, .45); scene.add(coreLight);
 
 const DT = .02; // disc thickness; the disc radius is 1
 const printTex = new THREE.CanvasTexture(printC);
@@ -676,7 +676,9 @@ const rainC = document.createElement('canvas'); rainC.width = rainC.height = 102
   c.globalCompositeOperation = 'destination-out';
   c.beginPath(); c.arc(R, R, R * CLEAR, 0, Math.PI * 2); c.fill();
   c.globalCompositeOperation = 'source-over';
-  c.save(); c.translate(R, R); ring(c, R * HOLE, R * CLEAR); c.fillStyle = 'rgba(200,205,210,.25)'; c.fill('evenodd'); c.restore();
+  c.save(); c.translate(R, R); ring(c, R * HOLE, R * CLEAR); c.fillStyle = 'rgba(150,154,160,.92)'; c.fill('evenodd');
+  ring(c, R * (STACK - .012), R * (STACK + .012)); c.fillStyle = 'rgba(255,255,255,.7)'; c.fill('evenodd');
+  ring(c, R * (CLEAR - .014), R * CLEAR); c.fillStyle = 'rgba(230,232,236,.9)'; c.fill('evenodd'); c.restore();
 }
 const rainTex = new THREE.CanvasTexture(rainC); rainTex.encoding = THREE.sRGBEncoding;
 
@@ -699,19 +701,23 @@ spinner.add(top, topBlur, under, rim, rimIn);
 // the player under the disc: spindle, turntable, motor and a dark deck
 const metal = new THREE.MeshStandardMaterial({color: 0xa6a6a8, roughness: .22, metalness: .95});
 const rubber = new THREE.MeshStandardMaterial({color: 0x1a1a1a, roughness: .8, metalness: 0});
+const dimMetal = new THREE.MeshStandardMaterial({color: 0x4a4a4c, roughness: .45, metalness: .6, envMapIntensity: .2});
 const deckMat = new THREE.MeshStandardMaterial({color: S.deck, roughness: .72, metalness: .2, envMapIntensity: .06});
 const player = new THREE.Group(); scene.add(player);
 const hubSpin = new THREE.Group(); player.add(hubSpin);
 const add = (geo, mat, x, y, z, parent = player) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); parent.add(m); return m; };
-add(new THREE.CylinderGeometry(.17, .17, .022, 64), rubber, 0, -.021, 0, hubSpin);
+add(new THREE.CylinderGeometry(.15, .15, .012, 64), metal, 0, -.016, 0, hubSpin);
+add(new THREE.CylinderGeometry(.152, .152, .003, 64), rubber, 0, -.0105, 0, hubSpin);
+add(new THREE.CylinderGeometry(.09, .1, .012, 48), metal, 0, -.028, 0, hubSpin);
+for (let i = 0; i < 3; i++) add(new THREE.TorusGeometry(.12 - i * .012, .0025, 6, 64), metal, 0, -.022, 0, hubSpin).rotation.x = Math.PI / 2;
 add(new THREE.CylinderGeometry(.115, .118, .055, 64), metal, 0, .012, 0, hubSpin);
 add(new THREE.CylinderGeometry(.07, .08, .012, 48), metal, 0, .044, 0, hubSpin);
 add(new THREE.CylinderGeometry(.03, .03, .02, 24), rubber, 0, .05, 0, hubSpin);
-for (let i = 0; i < 3; i++) { const a = i / 3 * Math.PI * 2; add(new THREE.SphereGeometry(.016, 16, 12), metal, Math.cos(a) * .108, .025, Math.sin(a) * .108, hubSpin); }
-add(new THREE.CylinderGeometry(.13, .14, .12, 48), deckMat, 0, -.09, 0);
+add(new THREE.CylinderGeometry(.045, .05, .1, 32), dimMetal, 0, -.084, 0);
+add(new THREE.CylinderGeometry(.11, .13, .025, 48), metal, 0, -.146, 0);
+add(new THREE.CylinderGeometry(.16, .18, .02, 64), dimMetal, 0, -.168, 0);
 add(new THREE.BoxGeometry(1.1, .05, .8), deckMat, .25, -.175, 0);
 add(new THREE.BoxGeometry(8, .2, 8), deckMat, 0, -.3, 0);
-const dimMetal = new THREE.MeshStandardMaterial({color: 0x4a4a4c, roughness: .45, metalness: .6, envMapIntensity: .2});
 for (const z of [-.24, .24]) { const r = add(new THREE.CylinderGeometry(.012, .012, .75, 16), dimMetal, .55, -.12, z); r.rotation.z = Math.PI / 2; }
 add(new THREE.BoxGeometry(.22, .05, .32), deckMat, .62, -.11, 0);
 add(new THREE.CylinderGeometry(.035, .035, .012, 24), new THREE.MeshStandardMaterial({color: 0x050510, roughness: .05, metalness: .2}), .62, -.08, 0);
@@ -727,7 +733,6 @@ add(new THREE.BoxGeometry(.9, .04, .5), deckMat, -.2, -.18, .55);
 add(new THREE.BoxGeometry(.7, .03, .35), deckMat, -.2, -.155, .55);
 add(new THREE.BoxGeometry(.5, .05, 1.1), deckMat, -.75, -.175, -.2);
 add(new THREE.BoxGeometry(1.4, .03, .25), deckMat, .1, -.185, -.62);
-for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2 + .3; const m = add(new THREE.BoxGeometry(.03, .04, .015), metal, Math.cos(a) * .095, .045, Math.sin(a) * .095, hubSpin); m.rotation.y = -a; }
 add(new THREE.TorusGeometry(.1, .006, 8, 64), metal, 0, .04, 0, hubSpin).rotation.x = Math.PI / 2;
 
 // halo under the disc, seen from above
@@ -738,7 +743,7 @@ halo.renderOrder = 0;
 
 // the logo that rises out of the spindle
 // a stack of copies behind the face, darker toward the back, reads as solid extruded letters
-const logoMat = new THREE.MeshBasicMaterial({map: logoTex, transparent: true, alphaTest: .35, opacity: 0, fog: false});
+const logoMat = new THREE.MeshBasicMaterial({map: logoTex, color: new THREE.Color(3.2, 3.2, 3.2), transparent: true, alphaTest: .12, opacity: 0, fog: false, blending: THREE.AdditiveBlending});
 const logoMesh = new THREE.Group(); scene.add(logoMesh);
 const logoGeo = new THREE.PlaneGeometry(1, .5), EXTRUDE = 0, logoSides = [];
 for (let i = EXTRUDE; i >= 1; i--) {
@@ -746,7 +751,17 @@ for (let i = EXTRUDE; i >= 1; i--) {
   const m = new THREE.Mesh(logoGeo, new THREE.MeshBasicMaterial({map: logoTex, transparent: true, alphaTest: .35, opacity: 0, fog: false, color: new THREE.Color(v, v, v * 1.04)}));
   m.position.z = -i * .0042; m.renderOrder = 6; logoMesh.add(m); logoSides.push(m);
 }
-const logoFace = new THREE.Mesh(logoGeo, logoMat); logoFace.renderOrder = 7; logoMesh.add(logoFace);
+const logoFace = new THREE.Mesh(logoGeo, logoMat); logoFace.renderOrder = 9; logoMesh.add(logoFace);
+// the column of light that carries the logo up through the centre hole
+const beamMat = new THREE.ShaderMaterial({
+  uniforms: {uAmt: {value: 0}, uCol: {value: new THREE.Color(1, 1, 1)}},
+  vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+  fragmentShader: `uniform float uAmt; uniform vec3 uCol; varying vec2 vUv;
+    void main(){ float a = vUv.x * 6.2831853; float s = 0.65 + 0.35 * pow(0.5 + 0.5 * sin(a * 11.0), 4.0);
+      gl_FragColor = vec4(uCol * s * pow(1.0 - vUv.y, 1.4) * uAmt, 1.0); }`,
+  transparent: true, depthWrite: false, depthTest: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide
+});
+const beam = new THREE.Mesh(new THREE.CylinderGeometry(.13, .1, 1, 48, 1, true), beamMat); beam.renderOrder = 8; scene.add(beam);
 const flare = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 1.6), new THREE.MeshBasicMaterial({map: soft([[0, .9], [.15, .45], [.5, .08], [1, 0]]), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0, toneMapped: false, fog: false}));
 flare.renderOrder = 5; scene.add(flare);
 
@@ -762,7 +777,7 @@ const raysMat = new THREE.ShaderMaterial({
       float s = 0.5 + 0.5 * sin(a * 9.0 + uTime * 0.35) * sin(a * 5.0 - uTime * 0.21);
       s = pow(s, 3.0) * 0.8 + pow(0.5 + 0.5 * sin(a * 23.0 + uTime * 0.6), 6.0) * 0.5 + 0.12;
       float y = vUv.y; float g = pow(1.0 - y, 2.2) * smoothstep(0.0, 0.04, y);
-      float edge = smoothstep(0.0, 0.6, vFace);
+      float edge = 0.15 + 0.85 * smoothstep(0.0, 0.6, vFace);
       gl_FragColor = vec4(uCol * s * g * edge * uAmt, 1.0); }`,
   transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide
 });
@@ -771,22 +786,32 @@ rays.position.y = .06 + 1; rays.renderOrder = 4; scene.add(rays);
 
 /* ---------- camera path ---------- */
 // keyframes in a 16 s loop, framed for 9:16 and pulled closer for wider frames
-// ap = lens aperture for depth of field, haze = how much the light fills the air
+// One take, 9.6 s at speed 1, built from the reference: the disc spins up seen from above, the camera
+// slides over the rim and into the gap between the disc and the drive (the disc never leaves the
+// spindle), light and the logo come out of the spindle, the logo rises through the centre hole,
+// the whole disc from below, a dive into the hole, black, then the disc winds down to a still end frame.
+// The end frame is the opening frame, so the take loops without a seam.
+// spin = turns per second, logo = how visible, ly = logo height, deck = drive shown, blk = fade to black,
+// ap = lens aperture, haze = light in the air, ex = exposure, cut = hard cut into this keyframe
 const KF = [
-  {t:0,    p:[0, 5.6, .001], tg:[0, 0, 0],    up:[0, 0, -1], fov:40, lift:0,   logo:0,  rays:0,  halo:1,  ap:.25, haze:0, ex:1},
-  {t:2.2,  p:[.45, 3.0, 1.2],tg:[0, 0, 0],    up:[0, 0, -1], fov:40, lift:0,   logo:0,  rays:0,  halo:.6, ap:.6,  haze:0, ex:1},
-  // cut: the camera is down on the disc, skimming the printed surface toward the hub
-  {t:3.6,  p:[.78, .05, .28],tg:[0, -.04, 0], up:[0, 1, 0],  fov:70, lift:0,   logo:0,  rays:0,  halo:0,  ap:1.6, haze:0,  cut:true, ex:0.5},
-  {t:5.0,  p:[.35, .03, 1.45],tg:[0, .0, 0],  up:[0, 1, 0],  fov:62, lift:.05, logo:0,  rays:0,  halo:0,  ap:1.4, haze:.2, ex:0.7},
-  // between the deck and the disc overhead
-  {t:6.2,  p:[.04,-.08, 1.6], tg:[0, .05, 0],  up:[0, 1, 0],  fov:62, lift:.45, logo:.6, rays:1,  halo:0,  ap:1,   haze:1, ex:0.85},
-  {t:9.2,  p:[0, -.08, .95], tg:[0, .07, 0],  up:[0, 1, 0],  fov:62, lift:.45, logo:1,  rays:1,  halo:0,  ap:1,   haze:1, ex:0.85},
-  {t:10.6, p:[0, -.12, .55], tg:[0, .75, 0],  up:[0, 1, 0],  fov:74, lift:.45, logo:1,  rays:.6, halo:0,  ap:.9,  haze:.8, ex:0.85},
-  // cut: the whole disc straight overhead, then it drops back onto the spindle
-  {t:12.0, p:[0, -.08, .3],  tg:[0, 2.0, 0],  up:[0, 0, -1], fov:70, lift:2.0, logo:0,  rays:0,  halo:0,  ap:.5,  haze:.2, cut:true, ex:0.9},
-  {t:13.8, p:[1.9, .55, 2.3],tg:[0, 0, 0],    up:[0, 1, 0],  fov:40, lift:0,   logo:0,  rays:0,  halo:.3, ap:.9,  haze:0, ex:1},
+  {t:0,    p:[0, 5.2, .001], tg:[0, 0, 0],      up:[0, 0, -1],    fov:40, spin:1,  logo:0, ly:-.05, rays:0,  halo:.5, ap:.25, haze:0,  ex:1,   deck:1, blk:0},
+  {t:1.25, p:[0, 3.9, .001], tg:[0, 0, 0],      up:[.35, 0, -1],  fov:40, spin:6,  logo:0, ly:-.05, rays:0,  halo:.3, ap:.3,  haze:0,  ex:1,   deck:1, blk:0},
+  {t:1.55, p:[0, .32, 1.9],  tg:[0, 0, .15],    up:[0, 1, 0],     fov:50, spin:6,  logo:0, ly:-.05, rays:0,  halo:0,  ap:1.3, haze:.1, ex:.6,  deck:1, blk:0},
+  {t:1.8,  p:[0, -.1, 1.3],  tg:[0, -.08, 0],   up:[0, 1, 0],     fov:62, spin:6,  logo:0, ly:-.05, rays:.2, halo:0,  ap:1,   haze:.6, ex:.65,  deck:1, blk:0},
+  {t:3.3,  p:[0, -.15, .72], tg:[0, -.05, 0],   up:[0, 1, 0],     fov:62, spin:6,  logo:.5,ly:-.04, rays:.7, halo:0,  ap:1,   haze:1,  ex:.5,  deck:1, blk:0},
+  {t:4.5,  p:[0, -.15, .55], tg:[0, -.04, 0],   up:[0, 1, 0],     fov:62, spin:6,  logo:1, ly:-.032,rays:1,  halo:0,  ap:1,   haze:1,  ex:.5, deck:1, blk:0},
+  {t:4.72, p:[0, -.07, 1.14],tg:[0, -.02, 0],   up:[0, 1, 0],     fov:50, spin:6,  logo:1, ly:-.01, rays:.6,  halo:0,  ap:.9,  haze:.6, ex:.6,  deck:1, blk:0},
+  {t:4.95, p:[0, .1, 1.05],  tg:[0, .09, 0],    up:[0, 1, 0],     fov:24, spin:6,  logo:1, ly:.2,   rays:.4,  halo:0,  ap:.7,  haze:.3, ex:.7,  deck:1, blk:0},
+  {t:5.1,  p:[0, -2.05, .001],tg:[0, 0, 0],     up:[0, 0, -1],    fov:45, spin:6,  logo:0, ly:.22,  rays:0,  halo:0,  ap:.5,  haze:0,  ex:2, deck:0, blk:0, cut:true},
+  {t:5.75, p:[1.5, -1.1, 1.3],tg:[0, 0, 0],     up:[0, 1, 0],     fov:45, spin:6,  logo:0, ly:.22,  rays:0,  halo:0,  ap:.8,  haze:0,  ex:.9,  deck:0, blk:0},
+  {t:5.95, p:[0, .12, .62],  tg:[0, 0, 0],      up:[0, 1, 0],     fov:55, spin:4,  logo:0, ly:.22,  rays:0,  halo:0,  ap:1.2, haze:0,  ex:.8,  deck:0, blk:0, cut:true},
+  {t:6.3,  p:[0, .2, .02],   tg:[0, 0, 0],      up:[0, 0, -1],    fov:40, spin:3,  logo:0, ly:.22,  rays:0,  halo:0,  ap:.8,  haze:0,  ex:.8,  deck:0, blk:1},
+  {t:6.95, p:[0, .5, 2.3],   tg:[0, -.05, 0],   up:[0, 1, 0],     fov:42, spin:2,  logo:0, ly:-.05, rays:0,  halo:0,  ap:.9,  haze:0,  ex:.9,  deck:1, blk:1, cut:true},
+  {t:7.35, p:[0, 1.4, 2.3],  tg:[0, -.1, 0],    up:[0, 1, 0],     fov:42, spin:1.2,logo:0, ly:-.05, rays:0,  halo:.4, ap:.7,  haze:0,  ex:.95, deck:1, blk:0},
+  {t:7.95, p:[0, 5.2, .001], tg:[0, 0, 0],      up:[0, 0, -1],    fov:40, spin:0,  logo:0, ly:-.05, rays:0,  halo:1,  ap:.25, haze:0,  ex:1,   deck:1, blk:0},
+  {t:9.2,  p:[0, 5.2, .001], tg:[0, 0, 0],      up:[0, 0, -1],    fov:40, spin:0,  logo:0, ly:-.05, rays:0,  halo:1,  ap:.25, haze:0,  ex:1,   deck:1, blk:0},
 ];
-const LOOP = 16;
+const LOOP = 9.6;
 const V = (a) => new THREE.Vector3(...a);
 KF.forEach(k => { k.P = V(k.p); k.T = V(k.tg); k.U = V(k.up); });
 const kf = i => { const n = KF.length, j = ((i % n) + n) % n, wrap = Math.floor(i / n); return {k: KF[j], t: KF[j].t + wrap * LOOP}; };
@@ -794,19 +819,19 @@ const cr = (a, b, c, d, u) => { const u2 = u * u, u3 = u2 * u; return .5 * ((2 *
 const crV = (A, B, C, D, u, o) => o.set(cr(A.x, B.x, C.x, D.x, u), cr(A.y, B.y, C.y, D.y, u), cr(A.z, B.z, C.z, D.z, u));
 // speed ramps: slow into and out of each keyframe, fast through the middle of a move
 const ease = u => { const c = u < .5 ? 16 * u ** 5 : 1 - Math.pow(-2 * u + 2, 5) / 2; return u * .12 + c * .88; };
-const cam = {P: new THREE.Vector3(), T: new THREE.Vector3(), U: new THREE.Vector3(), fov: 40, lift: 0, logo: 0, rays: 0, halo: 0, ap: 0, haze: 0, ex: 1};
+const cam = {P: new THREE.Vector3(), T: new THREE.Vector3(), U: new THREE.Vector3(), fov: 40, spin: 1, logo: 0, ly: 0, rays: 0, halo: 0, ap: 0, haze: 0, ex: 1, deck: 1, blk: 0};
 function samplePath(ct) {
   ct = ((ct % LOOP) + LOOP) % LOOP;
   let i = KF.length - 1;
   for (let j = 0; j < KF.length; j++) if (KF[j].t <= ct) i = j;
   const c = kf(i + 1), b = kf(i).k, C = c.k;
-  // a move into a cut keyframe is a hard cut: the camera is already there and holds with a slow drift
-  const u = C.cut ? 1 : ease((ct - b.t) / (c.t - b.t));
+  // a cut keyframe is reached by a hard cut: hold the previous shot, then jump at the cut's time
+  const u = C.cut ? 0 : ease((ct - b.t) / (c.t - b.t));
   const a = b.cut ? b : kf(i - 1).k, d = kf(i + 2).k.cut ? C : kf(i + 2).k;
   crV(a.P, b.P, C.P, d.P, u, cam.P);
   crV(a.T, b.T, C.T, d.T, u, cam.T);
   cam.U.copy(b.U).lerp(C.U, u).normalize();
-  for (const k of ['fov', 'lift', 'logo', 'rays', 'halo', 'ap', 'haze', 'ex']) cam[k] = b[k] + (C[k] - b[k]) * u;
+  for (const k of ['fov', 'spin', 'logo', 'ly', 'rays', 'halo', 'ap', 'haze', 'ex', 'deck', 'blk']) cam[k] = b[k] + (C[k] - b[k]) * u;
   return i;
 }
 
@@ -822,7 +847,8 @@ function makeTargets() {
   rtScene = new THREE.WebGLRenderTarget(W, H, {type: hdr, minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter});
   rtScene.depthTexture = new THREE.DepthTexture(W, H);
   rtScene.depthTexture.type = gl2 ? THREE.UnsignedIntType : THREE.UnsignedShortType;
-  rtDof = new THREE.WebGLRenderTarget(W, H, {type: hdr, minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, depthBuffer: false});
+  rtDof = new THREE.WebGLRenderTarget(W, H, {type: hdr, minFilter: gl2 ? THREE.LinearMipmapLinearFilter : THREE.LinearFilter, magFilter: THREE.LinearFilter, depthBuffer: false});
+  rtDof.texture.generateMipmaps = gl2;
 }
 const quadVS = 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }';
 const dofMat = new THREE.ShaderMaterial({
@@ -840,7 +866,7 @@ const dofMat = new THREE.ShaderMaterial({
           vec2 uv2 = vUv + vec2(cos(a) / uAspect, sin(a)) * r * c;
           float d2 = dist(uv2), c2 = coc(d2);
           float w = d2 < d ? smoothstep(r * c * 0.5, r * c, c2) : 1.0;
-          acc += texture2D(tColor, uv2).rgb * w; ws += w;
+          acc += min(texture2D(tColor, uv2).rgb, vec3(3.0)) * w; ws += w;
         }
       }
       gl_FragColor = vec4(acc / ws, 1.0);
@@ -848,30 +874,31 @@ const dofMat = new THREE.ShaderMaterial({
   depthTest: false, depthWrite: false
 });
 const gradeMat = new THREE.ShaderMaterial({
-  uniforms: {tColor: {value: null}, uRadial: {value: 0}, uExp: {value: 1}, uSat: {value: .1}, uLift: {value: 0}, uCon: {value: .4}, uSun: {value: new THREE.Vector2(.5, .5)}, uShaft: {value: 0}, uLiftCol: {value: new THREE.Color(1, 1, 1)}},
+  uniforms: {tColor: {value: null}, uRadial: {value: 0}, uExp: {value: 1}, uSat: {value: .1}, uLift: {value: 0}, uCon: {value: .4}, uSun: {value: new THREE.Vector2(.5, .5)}, uShaft: {value: 0}, uBlack: {value: 0}, uLiftCol: {value: new THREE.Color(1, 1, 1)}},
   vertexShader: quadVS,
-  fragmentShader: `uniform sampler2D tColor; uniform vec2 uSun; uniform float uShaft; uniform float uRadial, uExp, uSat, uLift, uCon; uniform vec3 uLiftCol; varying vec2 vUv;
+  fragmentShader: `uniform sampler2D tColor; uniform vec2 uSun; uniform float uShaft; uniform float uBlack; uniform float uRadial, uExp, uSat, uLift, uCon; uniform vec3 uLiftCol; varying vec2 vUv;
     void main(){
       vec2 dir = vUv - 0.5; vec3 acc = vec3(0.0);
-      for (int i = 0; i < 14; i++) { float t = float(i) / 13.0; acc += texture2D(tColor, 0.5 + dir * (1.0 - uRadial * t * (0.25 + length(dir)))).rgb; }
+      for (int i = 0; i < 14; i++) { float t = float(i) / 13.0; acc += texture2D(tColor, 0.5 + dir * (1.0 - uRadial * t * (0.25 + length(dir))), -8.0).rgb; }
       acc /= 14.0;
       // light shafts: march toward the light on screen and gather what is bright on the way,
       // so the logo and the lit spindle throw streaks out across the frame
       if (uShaft > 0.001) {
-        vec2 st = (vUv - uSun) / 32.0, p = vUv; float decay = 1.0; vec3 sh = vec3(0.0);
+        float j = fract(sin(dot(vUv, vec2(12.9898, 78.233))) * 43758.5453);
+        vec2 st = (vUv - uSun) / 32.0, p = vUv - st * j; float decay = 1.0; vec3 sh = vec3(0.0);
         for (int i = 0; i < 32; i++) {
-          p -= st; vec3 c = texture2D(tColor, p).rgb;
-          float b = max(dot(c, vec3(0.2126, 0.7152, 0.0722)) - 0.45, 0.0);
+          p -= st; vec3 c = texture2D(tColor, p, 4.5).rgb;
+          float b = max(dot(c, vec3(0.2126, 0.7152, 0.0722)) - 0.9, 0.0);
           sh += c * b * decay; decay *= 0.965;
         }
-        acc += sh * uShaft / 32.0 * 4.0;
+        acc += sh * uShaft / 32.0 * 2.4;
       }
       vec3 x = acc * uExp;
       x = clamp((x * (2.51 * x + 0.03)) / (x * (2.43 * x + 0.59) + 0.14), 0.0, 1.0);
       float l = dot(x, vec3(0.2126, 0.7152, 0.0722)); x = mix(vec3(l), x, uSat);
       x = mix(x, x * x * (3.0 - 2.0 * x), uCon);
       x = x + uLiftCol * uLift * (1.0 - x);
-      gl_FragColor = vec4(pow(x, vec3(1.0 / 2.2)), 1.0);
+      gl_FragColor = vec4(pow(x, vec3(1.0 / 2.2)) * (1.0 - uBlack), 1.0);
     }`,
   depthTest: false, depthWrite: false
 });
@@ -909,6 +936,7 @@ function setFormat(scale = PREVIEW_SCALE) {
 function applyColors() {
   deckMat.color.copy(lin(S.deck));
   raysMat.uniforms.uCol.value.copy(lin(S.light));
+  beamMat.uniforms.uCol.value.copy(lin(S.light));
   coreLight.color.copy(lin(S.light));
   haloMat.color.copy(lin(S.light));
   flare.material.color.copy(lin(S.light));
@@ -1078,6 +1106,8 @@ $('resetMotion').onclick = () => { Object.assign(S, MOTION_DEFAULTS); syncInputs
 let pathT = 0, swayT = 0, spinA = 0, last = performance.now(), exp = null, lastCut = 0;
 const tmpV = new THREE.Vector3(), prevP = new THREE.Vector3(), hazeCol = new THREE.Color(), tmpC = new THREE.Color();
 let radial = 0, lastSeg = -1; const sunV = new THREE.Vector3();
+// for checking a moment of the take from the console: __discSeek(4.5)
+window.__discSeek = t => { pathT = +t || 0; fresh = true; };
 function render(now) {
   const dt = Math.min(.05, (now - last) / 1000); last = now;
   readPulse(dt);
@@ -1095,7 +1125,7 @@ function render(now) {
     fresh = true;
   }
   const seg = samplePath(auto ? pathT : KF[+S.shot || 0].t);
-  if (seg !== lastSeg) { if (KF[(seg + 1) % KF.length].cut) fresh = true; lastSeg = seg; }
+  if (seg !== lastSeg) { if (KF[seg].cut) fresh = true; lastSeg = seg; }
   // wider frames fit the disc from closer; far shots get the full pull-in, close ones only a little
   const fit = .5625 / Math.min(W / H, 1), d0 = cam.P.distanceTo(cam.T);
   cam.P.sub(cam.T).multiplyScalar(1 + (fit - 1) * Math.min(1, d0 / 2.5)).add(cam.T);
@@ -1118,35 +1148,43 @@ function render(now) {
   scene.fog.near = (dist + .6) * (1 - Math.min(1, hz) * .6); scene.fog.far = dist + 6 - Math.min(1, hz) * 2.5;
   const camSpeed = prevP.distanceTo(cam.P) / Math.max(dt, 1e-3) / Math.max(.3, dist); prevP.copy(cam.P);
 
-  // disc: spin, wobble and lift
-  const spinRate = S.spin * Math.PI * 2 * (1 + beat * .5);
-  if (moving || !paused) spinA += dt * spinRate;
+  // disc: stays on the spindle; spins up, holds, winds down. The smear fades in with the speed
+  const turns = Math.max(0, cam.spin) * S.spin * (1 + beat * .25);
+  if (moving) spinA += dt * turns * Math.PI * 2;
   spinner.rotation.y = -spinA;
   hubSpin.rotation.y = -spinA;
-  discGroup.position.y = cam.lift + Math.sin(swayT * 1.1) * .01 * Math.min(1, cam.lift * 2);
-  discGroup.rotation.set(Math.sin(swayT * 1.3) * .012 + cam.lift * .05, 0, Math.cos(swayT * 1.1) * .01);
-  blurMat.opacity = Math.min(.8, S.spinBlur * Math.min(1, S.spin / .8) * .75);
+  discGroup.position.y = 0;
+  discGroup.rotation.set(Math.sin(swayT * 7) * .002 * Math.min(1, turns / 3), 0, Math.cos(swayT * 6) * .002 * Math.min(1, turns / 3));
+  blurMat.opacity = Math.min(1, S.spinBlur * Math.max(0, Math.min(1, (turns - .8) / 3.5)));
   printMat.opacity = 1;
+  player.visible = cam.deck > .5;
 
   haloMat.opacity = cam.halo * S.halo * (.3 + beat * .25);
   halo.scale.setScalar(1 + beat * .05);
   const r = cam.rays * S.rays;
-  raysMat.uniforms.uAmt.value = r * (.6 + beat * .4);
+  raysMat.uniforms.uAmt.value = r * (.3 + beat * .3);
   raysMat.uniforms.uTime.value = swayT;
-  rays.visible = r > .002;
-  const rh = Math.max(.05, discGroup.position.y - .075);
-  rays.scale.set(1, rh / 2, 1); rays.position.y = .06 + rh / 2;
-  coreLight.intensity = r * (.6 + beat * .8);
+  rays.visible = false; // the light-shaft pass draws the rays; the cone broke up when seen edge-on
+  // in the gap the rays fan from the spindle out along the underside of the disc
+  const rh = .1;
+  rays.scale.set(.6, rh / 2, .6); rays.position.y = -.11 + rh / 2;
+  coreLight.intensity = 0; // its pinpoint highlight on the mirror side became a dotted bokeh
 
-  const L = cam.logo;
-  const ly = .075 + L * .14 + Math.sin(swayT * .9) * .008 * L;
-  logoMesh.position.set(0, ly, 0);
+  const L = S.logoRise || !logoImg ? cam.logo : 0;
+  const ly = cam.ly + Math.sin(swayT * .9) * .004 * L;
+  logoMesh.position.set(0, ly, ly < -.012 ? .24 : .06);
+  // above the disc the logo and its beam are seen through it, as in the reference
+  logoMat.depthTest = !(ly > -.012 && camera.position.y < 0);
+  const bh = Math.max(0, ly + .01);
+  beam.visible = bh > .02 && L > .05;
+  beam.scale.set(1, bh, 1); beam.position.set(0, bh / 2 - .005, .02);
+  beamMat.uniforms.uAmt.value = L * Math.max(.5, cam.rays) * S.rays * .14;
   logoMesh.rotation.set(-.08, Math.atan2(camera.position.x, camera.position.z), 0, 'YXZ');
   // keep the logo inside the frame: at most 80% of the visible width at its distance
   const visW = 2 * camera.position.distanceTo(logoMesh.position) * Math.tan(camera.fov * Math.PI / 360) * camera.aspect;
-  const lw = Math.min(.55 * S.logoSize, visW * .7 * Math.min(1, S.logoSize));
-  logoMesh.scale.setScalar(lw * (.55 + .45 * L) * (1 + beat * .04));
-  logoMat.opacity = Math.min(.82, L * 1.1); for (const m of logoSides) m.material.opacity = logoMat.opacity;
+  const lw = Math.min(.5 * S.logoSize, visW * .86 * Math.min(1, S.logoSize));
+  logoMesh.scale.setScalar(lw * (.85 + .15 * L) * (1 + beat * .04));
+  logoMat.opacity = Math.min(1, L) * (ly < 0 ? .45 : .55);
   logoMesh.visible = L > .003;
   flare.position.set(0, ly, 0); flare.quaternion.copy(camera.quaternion);
   flare.material.opacity = 0;
@@ -1154,7 +1192,8 @@ function render(now) {
 
   renderer.setRenderTarget(rtScene); renderer.render(scene, camera);
   // focus on the logo while it is up, otherwise on the point the camera looks at
-  const focusD = L > .3 ? camera.position.distanceTo(logoMesh.position) : camera.position.distanceTo(tmpV.set(0, discGroup.position.y, 0));
+  // focus on the logo in the gap; once it rises through the hole, on the hole
+  const focusD = L > .3 ? camera.position.distanceTo(logoMesh.position) : camera.position.distanceTo(cam.T);
   dofMat.uniforms.tColor.value = rtScene.texture; dofMat.uniforms.tDepth.value = rtScene.depthTexture;
   dofMat.uniforms.uFocus.value = focusD; dofMat.uniforms.uAp.value = cam.ap * S.dof * .045;
   dofMat.uniforms.uMax.value = .024; dofMat.uniforms.uAspect.value = W / H;
@@ -1166,10 +1205,11 @@ function render(now) {
   gradeMat.uniforms.uSat.value = S.sat; gradeMat.uniforms.uExp.value = .85 * cam.ex;
   gradeMat.uniforms.uLift.value = hz * .012; gradeMat.uniforms.uLiftCol.value.copy(lin(S.light));
   // the shafts come from the logo while it is up, otherwise from the top of the spindle
-  sunV.set(0, L > .3 ? logoMesh.position.y : .06, 0).project(camera);
+  sunV.copy(logoMesh.position).project(camera);
   const sunOn = sunV.z < 1 && Math.abs(sunV.x) < 1.6 && Math.abs(sunV.y) < 1.6;
   gradeMat.uniforms.uSun.value.set(sunV.x * .5 + .5, sunV.y * .5 + .5);
-  gradeMat.uniforms.uShaft.value = sunOn ? r * (.9 + beat * .8) : 0;
+  gradeMat.uniforms.uShaft.value = sunOn && L > .05 ? r * (.9 + beat * .8) : 0;
+  gradeMat.uniforms.uBlack.value = Math.min(1, Math.max(0, cam.blk));
   quad.material = gradeMat; renderer.setRenderTarget(null); renderer.render(postScene, postCam);
 
   // camera trail: blend the new frame over the previous ones
