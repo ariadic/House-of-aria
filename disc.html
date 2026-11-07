@@ -1,0 +1,1125 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aria Disc 3D</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;700;900&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+/* Layout: a black stage for the card, and an inspector of grouped lists (iOS Settings style).
+   Phone: one fixed screen, stage on top, a text tab strip, one group of settings scrolling below. */
+:root{
+  color-scheme:dark;
+  --bg:#000;
+  --grouped:#1c1c1e;
+  --fill:#2c2c2e;
+  --fill2:#3a3a3c;
+  --sep:rgba(84,84,88,.6);
+  --label:#fff;
+  --label2:rgba(235,235,245,.6);
+  --label3:rgba(235,235,245,.3);
+  --accent:#ffd60a;
+  --green:#30d158;
+  --red:#ff453a;
+  --track:rgba(120,120,128,.36);
+  --ui:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Hebrew","Helvetica Neue",Heebo,system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden}
+body{background:var(--bg);color:var(--label);font:400 15px/1.35 var(--ui);-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.app{display:grid;grid-template-columns:380px minmax(0,1fr);height:100%}
+.stage{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:24px;min-width:0;min-height:0}
+#out{display:block;max-width:100%;max-height:calc(100% - 64px);border-radius:16px;background:#000}
+.panel{order:-1;overflow-y:auto;background:var(--bg);border-left:.5px solid var(--sep);padding:8px 16px 40px;min-height:0}
+.large-title{font-size:30px;font-weight:700;letter-spacing:-.4px;margin:18px 4px 0}
+.large-sub{color:var(--label2);font-size:14px;margin:4px 4px 0}
+.tabs{display:none}
+
+/* grouped lists */
+.panel h2{font-size:13px;font-weight:400;color:var(--label2);margin:26px 16px 7px}
+.group{background:var(--grouped);border-radius:12px;overflow:hidden}
+.group+.group{margin-top:14px}
+.group>*{position:relative}
+.group>*+*::after{content:"";position:absolute;top:0;left:0;right:16px;height:.5px;background:var(--sep);pointer-events:none}
+.row{display:flex;align-items:center;gap:12px;min-height:46px;padding:7px 16px;margin:0;font-size:16px;color:var(--label);background:none;border:0;width:100%;text-align:right;cursor:default}
+.row>.rt{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.row>.grow{flex:1;min-width:0}
+label.row,button.row{cursor:pointer}
+label.row:active,button.row:active{background:var(--fill)}
+.row.action{justify-content:center;color:var(--accent)}
+.row.action:disabled{color:var(--label3);cursor:default;background:none}
+.fname{font-size:13px;color:var(--label2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fname.bad{color:var(--red);white-space:normal}
+.thumb{width:40px;height:40px;border-radius:8px;background:var(--fill) center/cover no-repeat;flex:none;display:grid;place-items:center;color:var(--label2)}
+.thumb svg{width:20px;height:20px}
+.chev{width:8px;height:13px;flex:none;color:var(--label3)}
+.vh{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;clip:rect(0 0 0 0);pointer-events:none}
+
+/* fields */
+.field{display:block;padding:10px 16px}
+.field>label,.field>.lab{display:block;font-size:13px;color:var(--label2);margin-bottom:3px}
+.field input,.field textarea{width:100%;background:transparent;border:0;padding:2px 0;font-size:17px;color:var(--label);outline:none}
+.field textarea{resize:none;min-height:48px;line-height:1.3}
+.field input::placeholder{color:var(--label3)}
+select{appearance:none;-webkit-appearance:none;background:transparent url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='16' viewBox='0 0 10 16'%3E%3Cpath d='M2 6l3-3 3 3M2 10l3 3 3-3' fill='none' stroke='%23ebebf599' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat left center;border:0;color:var(--label2);font-size:16px;padding:4px 0 4px 18px;text-align:left;direction:rtl;cursor:pointer;max-width:62%}
+select option{background:var(--grouped);color:var(--label)}
+.row input[type=number]{width:72px;background:var(--fill);border:0;border-radius:8px;padding:6px 8px;text-align:center;font-size:16px;color:var(--label);font-variant-numeric:tabular-nums}
+.unit{color:var(--label2);font-size:14px}
+.seg-row{padding:12px 16px}
+.seg-label{font-size:16px;margin-bottom:10px}
+.seg{display:flex;background:rgba(118,118,128,.24);border-radius:9px;padding:2px;gap:2px}
+.seg button{flex:1;min-width:0;border:0;background:none;color:var(--label);font-size:13px;font-weight:500;padding:7px 2px;border-radius:7px;cursor:pointer;white-space:nowrap;transition:background .2s}
+.seg button.on{background:#636366;box-shadow:0 3px 8px rgba(0,0,0,.12),0 3px 1px rgba(0,0,0,.04);font-weight:600}
+#startRow.off{opacity:.4;pointer-events:none}
+
+/* iOS switch */
+.switch{appearance:none;-webkit-appearance:none;width:51px;height:31px;border-radius:16px;background:var(--fill2);position:relative;flex:none;margin:0;cursor:pointer;transition:background .2s}
+.switch::before{content:"";position:absolute;top:2px;right:2px;width:27px;height:27px;border-radius:50%;background:#fff;box-shadow:0 3px 8px rgba(0,0,0,.15),0 3px 1px rgba(0,0,0,.06);transition:transform .22s cubic-bezier(.3,.7,.4,1)}
+.switch:checked{background:var(--green)}
+.switch:checked::before{transform:translateX(-20px)}
+
+/* sliders */
+.slider{padding:12px 16px 6px}
+.sl-top{display:flex;justify-content:space-between;align-items:baseline;font-size:15px}
+.v{color:var(--label2);font-size:14px;font-variant-numeric:tabular-nums;direction:ltr}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:30px;margin:0;background:transparent;cursor:pointer;--p:50%;--gdir:to left}
+input[type=range]::-webkit-slider-runnable-track{height:4px;border-radius:2px;background:linear-gradient(var(--gdir),var(--accent) var(--p),var(--track) var(--p))}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;height:26px;margin-top:-11px;border-radius:50%;background:#fff;border:0;box-shadow:0 .5px 4px rgba(0,0,0,.25),0 6px 13px rgba(0,0,0,.2)}
+input[type=range]::-moz-range-track{height:4px;border-radius:2px;background:var(--track)}
+input[type=range]::-moz-range-progress{height:4px;border-radius:2px;background:var(--accent)}
+input[type=range]::-moz-range-thumb{width:26px;height:26px;border-radius:50%;background:#fff;border:0;box-shadow:0 .5px 4px rgba(0,0,0,.25),0 6px 13px rgba(0,0,0,.2)}
+
+/* colors */
+.colors{display:grid;grid-template-columns:repeat(3,1fr);gap:14px 8px;padding:16px}
+.colors label{display:flex;flex-direction:column;align-items:center;gap:6px;font-size:12px;color:var(--label2);cursor:pointer}
+input[type=color]{-webkit-appearance:none;appearance:none;width:44px;height:44px;border:0;border-radius:50%;padding:0;background:none;cursor:pointer}
+input[type=color]::-webkit-color-swatch-wrapper{padding:0}
+input[type=color]::-webkit-color-swatch{border:0;border-radius:50%;box-shadow:inset 0 0 0 .5px rgba(255,255,255,.25)}
+input[type=color]::-moz-color-swatch{border:0;border-radius:50%}
+.swatches{display:flex;flex-wrap:wrap;gap:10px;padding:14px 16px}
+.swatches:empty{display:none}
+.swatches .hint{margin:0}
+.sw{width:34px;height:34px;border-radius:50%;cursor:pointer;box-shadow:inset 0 0 0 .5px rgba(255,255,255,.25);transition:transform .15s}
+.sw:active{transform:scale(.9)}
+
+/* buttons */
+.btn{flex:1;height:40px;border:0;border-radius:10px;background:var(--fill);color:var(--accent);font-size:15px;font-weight:500;cursor:pointer;padding:0 12px;white-space:nowrap}
+.btn:active{background:var(--fill2)}
+.btn:disabled{opacity:.4;cursor:default}
+.btns{display:flex;gap:10px;margin-top:14px}
+.cta{display:block;width:100%;height:50px;border:0;border-radius:12px;background:var(--accent);color:#000;font-size:17px;font-weight:600;cursor:pointer;margin-top:18px}
+.cta:active{opacity:.8}
+.cta.cancel{background:var(--fill);color:var(--red)}
+.bar{height:3px;background:var(--track);border-radius:2px;overflow:hidden;margin-top:12px}
+.bar i{display:block;height:100%;width:0;background:var(--accent)}
+.status{font-size:13px;margin:8px 16px 0;color:var(--label2);min-height:18px}
+.status.ok{color:var(--green)}.status.bad{color:var(--red)}
+.after{display:none;gap:10px;margin-top:10px}
+.after.show{display:flex}
+.hint{font-size:13px;color:var(--label2);margin:7px 16px 0;line-height:1.4}
+.hint a{color:var(--accent);text-decoration:none}
+.foot-link{display:block;text-align:center;margin-top:34px;font-size:13px;color:var(--label3);text-decoration:none}
+
+/* player */
+.player{direction:ltr;display:flex;align-items:center;gap:12px;width:min(480px,100%)}
+.player input[type=range]{flex:1;height:22px;--gdir:to right}
+.player input[type=range]::-webkit-slider-thumb{width:14px;height:14px;margin-top:-5px;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+.player input[type=range]::-moz-range-thumb{width:14px;height:14px}
+.t{color:var(--label2);font-size:12px;font-variant-numeric:tabular-nums;min-width:34px;text-align:center}
+.icon-btn{width:40px;height:40px;border:0;border-radius:50%;background:var(--fill);color:var(--label);display:grid;place-items:center;cursor:pointer;flex:none;padding:0}
+.icon-btn:active{background:var(--fill2)}
+.icon-btn svg{width:18px;height:18px}
+#playBtn{width:44px;height:44px;background:var(--label);color:#000}
+#playBtn .i-pause,#playBtn.playing .i-play{display:none}
+#playBtn.playing .i-pause{display:block}
+
+@media (min-width:901px){#sizeBtn{display:none}}
+/* phone: one fixed screen. Preview on top, tab strip, then only the chosen section scrolls */
+@media (max-width:900px){
+  body{display:flex;flex-direction:column}
+  .app{display:flex;flex-direction:column;flex:1;min-height:0;height:auto}
+  .stage{order:-2;flex:0 0 47%;min-height:0;padding:10px 16px 8px;gap:8px;justify-content:flex-start;transition:flex-basis .3s cubic-bezier(.3,.7,.4,1)}
+  .stage.big{flex-basis:74%}
+  #out{flex:1;min-height:0;width:100%;height:100%;max-height:none;object-fit:contain;border-radius:0;background:transparent}
+  .player{flex:none;width:100%}
+  .tabs{order:-1;display:flex;gap:2px;overflow-x:auto;padding:2px 8px;flex:none;border-bottom:.5px solid var(--sep);scrollbar-width:none}
+  .tabs::-webkit-scrollbar{display:none}
+  .tab{flex:none;background:none;border:0;color:var(--label2);padding:11px 12px;font-size:15px;cursor:pointer;position:relative}
+  .tab.on{color:var(--accent);font-weight:600}
+  .tab.on::after{content:"";position:absolute;left:12px;right:12px;bottom:0;height:2px;border-radius:1px;background:var(--accent)}
+  .panel{flex:1;min-height:0;border-left:0;padding:4px 16px 28px;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+  .large-title,.large-sub,.foot-link{display:none}
+  .panel>section{display:none}
+  .panel>section.on{display:block}
+  .panel h2{margin-top:16px}
+  .panel h2.sec{display:none}
+  .panel>section>.group:first-of-type{margin-top:12px}
+  .field input,.field textarea,.row input[type=number]{font-size:17px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="app">
+<nav class="tabs" id="tabs" aria-label="הגדרות"></nav>
+<aside class="panel" id="panel">
+  <h1 class="large-title">דיסק 3D</h1>
+  <p class="large-sub">דיסק שמסתובב, מצלמה שעפה סביבו ולוגו שעולה מהציר.</p>
+
+  <section data-title="קבצים">
+    <h2 class="sec">קבצים</h2>
+    <div class="group">
+      <label class="row" for="fImg">
+        <span class="thumb" id="thumbImg"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2.5"/></svg></span>
+        <span class="rt"><span>תמונה על הדיסק</span><span class="fname" id="nImg">בלי תמונה, דיסק לבן</span></span>
+        <svg class="chev" viewBox="0 0 8 13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 1.5L1.5 6.5l5 5"/></svg>
+      </label>
+      <label class="row" for="fAud">
+        <span class="thumb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/></svg></span>
+        <span class="rt"><span>השיר</span><span class="fname" id="nAud">לא נבחר קובץ שמע</span></span>
+        <svg class="chev" viewBox="0 0 8 13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 1.5L1.5 6.5l5 5"/></svg>
+      </label>
+      <label class="row"><span class="grow">תמונה בשחור־לבן</span><input class="switch" type="checkbox" data-k="bw"></label>
+      <button class="row action" type="button" id="clearImg">הסרת התמונה מהדיסק</button>
+    </div>
+    <input class="vh" type="file" id="fImg" accept="image/*">
+    <input class="vh" type="file" id="fAud">
+  </section>
+
+  <section data-title="טקסט">
+    <h2>על הדיסק</h2>
+    <div class="group">
+      <div class="field"><label for="tWord">המילה הגדולה</label><input type="text" id="tWord" data-k="word"></div>
+      <div class="field"><label for="tTop">שורה קטנה למעלה</label><input type="text" id="tTop" data-k="top"></div>
+      <div class="field"><label for="tBrand">לוגו קטן בצד</label><input type="text" id="tBrand" data-k="brand"></div>
+      <div class="slider"><div class="sl-top"><span>שקיפות המילה הגדולה</span><span class="v" data-for="wordAlpha"></span></div><input type="range" data-k="wordAlpha" min="0" max="1" step="0.01"></div>
+    </div>
+    <h2>הלוגו שעולה מהציר</h2>
+    <div class="group">
+      <div class="field"><label for="tLogo">טקסט הלוגו</label><input type="text" id="tLogo" data-k="logo"></div>
+      <div class="slider"><div class="sl-top"><span>גודל</span><span class="v" data-for="logoSize"></span></div><input type="range" data-k="logoSize" min="0.4" max="1.6" step="0.01"></div>
+    </div>
+  </section>
+
+  <section data-title="פונטים">
+    <h2>המילה הגדולה</h2>
+    <div class="group">
+      <div class="field"><label for="fnWord">פונט</label><input type="text" id="fnWord" data-k="fontWord" list="fontList" autocomplete="off" spellcheck="false"></div>
+      <label class="row"><span class="grow">משקל</span><select data-k="wWord"><option value="400">רגיל</option><option value="700">מודגש</option><option value="900">שחור</option></select></label>
+    </div>
+    <h2>הטקסטים הקטנים</h2>
+    <div class="group">
+      <div class="field"><label for="fnSmall">פונט</label><input type="text" id="fnSmall" data-k="fontSmall" list="fontList" autocomplete="off" spellcheck="false"></div>
+      <label class="row"><span class="grow">משקל</span><select data-k="wSmall"><option value="400">רגיל</option><option value="700">מודגש</option><option value="900">שחור</option></select></label>
+    </div>
+    <h2>הלוגו</h2>
+    <div class="group">
+      <div class="field"><label for="fnLogo">פונט</label><input type="text" id="fnLogo" data-k="fontLogo" list="fontList" autocomplete="off" spellcheck="false"></div>
+      <label class="row"><span class="grow">משקל</span><select data-k="wLogo"><option value="400">רגיל</option><option value="700">מודגש</option><option value="900">שחור</option></select></label>
+    </div>
+    <datalist id="fontList"></datalist>
+    <div class="status" id="fontStatus"></div>
+    <p class="hint">אפשר לבחור מהרשימה, או להקליד שם של כל פונט מ־<a href="https://fonts.google.com" target="_blank" rel="noopener">Google Fonts</a> בדיוק כפי שהוא כתוב שם. לעברית: Heebo, Rubik, Secular One, Suez One או Frank Ruhl Libre.</p>
+  </section>
+
+  <section data-title="צבעים">
+    <h2 class="sec">צבעים</h2>
+    <div class="group">
+      <div class="colors">
+        <label>רקע<input type="color" data-k="bg"></label>
+        <label>הדיסק<input type="color" data-k="disc"></label>
+        <label>ההדפס<input type="color" data-k="ink"></label>
+        <label>האור<input type="color" data-k="light"></label>
+        <label>הלוגו<input type="color" data-k="logoCol"></label>
+        <label>המכשיר<input type="color" data-k="deck"></label>
+      </div>
+    </div>
+    <p class="hint">המראה של המקור הוא שחור־לבן: דיסק לבן, הדפס אפור ואור לבן. צבע עדין לאור נותן אווירה בלי לשבור את המראה.</p>
+  </section>
+
+  <section data-title="מצלמה">
+    <h2 class="sec">מצלמה</h2>
+    <div class="group">
+      <label class="row"><span class="grow">שוט</span><select data-k="shot">
+        <option value="auto">רצף מלא, אוטומטי</option>
+        <option value="0">מלמעלה</option>
+        <option value="2">זווית נמוכה על הדיסק</option>
+        <option value="4">הציר והלוגו</option>
+        <option value="6">מתחת לדיסק</option>
+      </select></label>
+      <div class="slider"><div class="sl-top"><span>מהירות המצלמה</span><span class="v" data-for="speed"></span></div><input type="range" data-k="speed" min="0.3" max="2.5" step="0.05"></div>
+      <div class="slider"><div class="sl-top"><span>מהירות הסיבוב של הדיסק</span><span class="v" data-for="spin"></span></div><input type="range" data-k="spin" min="0" max="3" step="0.05"></div>
+      <div class="slider"><div class="sl-top"><span>תנודה של המצלמה</span><span class="v" data-for="sway"></span></div><input type="range" data-k="sway" min="0" max="1" step="0.01"></div>
+      <div class="slider"><div class="sl-top"><span>תגובה למוזיקה</span><span class="v" data-for="react"></span></div><input type="range" data-k="react" min="0" max="1" step="0.01"></div>
+      <label class="row"><span class="grow">קפיצה לשוט הבא על הביט</span><input class="switch" type="checkbox" data-k="cuts"></label>
+    </div>
+    <p class="hint">ברצף המלא המצלמה מתחילה מלמעלה, יורדת לגובה הדיסק, הדיסק מתרומם והלוגו עולה מהציר באור, ואז הדיסק חוזר למקום. סיבוב אחד לוקח כ־16 שניות במהירות 1.</p>
+    <div class="btns">
+      <button class="btn" type="button" id="pauseBtn">עצירת המצלמה</button>
+      <button class="btn" type="button" id="resetMotion">איפוס</button>
+    </div>
+  </section>
+
+  <section data-title="אווירה">
+    <h2>אור</h2>
+    <div class="group">
+      <div class="slider"><div class="sl-top"><span>קרני אור מהציר</span><span class="v" data-for="rays"></span></div><input type="range" data-k="rays" min="0" max="1.5" step="0.01"></div>
+      <div class="slider"><div class="sl-top"><span>זוהר</span><span class="v" data-for="bloom"></span></div><input type="range" data-k="bloom" min="0" max="1.5" step="0.01"></div>
+      <div class="slider"><div class="sl-top"><span>הילה סביב הדיסק</span><span class="v" data-for="halo"></span></div><input type="range" data-k="halo" min="0" max="1.5" step="0.01"></div>
+    </div>
+    <h2>טשטוש תנועה</h2>
+    <div class="group">
+      <div class="slider"><div class="sl-top"><span>שובל של המצלמה</span><span class="v" data-for="mblur"></span></div><input type="range" data-k="mblur" min="0" max="1" step="0.01"></div>
+      <div class="slider"><div class="sl-top"><span>טשטוש הסיבוב</span><span class="v" data-for="spinBlur"></span></div><input type="range" data-k="spinBlur" min="0" max="1" step="0.01"></div>
+    </div>
+    <h2>מרקם</h2>
+    <div class="group">
+      <div class="slider"><div class="sl-top"><span>גרעיניות</span><span class="v" data-for="grainAmt"></span></div><input type="range" data-k="grainAmt" min="0" max="1" step="0.01"></div>
+      <div class="slider"><div class="sl-top"><span>גודל הגרעין</span><span class="v" data-for="grainSize"></span></div><input type="range" data-k="grainSize" min="0.5" max="3" step="0.05"></div>
+      <div class="slider"><div class="sl-top"><span>הבהוב לפי השיר</span><span class="v" data-for="flicker"></span></div><input type="range" data-k="flicker" min="0" max="1" step="0.01"></div>
+    </div>
+  </section>
+
+  <section data-title="ייצוא">
+    <h2 class="sec">ייצוא לסרטון</h2>
+    <div class="group">
+      <label class="row"><span class="grow">פורמט</span><select data-k="format">
+        <option value="9:16">9:16 · רילס, טיקטוק</option>
+        <option value="4:5">4:5 · פוסט</option>
+        <option value="1:1">1:1 · ריבוע</option>
+        <option value="16:9">16:9 · יוטיוב</option>
+      </select></label>
+      <label class="row"><span class="grow">איכות</span><select data-k="expRes">
+        <option value="1">1080p</option>
+        <option value="0.6667">720p</option>
+      </select></label>
+      <div class="seg-row">
+        <div class="seg-label">אורך הסרטון</div>
+        <div class="seg" id="durSeg" role="radiogroup" aria-label="אורך הסרטון">
+          <button type="button" data-d="15">15 שנ׳</button>
+          <button type="button" data-d="30">30 שנ׳</button>
+          <button type="button" data-d="60">דקה</button>
+          <button type="button" data-d="90">1:30</button>
+          <button type="button" data-d="full">כל השיר</button>
+        </div>
+      </div>
+      <label class="row"><span class="grow">אורך מותאם</span><input type="number" data-k="expDur" min="1" max="900" step="1"><span class="unit">שנ׳</span></label>
+      <label class="row" id="startRow"><span class="grow">התחלה בשיר</span><input type="number" data-k="expStart" min="0" step="0.5"><span class="unit">שנ׳</span></label>
+      <button class="row action" type="button" id="startHere">להתחיל מהמיקום הנוכחי בשיר</button>
+      <label class="row"><span class="grow">כניסה ויציאה בהדרגה</span><input class="switch" type="checkbox" data-k="fade"></label>
+    </div>
+    <p class="hint" id="expLen"></p>
+    <button class="cta" type="button" id="expBtn">ייצוא סרטון</button>
+    <div class="bar"><i id="expBar"></i></div>
+    <div class="status" id="expStatus"></div>
+    <div class="after" id="after">
+      <button class="btn" type="button" id="shareBtn">שמירה לגלריה או שיתוף</button>
+      <button class="btn" type="button" id="dlBtn">הורדה</button>
+    </div>
+    <p class="hint">הייצוא רץ בזמן אמת: 15 שניות של סרטון לוקחות 15 שניות. צריך להשאיר את המסך דלוק עד הסוף. הסרטון תמיד מתחיל מתחילת הרצף, מהשוט מלמעלה.</p>
+  </section>
+
+  <a class="foot-link" href="card.html">כרטיס שיר 3D</a>
+  <a class="foot-link" style="margin-top:10px" href="index.html">Visualizer 3D</a>
+</aside>
+<main class="stage">
+  <canvas id="out" width="1080" height="1920"></canvas>
+  <div class="player">
+    <button class="icon-btn" id="playBtn" type="button" aria-label="נגינה">
+      <svg class="i-play" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.2-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z"/></svg>
+      <svg class="i-pause" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1.2"/><rect x="14" y="5" width="4" height="14" rx="1.2"/></svg>
+    </button>
+    <span class="t" id="tCur">0:00</span>
+    <input type="range" id="seek" min="0" max="1000" value="0" aria-label="מיקום בשיר">
+    <span class="t" id="tDur">0:00</span>
+    <button class="icon-btn" id="sizeBtn" type="button" aria-label="הגדלת התצוגה"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4h5v5M9 20H4v-5M20 4l-6 6M4 20l6-6"/></svg></button>
+  </div>
+  <audio id="aud" preload="auto"></audio>
+</main>
+</div>
+
+<script>
+(() => {
+'use strict';
+const $ = id => document.getElementById(id);
+
+/* ---------- state ---------- */
+const MOTION_DEFAULTS = {shot:'auto', speed:1, spin:.55, sway:0.4, react:0.4, cuts:false};
+const DEFAULTS = Object.assign({
+  bw:true, word:'NOVEMBER', top:'RELEASE PREVIEW', brand:'house of aria.', logo:'house of aria.', wordAlpha:0.6, logoSize:1,
+  fontWord:'Syncopate', wWord:'700', fontSmall:'Inter', wSmall:'400', fontLogo:'Unbounded', wLogo:'700',
+  bg:'#000000', disc:'#f2f2f0', ink:'#3a3a3a', light:'#e9eefc', logoCol:'#ffffff', deck:'#1e1e20',
+  rays:1, bloom:0.7, halo:0.8, mblur:0.45, spinBlur:0.7, grainAmt:0.3, grainSize:1, flicker:0.25,
+  format:'9:16', expStart:0, expDur:15, expFull:false, fade:true, expRes:'1'
+}, MOTION_DEFAULTS);
+const IS_MOBILE = matchMedia('(max-width:900px), (pointer:coarse)').matches;
+const PREVIEW_SCALE = IS_MOBILE ? .5 : .75;
+if (navigator.audioSession) { try { navigator.audioSession.type = 'playback'; } catch (e) {} }
+const STORE = 'aria-disc-v1';
+let S = Object.assign({}, DEFAULTS);
+try { const saved = JSON.parse(localStorage.getItem(STORE) || 'null'); if (saved) Object.assign(S, saved); } catch (e) {}
+let saveTimer = 0;
+function save() { clearTimeout(saveTimer); saveTimer = setTimeout(() => { try { localStorage.setItem(STORE, JSON.stringify(S)); } catch (e) {} }, 300); }
+
+const FORMATS = {'9:16':[1080,1920], '4:5':[1080,1350], '1:1':[1080,1080], '16:9':[1920,1080]};
+const FONT_LIST = ['Syncopate','Michroma','Unbounded','Anton','Bebas Neue','Oswald','Archivo Black','Staatliches','Big Shoulders Display','Krona One','Lexend Zetta','Orbitron',
+  'Inter','Montserrat','Poppins','Space Grotesk','Syne','DM Sans','Manrope','Space Mono',
+  'Playfair Display','DM Serif Display','Cinzel','Cormorant Garamond','Bodoni Moda',
+  'Heebo','Rubik','Assistant','Secular One','Suez One','Frank Ruhl Libre','Varela Round','Alef','Karantina','Bellefair','Noto Sans Hebrew'];
+$('fontList').innerHTML = FONT_LIST.map(f => `<option value="${f}">`).join('');
+
+/* ---------- color helpers ---------- */
+const hexToRgb = h => { h = h.replace('#',''); if (h.length === 3) h = h.split('').map(c => c + c).join(''); const n = parseInt(h, 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; };
+const rgba = (h,a) => { const [r,g,b] = hexToRgb(h); return `rgba(${r},${g},${b},${a})`; };
+const lin = h => new THREE.Color(h).convertSRGBToLinear();
+
+/* ---------- fonts ---------- */
+const fontState = {};
+function loadFont(fam) {
+  fam = (fam || '').trim();
+  if (!fam) return Promise.resolve(false);
+  if (fontState[fam]) return fontState[fam];
+  const enc = fam.replace(/\s+/g, '+');
+  const variants = [':wght@400;700;900', ':wght@400;700', ':wght@400', ''];
+  fontState[fam] = new Promise(resolve => {
+    const tryAt = i => {
+      if (i >= variants.length) { resolve(false); return; }
+      const l = document.createElement('link');
+      l.rel = 'stylesheet';
+      l.href = `https://fonts.googleapis.com/css2?family=${enc}${variants[i]}&display=swap`;
+      l.onload = () => resolve(true);
+      l.onerror = () => { l.remove(); tryAt(i + 1); };
+      document.head.appendChild(l);
+    };
+    tryAt(0);
+  }).then(async ok => {
+    if (!ok) { delete fontState[fam]; return false; }
+    const sample = 'AaBb אבג ' + [S.word, S.top, S.brand, S.logo].join(' ');
+    await Promise.all(['400','700','900'].map(w => document.fonts.load(`${w} 40px "${fam}"`, sample).catch(() => {})));
+    return true;
+  });
+  return fontState[fam];
+}
+async function ensureFonts(changedKey) {
+  const keys = changedKey ? [changedKey] : ['fontWord','fontSmall','fontLogo'];
+  const st = $('fontStatus');
+  for (const k of keys) {
+    const fam = S[k];
+    if (!fam) continue;
+    st.className = 'status'; st.textContent = `טוען את ${fam}…`;
+    const ok = await loadFont(fam);
+    if (ok) { st.className = 'status ok'; st.textContent = `${fam} נטען`; }
+    else { st.className = 'status bad'; st.textContent = `לא מצאתי את "${fam}" ב־Google Fonts. בדוק את האיות.`; }
+  }
+  drawTextures();
+}
+const fontStr = (fam, w, px) => `${w} ${Math.round(px)}px "${fam}", Heebo, system-ui, sans-serif`;
+const isHeb = s => /[֐-׿]/.test(s || '');
+function fitFont(c, text, fam, w, maxPx, maxW) {
+  let px = maxPx;
+  c.font = fontStr(fam, w, px);
+  const mw = c.measureText(text).width;
+  if (mw > maxW) px = Math.max(8, px * maxW / mw);
+  c.font = fontStr(fam, w, px);
+  return px;
+}
+
+/* ---------- images ---------- */
+let discImg = null, discGray = null;
+function makeGray(img) {
+  const sc = Math.min(1, 1600 / Math.max(img.naturalWidth, img.naturalHeight));
+  const c = document.createElement('canvas');
+  c.width = Math.round(img.naturalWidth * sc); c.height = Math.round(img.naturalHeight * sc);
+  const x = c.getContext('2d'); x.drawImage(img, 0, 0, c.width, c.height);
+  const id = x.getImageData(0, 0, c.width, c.height), d = id.data;
+  for (let i = 0; i < d.length; i += 4) { const v = .299 * d[i] + .587 * d[i+1] + .114 * d[i+2]; d[i] = d[i+1] = d[i+2] = v; }
+  x.putImageData(id, 0, 0);
+  return c;
+}
+
+/* ---------- disc print texture ---------- */
+// the top of the disc is one square canvas: its circle maps onto the disc, centre on centre
+const PT = IS_MOBILE ? 1536 : 2048, PR = PT / 2;
+const printC = document.createElement('canvas'); printC.width = printC.height = PT;
+const pctx = printC.getContext('2d');
+const BT = 1024;
+const blurC = document.createElement('canvas'); blurC.width = blurC.height = BT;
+const blctx = blurC.getContext('2d');
+const HOLE = .125, CLEAR = .29, STACK = .2;
+
+function ring(c, r0, r1) { c.beginPath(); c.arc(0, 0, r1, 0, Math.PI * 2); c.arc(0, 0, r0, 0, Math.PI * 2, true); }
+function drawPrint() {
+  const c = pctx, R = PR;
+  c.save();
+  c.clearRect(0, 0, PT, PT);
+  c.translate(R, R);
+  c.beginPath(); c.arc(0, 0, R, 0, Math.PI * 2); c.fillStyle = S.disc; c.fill();
+  if (discImg) {
+    const src = S.bw ? (discGray || (discGray = makeGray(discImg))) : discImg;
+    const iw = src.naturalWidth || src.width, ih = src.naturalHeight || src.height, sc = Math.max(2 * R / iw, 2 * R / ih);
+    c.save(); c.beginPath(); c.arc(0, 0, R, 0, Math.PI * 2); c.clip();
+    c.drawImage(src, -iw * sc / 2, -ih * sc / 2, iw * sc, ih * sc);
+    c.restore();
+  }
+  // soft printed sheen so the white is not flat
+  let g = c.createRadialGradient(-R * .2, -R * .25, R * .1, 0, 0, R);
+  g.addColorStop(0, 'rgba(255,255,255,.10)'); g.addColorStop(1, 'rgba(0,0,0,.10)');
+  c.fillStyle = g; c.beginPath(); c.arc(0, 0, R, 0, Math.PI * 2); c.fill();
+
+  c.textAlign = 'center'; c.textBaseline = 'middle';
+  if (S.word.trim()) {
+    c.direction = isHeb(S.word) ? 'rtl' : 'ltr';
+    fitFont(c, S.word, S.fontWord, S.wWord, R * .3, R * 1.78);
+    c.fillStyle = rgba(S.ink, S.wordAlpha);
+    c.fillText(S.word, 0, R * .02);
+  }
+  if (S.top.trim()) {
+    c.direction = isHeb(S.top) ? 'rtl' : 'ltr';
+    fitFont(c, S.top, S.fontSmall, S.wSmall, R * .045, R * .9);
+    c.fillStyle = rgba(S.ink, .9);
+    const sp = isHeb(S.top) ? S.top : S.top.split('').join(String.fromCharCode(8202));
+    c.fillText(sp, 0, -R * .5);
+  }
+  if (S.brand.trim()) {
+    c.direction = isHeb(S.brand) ? 'rtl' : 'ltr';
+    fitFont(c, S.brand, S.fontLogo, S.wLogo, R * .075, R * .5);
+    c.fillStyle = rgba(S.ink, .95);
+    c.fillText(S.brand, R * .58, R * .07);
+  }
+  // clear plastic hub: cut away the print, then a faint frosted ring, the stacking ring and the mirror band
+  c.globalCompositeOperation = 'destination-out';
+  c.beginPath(); c.arc(0, 0, R * CLEAR, 0, Math.PI * 2); c.fill();
+  c.globalCompositeOperation = 'source-over';
+  ring(c, R * HOLE, R * CLEAR); c.fillStyle = 'rgba(215,220,226,.28)'; c.fill('evenodd');
+  ring(c, R * (STACK - .012), R * (STACK + .012)); c.fillStyle = 'rgba(255,255,255,.45)'; c.fill('evenodd');
+  ring(c, R * (CLEAR - .012), R * CLEAR); c.fillStyle = 'rgba(190,192,196,.9)'; c.fill('evenodd');
+  ring(c, R * HOLE, R * (HOLE + .01)); c.fillStyle = 'rgba(255,255,255,.6)'; c.fill('evenodd');
+  c.lineWidth = R * .006; c.strokeStyle = 'rgba(0,0,0,.18)';
+  c.beginPath(); c.arc(0, 0, R * .997, 0, Math.PI * 2); c.stroke();
+  c.restore();
+  printTex.needsUpdate = true;
+
+  // a copy smeared around the centre, faded in on top while the disc spins fast
+  const b = blctx, N = 20, spread = .14;
+  b.clearRect(0, 0, BT, BT);
+  for (let i = 0; i < N; i++) {
+    b.save(); b.globalAlpha = 1 / (i + 1);
+    b.translate(BT / 2, BT / 2); b.rotate((i / (N - 1) - .5) * spread); b.translate(-BT / 2, -BT / 2);
+    b.drawImage(printC, 0, 0, BT, BT); b.restore();
+  }
+  blurTex.needsUpdate = true;
+}
+
+/* ---------- logo texture ---------- */
+const LW = 2048, LH = 512;
+const logoC = document.createElement('canvas'); logoC.width = LW; logoC.height = LH;
+function drawLogo() {
+  const c = logoC.getContext('2d');
+  c.clearRect(0, 0, LW, LH);
+  if (!S.logo.trim()) { logoTex.needsUpdate = true; return; }
+  c.textAlign = 'center'; c.textBaseline = 'middle'; c.direction = isHeb(S.logo) ? 'rtl' : 'ltr';
+  fitFont(c, S.logo, S.fontLogo, S.wLogo, LH * .52, LW * .86);
+  c.shadowColor = rgba(S.light, .9); c.shadowBlur = 60;
+  c.fillStyle = S.logoCol; c.fillText(S.logo, LW / 2, LH / 2);
+  c.shadowBlur = 18; c.fillText(S.logo, LW / 2, LH / 2);
+  c.shadowBlur = 0; c.fillText(S.logo, LW / 2, LH / 2);
+  logoTex.needsUpdate = true;
+}
+
+/* ---------- three.js scene ---------- */
+const out = $('out'), ctx = out.getContext('2d');
+let W = 1080, H = 1920;
+const renderer = new THREE.WebGLRenderer({antialias: true, preserveDrawingBuffer: true});
+renderer.setPixelRatio(1);
+renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = .9;
+const scene = new THREE.Scene();
+scene.fog = new THREE.Fog(0x000000, 3, 9);
+const camera = new THREE.PerspectiveCamera(40, W / H, .01, 60);
+
+// studio light for reflections: a soft box overhead and a few strips around, baked into an environment map
+{
+  const env = new THREE.Scene();
+  env.background = new THREE.Color(0x030303);
+  const box = (w, h, x, y, z, v) => {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({color: new THREE.Color(v, v, v), side: THREE.DoubleSide}));
+    m.position.set(x, y, z); m.lookAt(0, 0, 0); env.add(m);
+  };
+  box(7, 7, 0, 9, 0, 1.6); box(12, 1.2, 7, 2, 1, 1.1); box(12, .8, -7, 1.5, -2, .6); box(3, 9, 1, 2, -8, .7); box(4, .6, -2, -3, 6, .3);
+  const pm = new THREE.PMREMGenerator(renderer);
+  scene.environment = pm.fromScene(env, .03).texture;
+  pm.dispose();
+}
+// a soft spot from above: a pool of light on the disc, the rest of the player falls off into the dark
+const key = new THREE.SpotLight(0xffffff, 1.05, 0, .32, 1, 0); key.position.set(1.2, 7, 2.2); key.target.position.set(0, 0, 0); scene.add(key, key.target);
+scene.add(new THREE.AmbientLight(0xffffff, .06));
+const coreLight = new THREE.PointLight(0xffffff, 0, 3.5, 1.6); coreLight.position.set(0, .25, 0); scene.add(coreLight);
+
+const DT = .02; // disc thickness; the disc radius is 1
+const printTex = new THREE.CanvasTexture(printC);
+printTex.encoding = THREE.sRGBEncoding; printTex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+const blurTex = new THREE.CanvasTexture(blurC);
+blurTex.encoding = THREE.sRGBEncoding;
+const logoTex = new THREE.CanvasTexture(logoC);
+logoTex.encoding = THREE.sRGBEncoding;
+
+// pearly rainbow of the data side
+const rainC = document.createElement('canvas'); rainC.width = rainC.height = 1024;
+{
+  const c = rainC.getContext('2d'), R = 512;
+  c.fillStyle = '#c9cbd0'; c.fillRect(0, 0, 1024, 1024);
+  if (c.createConicGradient) {
+    const g = c.createConicGradient(0, R, R);
+    const hues = [0, 40, 70, 140, 200, 260, 320, 360];
+    for (let k = 0; k < 2; k++) hues.forEach((h, i) => g.addColorStop(Math.min(1, (k + i / (hues.length - 1)) / 2), `hsla(${h},80%,62%,.17)`));
+    c.fillStyle = g; c.fillRect(0, 0, 1024, 1024);
+  }
+  for (let r = 300; r < 512; r += 3) { c.strokeStyle = `rgba(255,255,255,${.03 + Math.random() * .05})`; c.lineWidth = 1; c.beginPath(); c.arc(R, R, r, 0, Math.PI * 2); c.stroke(); }
+  c.globalCompositeOperation = 'destination-out';
+  c.beginPath(); c.arc(R, R, R * CLEAR, 0, Math.PI * 2); c.fill();
+  c.globalCompositeOperation = 'source-over';
+  c.save(); c.translate(R, R); ring(c, R * HOLE, R * CLEAR); c.fillStyle = 'rgba(200,205,210,.25)'; c.fill('evenodd'); c.restore();
+}
+const rainTex = new THREE.CanvasTexture(rainC); rainTex.encoding = THREE.sRGBEncoding;
+
+const discGroup = new THREE.Group(); scene.add(discGroup);
+const spinner = new THREE.Group(); discGroup.add(spinner);
+const ringGeo = (y, up) => { const g = new THREE.RingGeometry(HOLE, 1, 160, 1); g.rotateX(up ? -Math.PI / 2 : Math.PI / 2); g.translate(0, y, 0); return g; };
+const printMat = new THREE.MeshStandardMaterial({map: printTex, color: 0xc4c4c4, roughness: .5, metalness: 0, transparent: true, envMapIntensity: .45});
+const blurMat = new THREE.MeshStandardMaterial({map: blurTex, color: 0xc4c4c4, roughness: .5, metalness: 0, transparent: true, opacity: 0, depthWrite: false, envMapIntensity: .45});
+const underMat = new THREE.MeshStandardMaterial({map: rainTex, color: 0xb0b0b0, roughness: .16, metalness: 1, transparent: true, envMapIntensity: .8});
+const edgeMat = new THREE.MeshStandardMaterial({color: 0xd8d8d8, roughness: .3, metalness: .6});
+const top = new THREE.Mesh(ringGeo(DT / 2, true), printMat); top.renderOrder = 2;
+const topBlur = new THREE.Mesh(ringGeo(DT / 2 + .0006, true), blurMat); topBlur.renderOrder = 3;
+const under = new THREE.Mesh(ringGeo(-DT / 2, false), underMat); under.renderOrder = 1;
+// the bottom ring's planar UVs mirror once flipped; flip them back so the rainbow lines up with the top
+{ const uv = under.geometry.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setY(i, 1 - uv.getY(i)); }
+const rim = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, DT, 160, 1, true), edgeMat);
+const rimIn = new THREE.Mesh(new THREE.CylinderGeometry(HOLE, HOLE, DT, 64, 1, true), new THREE.MeshStandardMaterial({color: 0xbfc3c8, roughness: .2, metalness: .3, side: THREE.BackSide, transparent: true, opacity: .6}));
+spinner.add(top, topBlur, under, rim, rimIn);
+
+// the player under the disc: spindle, turntable, motor and a dark deck
+const metal = new THREE.MeshStandardMaterial({color: 0xa6a6a8, roughness: .22, metalness: .95});
+const rubber = new THREE.MeshStandardMaterial({color: 0x1a1a1a, roughness: .8, metalness: 0});
+const deckMat = new THREE.MeshStandardMaterial({color: S.deck, roughness: .5, metalness: .4, envMapIntensity: .22});
+const player = new THREE.Group(); scene.add(player);
+const hubSpin = new THREE.Group(); player.add(hubSpin);
+const add = (geo, mat, x, y, z, parent = player) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); parent.add(m); return m; };
+add(new THREE.CylinderGeometry(.17, .17, .022, 64), rubber, 0, -.021, 0, hubSpin);
+add(new THREE.CylinderGeometry(.115, .118, .055, 64), metal, 0, .012, 0, hubSpin);
+add(new THREE.CylinderGeometry(.07, .08, .012, 48), metal, 0, .044, 0, hubSpin);
+add(new THREE.CylinderGeometry(.03, .03, .02, 24), rubber, 0, .05, 0, hubSpin);
+for (let i = 0; i < 3; i++) { const a = i / 3 * Math.PI * 2; add(new THREE.SphereGeometry(.016, 16, 12), metal, Math.cos(a) * .108, .025, Math.sin(a) * .108, hubSpin); }
+add(new THREE.CylinderGeometry(.13, .14, .12, 48), deckMat, 0, -.09, 0);
+add(new THREE.BoxGeometry(1.1, .05, .8), deckMat, .25, -.175, 0);
+add(new THREE.BoxGeometry(8, .2, 8), deckMat, 0, -.3, 0);
+for (const z of [-.24, .24]) { const r = add(new THREE.CylinderGeometry(.012, .012, 1.3, 16), metal, .85, -.12, z); r.rotation.z = Math.PI / 2; }
+add(new THREE.BoxGeometry(.22, .05, .32), deckMat, .62, -.11, 0);
+add(new THREE.CylinderGeometry(.035, .035, .012, 24), new THREE.MeshStandardMaterial({color: 0x050510, roughness: .05, metalness: .2}), .62, -.08, 0);
+add(new THREE.BoxGeometry(.12, .26, 3.6), deckMat, 1.65, -.07, 0);
+add(new THREE.BoxGeometry(.12, .26, 3.6), deckMat, -1.65, -.07, 0);
+add(new THREE.BoxGeometry(3.4, .26, .12), deckMat, 0, -.07, -1.75);
+add(new THREE.BoxGeometry(.5, .08, .5), deckMat, -1.0, -.16, -1.0);
+add(new THREE.BoxGeometry(.3, .12, .9), deckMat, -1.15, -.14, .7);
+
+// halo under the disc, seen from above
+const soft = (stops) => { const c = document.createElement('canvas'); c.width = c.height = 256; const x = c.getContext('2d'), g = x.createRadialGradient(128, 128, 0, 128, 128, 128); stops.forEach(([o, a]) => g.addColorStop(o, `rgba(255,255,255,${a})`)); x.fillStyle = g; x.fillRect(0, 0, 256, 256); return new THREE.CanvasTexture(c); };
+const haloMat = new THREE.MeshBasicMaterial({map: soft([[0, 1], [.38, .9], [.5, .35], [.75, .08], [1, 0]]), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0, fog: false, toneMapped: false});
+const halo = new THREE.Mesh(new THREE.PlaneGeometry(3.6, 3.6), haloMat); halo.rotation.x = -Math.PI / 2; halo.position.y = -.035; scene.add(halo);
+halo.renderOrder = 0;
+
+// the logo that rises out of the spindle
+const logoMat = new THREE.MeshBasicMaterial({map: logoTex, transparent: true, depthWrite: false, opacity: 0, toneMapped: false, fog: false});
+const logoMesh = new THREE.Mesh(new THREE.PlaneGeometry(1, .25), logoMat); logoMesh.renderOrder = 6; scene.add(logoMesh);
+const flare = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 1.6), new THREE.MeshBasicMaterial({map: soft([[0, .9], [.15, .45], [.5, .08], [1, 0]]), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0, toneMapped: false, fog: false}));
+flare.renderOrder = 5; scene.add(flare);
+
+// god rays: an open cone that fans up from the spindle, streaked by angle
+const raysMat = new THREE.ShaderMaterial({
+  uniforms: {uAmt: {value: 0}, uTime: {value: 0}, uCol: {value: new THREE.Color(1, 1, 1)}},
+  vertexShader: `varying vec2 vUv; varying float vFace;
+    void main(){ vUv = uv; vec4 mv = modelViewMatrix * vec4(position,1.0);
+      vec3 n = normalize(normalMatrix * normal); vFace = abs(dot(n, normalize(-mv.xyz)));
+      gl_Position = projectionMatrix * mv; }`,
+  fragmentShader: `uniform float uAmt; uniform float uTime; uniform vec3 uCol; varying vec2 vUv; varying float vFace;
+    void main(){ float a = vUv.x * 6.2831853;
+      float s = 0.5 + 0.5 * sin(a * 9.0 + uTime * 0.35) * sin(a * 5.0 - uTime * 0.21);
+      s = pow(s, 3.0) * 0.8 + pow(0.5 + 0.5 * sin(a * 23.0 + uTime * 0.6), 6.0) * 0.5 + 0.12;
+      float y = vUv.y; float g = pow(1.0 - y, 2.2) * smoothstep(0.0, 0.04, y);
+      float edge = smoothstep(0.0, 0.6, vFace);
+      gl_FragColor = vec4(uCol * s * g * edge * uAmt, 1.0); }`,
+  transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide
+});
+const rays = new THREE.Mesh(new THREE.CylinderGeometry(2.6, .06, 3.2, 96, 1, true), raysMat);
+rays.position.y = .06 + 1.6; rays.renderOrder = 4; scene.add(rays);
+
+/* ---------- camera path ---------- */
+// keyframes in a 16 s loop, framed for 9:16 and pulled closer for wider frames
+const KF = [
+  {t:0,    p:[0, 5.6, .001], tg:[0, 0, 0],    up:[0, 0, -1], fov:40, lift:0,   logo:0,  rays:0,  halo:1},
+  {t:2.6,  p:[.5, 3.2, 1.3], tg:[0, 0, 0],    up:[0, 0, -1], fov:40, lift:0,   logo:0,  rays:0,  halo:.6},
+  {t:4.2,  p:[2.1, .16, 1.5],tg:[0, .02, 0],  up:[0, 1, 0],  fov:42, lift:0,   logo:0,  rays:0,  halo:0},
+  {t:5.8,  p:[.05, -.06, 2.7],tg:[0, .28, 0], up:[0, 1, 0],  fov:50, lift:1.7, logo:.55,rays:1,  halo:0},
+  {t:9,    p:[0, -.09, 1.45],tg:[0, .33, 0],  up:[0, 1, 0],  fov:50, lift:1.7, logo:1,  rays:1,  halo:0},
+  {t:10.6, p:[0, -.1, .75],  tg:[0, 1.2, 0],  up:[0, 1, 0],  fov:58, lift:1.05,logo:1,  rays:.5, halo:0},
+  {t:12.2, p:[.42, -.13, .36],tg:[0, .85, 0], up:[0, 0, -1], fov:62, lift:.45, logo:0,  rays:0,  halo:0},
+  {t:13.8, p:[1.9, .55, 2.3],tg:[0, 0, 0],    up:[0, 1, 0],  fov:40, lift:0,   logo:0,  rays:0,  halo:.3},
+];
+const LOOP = 16;
+const V = (a) => new THREE.Vector3(...a);
+KF.forEach(k => { k.P = V(k.p); k.T = V(k.tg); k.U = V(k.up); });
+const kf = i => { const n = KF.length, j = ((i % n) + n) % n, wrap = Math.floor(i / n); return {k: KF[j], t: KF[j].t + wrap * LOOP}; };
+const cr = (a, b, c, d, u) => { const u2 = u * u, u3 = u2 * u; return .5 * ((2 * b) + (-a + c) * u + (2 * a - 5 * b + 4 * c - d) * u2 + (-a + 3 * b - 3 * c + d) * u3); };
+const crV = (A, B, C, D, u, o) => o.set(cr(A.x, B.x, C.x, D.x, u), cr(A.y, B.y, C.y, D.y, u), cr(A.z, B.z, C.z, D.z, u));
+const ease = u => { const c = u < .5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2; return u * .3 + c * .7; };
+const cam = {P: new THREE.Vector3(), T: new THREE.Vector3(), U: new THREE.Vector3(), fov: 40, lift: 0, logo: 0, rays: 0, halo: 0};
+function samplePath(ct) {
+  ct = ((ct % LOOP) + LOOP) % LOOP;
+  let i = KF.length - 1;
+  for (let j = 0; j < KF.length; j++) if (KF[j].t <= ct) i = j;
+  const a = kf(i - 1).k, b = kf(i).k, c = kf(i + 1), d = kf(i + 2).k;
+  const t1 = c.t, u = ease((ct - b.t) / (t1 - b.t)), C = c.k;
+  crV(a.P, b.P, C.P, d.P, u, cam.P);
+  crV(a.T, b.T, C.T, d.T, u, cam.T);
+  cam.U.copy(b.U).lerp(C.U, u).normalize();
+  for (const k of ['fov', 'lift', 'logo', 'rays', 'halo']) cam[k] = b[k] + (C[k] - b[k]) * u;
+  return i;
+}
+
+/* ---------- grain ---------- */
+const grainPats = Array.from({length: 4}, () => {
+  const c = document.createElement('canvas'); c.width = c.height = 256;
+  const x = c.getContext('2d'), id = x.createImageData(256, 256), d = id.data;
+  for (let i = 0; i < d.length; i += 4) {
+    const v = 128 + ((Math.random() + Math.random() + Math.random() - 1.5) * 150);
+    d[i] = d[i+1] = d[i+2] = Math.max(0, Math.min(255, v)); d[i+3] = 255;
+  }
+  x.putImageData(id, 0, 0);
+  return ctx.createPattern(c, 'repeat');
+});
+
+/* ---------- layout / post buffers ---------- */
+const acc = document.createElement('canvas'), actx2 = acc.getContext('2d');
+const b1 = document.createElement('canvas'), b1x = b1.getContext('2d');
+const b2 = document.createElement('canvas'), b2x = b2.getContext('2d');
+let fresh = true;
+function setFormat(scale = PREVIEW_SCALE) {
+  const [fw, fh] = FORMATS[S.format] || FORMATS['9:16'];
+  W = Math.round(fw * scale / 2) * 2; H = Math.round(fh * scale / 2) * 2;
+  out.width = acc.width = W; out.height = acc.height = H;
+  b1.width = Math.max(2, W >> 2); b1.height = Math.max(2, H >> 2);
+  b2.width = Math.max(2, W >> 4); b2.height = Math.max(2, H >> 4);
+  renderer.setSize(W, H, false);
+  camera.aspect = W / H; camera.updateProjectionMatrix();
+  fresh = true;
+}
+function applyColors() {
+  const bg = lin(S.bg);
+  renderer.setClearColor(new THREE.Color(S.bg), 1);
+  scene.fog.color.copy(bg);
+  deckMat.color.copy(lin(S.deck));
+  raysMat.uniforms.uCol.value.copy(lin(S.light));
+  coreLight.color.copy(lin(S.light));
+  haloMat.color.copy(lin(S.light));
+  flare.material.color.copy(lin(S.light));
+}
+function drawTextures() { drawPrint(); drawLogo(); }
+
+/* ---------- audio ---------- */
+const aud = $('aud');
+let actx = null, srcNode, analyser, expGain, streamDest, freq;
+function ensureAudioGraph() {
+  if (actx) return;
+  actx = new (window.AudioContext || window.webkitAudioContext)();
+  srcNode = actx.createMediaElementSource(aud);
+  analyser = actx.createAnalyser(); analyser.fftSize = 1024; analyser.smoothingTimeConstant = .75;
+  freq = new Uint8Array(analyser.frequencyBinCount);
+  srcNode.connect(analyser); analyser.connect(actx.destination);
+  expGain = actx.createGain(); streamDest = actx.createMediaStreamDestination();
+  srcNode.connect(expGain); expGain.connect(streamDest);
+}
+let slowAvg = 0, pulse = 0, env = 0, peak = 0, floor = 1, flick = 1;
+function readPulse(dt = 1 / 60) {
+  if (!analyser || aud.paused) { pulse *= .9; flick += (1 - flick) * .05; return; }
+  analyser.getByteFrequencyData(freq);
+  let e = 0; for (let i = 1; i < 7; i++) e += freq[i]; e /= 6 * 255;
+  slowAvg = slowAvg * .985 + e * .015;
+  const hit = Math.max(0, Math.min(1, (e - slowAvg * .95) * 4));
+  pulse = Math.max(hit, pulse * .9);
+  let all = 0; for (let i = 1; i < 160; i++) all += freq[i]; all /= 159 * 255;
+  env += (Math.max(e, all * 1.4) - env) * (1 - Math.exp(-dt / .05));
+  peak = Math.max(env, peak - .12 * dt);
+  floor = Math.min(env, floor + .25 * dt);
+  const lvl = Math.max(0, Math.min(1, (env - floor) / Math.max(.06, peak - floor)));
+  const target = lvl * .88 + Math.random() * .12;
+  flick += (target - flick) * (1 - Math.exp(-dt / .04));
+}
+const fmt = t => { t = Math.max(0, t || 0); return Math.floor(t / 60) + ':' + String(Math.floor(t % 60)).padStart(2, '0'); };
+
+$('playBtn').onclick = async () => {
+  if (!aud.src) { $('nAud').textContent = 'קודם צריך להעלות קובץ שמע'; return; }
+  ensureAudioGraph(); await actx.resume();
+  if (aud.paused) aud.play(); else aud.pause();
+};
+aud.onplay = () => $('playBtn').classList.add('playing');
+aud.onpause = () => $('playBtn').classList.remove('playing');
+let seeking = false;
+$('seek').addEventListener('input', () => { seeking = true; if (aud.duration) aud.currentTime = $('seek').value / 1000 * aud.duration; });
+$('seek').addEventListener('change', () => seeking = false);
+$('startHere').onclick = () => { S.expStart = Math.round(aud.currentTime * 10) / 10; S.expFull = false; syncInputs(); save(); };
+
+/* ---------- files ---------- */
+function note(id, text, bad) { const el = $(id); el.textContent = text; el.className = 'fname' + (bad ? ' bad' : ''); }
+$('fImg').onchange = e => {
+  const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+  note('nImg', 'טוען את ' + f.name + '…');
+  const img = new Image();
+  img.onload = () => { note('nImg', f.name); $('thumbImg').style.backgroundImage = `url("${img.src}")`; $('thumbImg').innerHTML = ''; discImg = img; discGray = null; drawPrint(); };
+  img.onerror = () => note('nImg', 'התמונה לא נפתחה. כדאי לבחור קובץ JPG או PNG. אם זו תמונת HEIC מהאייפון, אפשר לצלם לה צילום מסך ולהעלות אותו.', true);
+  img.src = URL.createObjectURL(f);
+};
+$('clearImg').onclick = () => { discImg = discGray = null; $('thumbImg').style.backgroundImage = ''; note('nImg', 'בלי תמונה, דיסק לבן'); drawPrint(); };
+$('fAud').onchange = e => {
+  const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+  if (f.type && !/^(audio|video)\//.test(f.type)) { note('nAud', 'זה לא נראה כמו קובץ שמע. כדאי לבחור MP3, M4A או WAV.', true); return; }
+  note('nAud', 'טוען את ' + f.name + '…');
+  aud.onloadedmetadata = () => { note('nAud', f.name + ' (' + fmt(aud.duration) + ')'); updateLen(); };
+  aud.onerror = () => note('nAud', 'הטלפון לא מצליח לנגן את הקובץ הזה. כדאי לנסות MP3 או M4A.', true);
+  aud.src = URL.createObjectURL(f); aud.load();
+};
+
+/* ---------- controls binding ---------- */
+const ctrls = [...document.querySelectorAll('[data-k]')];
+const DEC = ['speed','spin','sway','react','wordAlpha','logoSize','rays','bloom','halo','mblur','spinBlur','grainAmt','grainSize','flicker'];
+function syncInputs() {
+  for (const el of ctrls) {
+    const k = el.dataset.k;
+    if (el.type === 'checkbox') el.checked = !!S[k]; else el.value = S[k];
+  }
+  document.querySelectorAll('#durSeg button').forEach(b => {
+    const on = S.expFull ? b.dataset.d === 'full' : (b.dataset.d !== 'full' && +b.dataset.d === S.expDur);
+    b.classList.toggle('on', on); b.setAttribute('aria-checked', on);
+  });
+  $('startRow').classList.toggle('off', !!S.expFull);
+  updateLen();
+  for (const el of ctrls) if (el.type === 'range') el.style.setProperty('--p', ((el.value - el.min) / (el.max - el.min) * 100) + '%');
+  document.querySelectorAll('.v[data-for]').forEach(sp => { const k = sp.dataset.for; sp.textContent = DEC.includes(k) ? (+S[k]).toFixed(2) : S[k]; });
+}
+function exportRange() {
+  const hasAudio = !!aud.src && isFinite(aud.duration);
+  if (hasAudio && S.expFull) return {hasAudio, start: 0, dur: aud.duration, toEnd: true};
+  const start = hasAudio ? Math.min(Math.max(0, S.expStart), Math.max(0, aud.duration - 1)) : 0;
+  const want = Math.max(1, S.expDur);
+  const dur = hasAudio ? Math.min(want, aud.duration - start) : want;
+  return {hasAudio, start, dur: Math.max(1, dur), toEnd: hasAudio && want > aud.duration - start};
+}
+function updateLen() {
+  const el = $('expLen'); if (!el) return;
+  const r = exportRange();
+  let t = 'אורך הסרטון: ' + fmt(r.dur);
+  if (r.hasAudio && !S.expFull) t += ' (מ־' + fmt(r.start) + ' בשיר)';
+  if (r.toEnd && !S.expFull) t += '. השיר נגמר לפני האורך שבחרת, אז הסרטון יסתיים בסוף השיר.';
+  if (S.expFull && !r.hasAudio) t = 'כדי לייצא את כל השיר, צריך קודם להעלות שיר בלשונית קבצים.';
+  if (r.dur > 60) t += ' סרטון ארוך לוקח זמן כמו האורך שלו, ונשמר באיכות קצת נמוכה יותר כדי שהקובץ לא יהיה כבד מדי.';
+  el.textContent = t;
+}
+document.querySelectorAll('#durSeg button').forEach(b => b.onclick = () => {
+  if (b.dataset.d === 'full') S.expFull = true;
+  else { S.expFull = false; S.expDur = +b.dataset.d; }
+  syncInputs(); save();
+});
+const PRINT_KEYS = ['bw','word','top','brand','wordAlpha','wWord','wSmall','disc','ink'];
+const LOGO_KEYS = ['logo','wLogo','logoCol','light'];
+function onChange(k) {
+  if (k.startsWith('font')) ensureFonts(k);
+  if (PRINT_KEYS.includes(k)) drawPrint();
+  if (LOGO_KEYS.includes(k)) drawLogo();
+  if (k === 'wLogo' || k === 'brand') drawPrint();
+  if (['bg','deck','light'].includes(k)) applyColors();
+  if (k === 'format') setFormat();
+  if (k === 'shot') fresh = true;
+  if (k === 'expDur') { S.expFull = false; syncInputs(); }
+}
+for (const el of ctrls) {
+  const ev = (el.type === 'text' || el.tagName === 'TEXTAREA') && !el.dataset.k.startsWith('font') ? 'input' : (el.type === 'range' ? 'input' : 'change');
+  el.addEventListener(ev, () => {
+    const k = el.dataset.k;
+    S[k] = el.type === 'checkbox' ? el.checked : (el.type === 'range' || el.type === 'number') ? parseFloat(el.value) || 0 : el.value;
+    syncInputs(); onChange(k); save();
+  });
+}
+let paused = false;
+const sections = [...document.querySelectorAll('#panel > section')], tabBar = $('tabs');
+function showTab(i) {
+  i = Math.max(0, Math.min(sections.length - 1, i | 0));
+  sections.forEach((c, j) => c.classList.toggle('on', j === i));
+  [...tabBar.children].forEach((b, j) => { b.classList.toggle('on', j === i); b.setAttribute('aria-selected', j === i); });
+  const b = tabBar.children[i];
+  if (b) tabBar.scrollLeft += (b.getBoundingClientRect().left + b.offsetWidth / 2) - (tabBar.getBoundingClientRect().left + tabBar.clientWidth / 2);
+  $('panel').scrollTop = 0;
+  try { localStorage.setItem('aria-disc-tab', i); } catch (e) {}
+}
+sections.forEach((c, i) => {
+  const b = document.createElement('button');
+  b.type = 'button'; b.className = 'tab'; b.setAttribute('role', 'tab');
+  b.textContent = c.dataset.title;
+  b.onclick = () => showTab(i);
+  tabBar.appendChild(b);
+});
+let firstTab = 0; try { firstTab = +localStorage.getItem('aria-disc-tab') || 0; } catch (e) {}
+showTab(firstTab);
+$('sizeBtn').onclick = () => document.querySelector('.stage').classList.toggle('big');
+$('pauseBtn').onclick = () => { paused = !paused; $('pauseBtn').textContent = paused ? 'המשך המצלמה' : 'עצירת המצלמה'; };
+$('resetMotion').onclick = () => { Object.assign(S, MOTION_DEFAULTS); syncInputs(); save(); fresh = true; };
+
+/* ---------- render loop ---------- */
+let pathT = 0, swayT = 0, spinA = 0, last = performance.now(), exp = null, lastCut = 0;
+const tmpV = new THREE.Vector3();
+function render(now) {
+  const dt = Math.min(.05, (now - last) / 1000); last = now;
+  readPulse(dt);
+  const react = S.react, beat = pulse * react;
+  const moving = !paused || exp;
+  if (moving) { pathT += dt * S.speed; swayT += dt; }
+
+  // camera: the full loop, or one shot held with a slow drift
+  const auto = S.shot === 'auto';
+  if (auto && S.cuts && moving && pulse > .82 && now - lastCut > 1400) {
+    lastCut = now;
+    const ct = ((pathT % LOOP) + LOOP) % LOOP;
+    let nxt = KF.find(k => k.t > ct + .3);
+    pathT += (nxt ? nxt.t : LOOP) - ct;
+    fresh = true;
+  }
+  samplePath(auto ? pathT : KF[+S.shot || 0].t);
+  // wider frames fit the disc from closer; far shots get the full pull-in, close ones only a little
+  const fit = .5625 / Math.min(W / H, 1), d0 = cam.P.distanceTo(cam.T);
+  cam.P.sub(cam.T).multiplyScalar(1 + (fit - 1) * Math.min(1, d0 / 2.5)).add(cam.T);
+  const dist = cam.P.distanceTo(cam.T);
+  const sw = S.sway * (auto ? .6 : 1);
+  cam.P.x += Math.sin(swayT * .41) * .08 * sw * dist;
+  cam.P.y += Math.sin(swayT * .33 + 1) * .025 * sw * dist * (cam.P.y < .1 ? .2 : 1);
+  cam.P.z += Math.cos(swayT * .37) * .08 * sw * dist;
+  if (beat > .05) cam.P.add(tmpV.set(Math.random() - .5, Math.random() - .5, Math.random() - .5).multiplyScalar(beat * .012 * dist));
+  camera.position.copy(cam.P);
+  camera.up.copy(cam.U);
+  camera.lookAt(cam.T);
+  camera.rotateZ(Math.sin(swayT * .29) * .05 * sw);
+  if (Math.abs(camera.fov - cam.fov) > .01) { camera.fov = cam.fov; camera.updateProjectionMatrix(); }
+  scene.fog.near = dist + .6; scene.fog.far = dist + 6;
+
+  // disc: spin, wobble and lift
+  const spinRate = S.spin * Math.PI * 2 * (1 + beat * .5);
+  if (moving || !paused) spinA += dt * spinRate;
+  spinner.rotation.y = -spinA;
+  hubSpin.rotation.y = -spinA;
+  discGroup.position.y = cam.lift + Math.sin(swayT * 1.1) * .01 * Math.min(1, cam.lift * 2);
+  discGroup.rotation.set(Math.sin(swayT * 1.3) * .012 + cam.lift * .05, 0, Math.cos(swayT * 1.1) * .01);
+  blurMat.opacity = Math.min(.8, S.spinBlur * Math.min(1, S.spin / .8) * .75);
+  printMat.opacity = 1;
+
+  haloMat.opacity = cam.halo * S.halo * (.3 + beat * .25);
+  halo.scale.setScalar(1 + beat * .05);
+  const r = cam.rays * S.rays;
+  raysMat.uniforms.uAmt.value = r * (.55 + beat * .5);
+  raysMat.uniforms.uTime.value = swayT;
+  rays.visible = r > .002;
+  coreLight.intensity = r * (2.2 + beat * 2);
+
+  const L = cam.logo;
+  const ly = .07 + L * .38 + Math.sin(swayT * .9) * .015 * L;
+  logoMesh.position.set(0, ly, 0);
+  logoMesh.quaternion.copy(camera.quaternion);
+  // keep the logo inside the frame: at most 80% of the visible width at its distance
+  const visW = 2 * camera.position.distanceTo(logoMesh.position) * Math.tan(camera.fov * Math.PI / 360) * camera.aspect;
+  const lw = Math.min(.7 * S.logoSize, visW * .8 * Math.min(1, S.logoSize));
+  logoMesh.scale.setScalar(lw * (.55 + .45 * L) * (1 + beat * .04));
+  logoMat.opacity = Math.min(1, L * 1.3);
+  logoMesh.visible = L > .003;
+  flare.position.set(0, ly, 0); flare.quaternion.copy(camera.quaternion);
+  flare.material.opacity = L * r * .6 * (.8 + beat * .5);
+  flare.scale.setScalar(lw * 1.4);
+
+  renderer.render(scene, camera);
+
+  // camera trail: blend the new frame over the previous ones
+  const trail = fresh ? 0 : S.mblur * .72;
+  actx2.globalAlpha = 1 - trail; actx2.drawImage(renderer.domElement, 0, 0); actx2.globalAlpha = 1;
+  fresh = false;
+
+  ctx.save();
+  ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
+  ctx.drawImage(acc, 0, 0);
+  if (S.bloom > 0) {
+    // bloom: shrink, square the brightness twice so only bright parts stay, then add back wide and soft
+    b1x.globalCompositeOperation = 'source-over'; b1x.drawImage(acc, 0, 0, b1.width, b1.height);
+    b1x.globalCompositeOperation = 'multiply'; b1x.drawImage(b1, 0, 0); b1x.drawImage(b1, 0, 0); b1x.drawImage(b1, 0, 0);
+    b1x.globalCompositeOperation = 'source-over';
+    b2x.drawImage(b1, 0, 0, b2.width, b2.height);
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = Math.min(1, S.bloom * .22 * (1 + beat * .4)); ctx.drawImage(b1, 0, 0, W, H);
+    ctx.globalAlpha = Math.min(1, S.bloom * .38 * (1 + beat * .4)); ctx.drawImage(b2, 0, 0, W, H);
+    ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
+  }
+  const R = Math.max(W, H);
+  const vg = ctx.createRadialGradient(W / 2, H / 2, R * .28, W / 2, H / 2, R * .75);
+  vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.6)');
+  ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
+
+  if (S.flicker > 0) {
+    const dark = S.flicker * .5 * (1 - flick);
+    if (dark > .003) { ctx.fillStyle = `rgba(0,0,0,${dark})`; ctx.fillRect(0, 0, W, H); }
+  }
+  if (S.grainAmt > 0) {
+    const gs = S.grainSize * W / 1080, pat = grainPats[(Math.random() * grainPats.length) | 0];
+    ctx.setTransform(gs, 0, 0, gs, -Math.random() * 256 * gs, -Math.random() * 256 * gs);
+    ctx.fillStyle = pat;
+    ctx.globalCompositeOperation = 'overlay'; ctx.globalAlpha = Math.min(1, S.grainAmt * .55);
+    ctx.fillRect(0, 0, W / gs + 256, H / gs + 256);
+    ctx.globalCompositeOperation = 'soft-light'; ctx.globalAlpha = Math.min(1, S.grainAmt * .35);
+    ctx.fillRect(0, 0, W / gs + 256, H / gs + 256);
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
+  }
+
+  if (exp) {
+    const el = exp.hasAudio ? aud.currentTime - exp.start : (now - exp.t0) / 1000;
+    if (S.fade) {
+      const a = Math.min(1, Math.max(0, el / .6), Math.max(0, (exp.dur - el) / .8));
+      if (a < 1) { ctx.fillStyle = `rgba(0,0,0,${1 - a})`; ctx.fillRect(0, 0, W, H); }
+    }
+    $('expBar').style.width = Math.min(100, el / exp.dur * 100) + '%';
+    $('expStatus').textContent = `מקליט… ${fmt(el)} / ${fmt(exp.dur)}`;
+    if (el >= exp.dur) exp.finish();
+  }
+  ctx.restore();
+
+  const prog = aud.duration ? aud.currentTime / aud.duration : 0;
+  if (!seeking && aud.duration) $('seek').value = Math.round(prog * 1000);
+  $('tCur').textContent = fmt(aud.currentTime); $('tDur').textContent = fmt(aud.duration);
+  $('seek').style.setProperty('--p', ($('seek').value / 10) + '%');
+  requestAnimationFrame(render);
+}
+/* ---------- export ---------- */
+const MIMES = ['video/mp4;codecs=avc1.640028,mp4a.40.2','video/mp4;codecs=avc1,mp4a.40.2','video/mp4;codecs=avc1.4D401F,mp4a.40.2','video/mp4;codecs=avc1,mp4a','video/mp4',
+  'video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm'];
+let lastFile = null;
+async function exportVideo() {
+  if (exp) { exp.cancel(); return; }
+  const st = $('expStatus'); st.className = 'status';
+  if (!window.MediaRecorder || !out.captureStream) { st.className = 'status bad'; st.textContent = 'הדפדפן הזה לא תומך בייצוא. כדאי לעדכן אותו, או לנסות ב־Chrome, ב־Edge או ב־Safari.'; return; }
+  const {hasAudio, start, dur} = exportRange();
+  $('after').classList.remove('show');
+
+  // everything that needs the tap (iPhone) happens synchronously here
+  let playP = null;
+  if (hasAudio) {
+    ensureAudioGraph(); actx.resume();
+    expGain.gain.cancelScheduledValues(actx.currentTime);
+    expGain.gain.setValueAtTime(S.fade ? 0 : 1, actx.currentTime);
+    aud.pause(); aud.currentTime = start;
+    playP = aud.play();
+  }
+  setFormat(parseFloat(S.expRes) || 1);
+  ctrls.forEach(el => el.disabled = true);
+  $('expBtn').textContent = 'ביטול הייצוא'; $('expBtn').classList.add('cancel');
+
+  const restore = () => {
+    aud.pause(); aud.onended = null;
+    setFormat(); ctrls.forEach(el => el.disabled = false);
+    $('expBtn').textContent = 'ייצוא סרטון'; $('expBtn').classList.remove('cancel');
+    if (wake) { wake.release().catch(() => {}); wake = null; }
+  };
+  let wake = null;
+  try { if (navigator.wakeLock) wake = await navigator.wakeLock.request('screen'); } catch (e) {}
+
+  const tracks = [...out.captureStream(30).getVideoTracks()];
+  if (hasAudio) tracks.push(...streamDest.stream.getAudioTracks());
+  const mime = MIMES.find(m => MediaRecorder.isTypeSupported(m)) || '';
+  let rec;
+  try { rec = new MediaRecorder(new MediaStream(tracks), {mimeType: mime || undefined, videoBitsPerSecond: dur > 60 ? 7e6 : 12e6, audioBitsPerSecond: 192000}); }
+  catch (e) { restore(); st.className = 'status bad'; st.textContent = 'לא הצלחתי להתחיל את ההקלטה: ' + e.message; return; }
+  const chunks = []; let cancelled = false;
+  rec.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
+  const done = new Promise(r => rec.onstop = r);
+
+  if (playP) {
+    try { await playP; }
+    catch (e) { restore(); st.className = 'status bad'; st.textContent = 'השיר לא התחיל להתנגן. כדאי ללחוץ שוב על "ייצא סרטון".'; return; }
+    const g = expGain.gain, n = actx.currentTime;
+    if (S.fade) { g.setValueAtTime(0, n); g.linearRampToValueAtTime(1, n + .6); g.setValueAtTime(1, n + Math.max(.6, dur - .8)); g.linearRampToValueAtTime(0, n + dur); }
+    else g.setValueAtTime(1, n);
+  }
+  pathT = 0; swayT = 0; fresh = true;
+  exp = {hasAudio, start: hasAudio ? aud.currentTime : 0, dur, t0: performance.now(),
+    finish() { if (rec.state !== 'inactive') rec.stop(); exp = null; },
+    cancel() { cancelled = true; this.finish(); }};
+  if (hasAudio) aud.onended = () => exp && exp.finish();
+  rec.start(500);
+  await done;
+  restore();
+  if (cancelled) { st.textContent = 'הייצוא בוטל'; $('expBar').style.width = '0'; return; }
+  const type = (mime || chunks[0]?.type || 'video/webm').split(';')[0], ext = type.includes('mp4') ? 'mp4' : 'webm';
+  const blob = new Blob(chunks, {type});
+  const slug = (S.word || 'disc').toLowerCase().replace(/[^\w֐-׿]+/g, '-').replace(/^-|-$/g, '') || 'song';
+  lastFile = new File([blob], `house-of-aria-disc-${slug}-${S.format.replace(':','x')}.${ext}`, {type});
+  $('expBar').style.width = '100%';
+  st.className = 'status ok';
+  st.textContent = `הסרטון מוכן (${ext.toUpperCase()}, ${(blob.size / 1048576).toFixed(1)}MB)`;
+  const canShare = !dlCap && !!(navigator.canShare && navigator.canShare({files: [lastFile]}));
+  $('dlBtn').textContent = dlCap ? 'שמירת הסרטון' : 'הורדה';
+  
+  $('shareBtn').style.display = canShare ? '' : 'none';
+  $('after').classList.add('show');
+  if (dlCap || !IS_MOBILE || !canShare) downloadLast();
+}
+// inside claude.ai the page saves through the viewer's "downloads" capability
+let dlCap = null;
+if (window.claude && window.claude.use) window.claude.use('downloads').then(d => { dlCap = d; }).catch(() => {});
+async function downloadLast() {
+  if (!lastFile) return;
+  if (dlCap) {
+    const st = $('expStatus');
+    try { await dlCap.save({filename: lastFile.name, data: lastFile}); st.className = 'status ok'; st.textContent = 'הסרטון נשמר'; }
+    catch (e) {
+      if (e && e.code === 'declined') return;
+      st.className = 'status bad';
+      st.textContent = e && e.code === 'rate_limited' ? 'כבר פתוח חלון שמירה. כדאי לסיים אותו ולנסות שוב.' : 'לא הצלחתי לשמור כאן את הסרטון. כדאי לנסות שוב.';
+    }
+    return;
+  }
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(lastFile); a.download = lastFile.name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+}
+$('dlBtn').onclick = downloadLast;
+$('shareBtn').onclick = async () => {
+  if (!lastFile) return;
+  try { await navigator.share({files: [lastFile], title: S.word}); }
+  catch (e) { if (e.name !== 'AbortError') downloadLast(); }
+};
+$('expBtn').onclick = exportVideo;
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden && exp) { $('expStatus').className = 'status bad'; $('expStatus').textContent = 'הלשונית מוסתרת, וזה פוגע בהקלטה. כדאי לחזור אליה.'; }
+});
+
+/* ---------- init ---------- */
+syncInputs();
+setFormat();
+applyColors();
+drawTextures();
+ensureFonts();
+document.fonts.addEventListener && document.fonts.addEventListener('loadingdone', () => drawTextures());
+requestAnimationFrame(render);
+})();
+</script>
+</body>
+</html>
