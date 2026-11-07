@@ -622,7 +622,8 @@ const camera = new THREE.PerspectiveCamera(40, W / H, .03, 40);
   };
   box(7, 7, 0, 9, 0, 1.6); box(12, 1.2, 7, 2, 1, 1.1); box(12, .8, -7, 1.5, -2, .6); box(3, 9, 1, 2, -8, .7); box(4, .6, -2, -3, 6, .3);
   for (let i = 0; i < 7; i++) box(.25, 14, Math.cos(i * .9) * 8, -1 + i * .3, Math.sin(i * .9) * 8, .35 + (i % 3) * .25);
-  box(14, 14, 0, -8, 0, .05);
+  box(14, 14, 0, -8, 0, .12);
+  for (let i = 0; i < 6; i++) box(16, .35 + i * .08, (i - 2.5) * 1.6, -5, (i % 2 ? 1 : -1) * .8, .9 - i * .08); // strips below, so the mirror side shows streaks from under the disc
   const pm = new THREE.PMREMGenerator(renderer);
   scene.environment = pm.fromScene(env, .03).texture;
   pm.dispose();
@@ -1083,7 +1084,7 @@ function render(now) {
   raysMat.uniforms.uAmt.value = r * (.32 + beat * .35);
   raysMat.uniforms.uTime.value = swayT;
   rays.visible = r > .002;
-  coreLight.intensity = r * (2.2 + beat * 2);
+  coreLight.intensity = r * (1.2 + beat * 1.2);
 
   const L = cam.logo;
   const ly = .07 + L * .27 + Math.sin(swayT * .9) * .012 * L;
