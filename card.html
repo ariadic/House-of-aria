@@ -291,11 +291,12 @@ input[type=color]::-moz-color-swatch{border:0;border-radius:50%}
       <div class="slider"><div class="sl-top"><span>גרעיניות</span><span class="v" data-for="grainAmt"></span></div><input type="range" data-k="grainAmt" min="0" max="1" step="0.01"></div>
       <div class="slider"><div class="sl-top"><span>גודל הגרעין</span><span class="v" data-for="grainSize"></span></div><input type="range" data-k="grainSize" min="0.5" max="3" step="0.05"></div>
     </div>
-    <h2>הרקע זז עם השיר</h2>
+    <h2>אור שמהבהב עם השיר</h2>
     <div class="group">
-      <div class="slider"><div class="sl-top"><span>הבהוב לפי השיר</span><span class="v" data-for="flicker"></span></div><input type="range" data-k="flicker" min="0" max="1" step="0.01"></div>
+      <div class="slider"><div class="sl-top"><span>אור מאחורי הכותרת ובצדדים</span><span class="v" data-for="sideLight"></span></div><input type="range" data-k="sideLight" min="0" max="1" step="0.01"></div>
+      <div class="slider"><div class="sl-top"><span>עוצמת ההבהוב על הביט</span><span class="v" data-for="flicker"></span></div><input type="range" data-k="flicker" min="0" max="1" step="0.01"></div>
     </div>
-    <p class="hint">הרקע מתכהה בחלקים השקטים, נדלק קלות על הביט ומהבהב בעדינות כמו מקרן קולנוע. הכרטיס עצמו לא מהבהב.</p>
+    <p class="hint">האור האדום מאחורי הכותרת ובצדי המסך נדלק על כל ביט ונכבה ביניהם, כמו במקור. הכרטיס נשאר יציב. כשהשיר לא מתנגן, האור דולק קבוע.</p>
     <h2>אבק באוויר</h2>
     <div class="group">
       <div class="slider"><div class="sl-top"><span>כמות</span><span class="v" data-for="particles"></span></div><input type="range" data-k="particles" min="0" max="1" step="0.01"></div>
@@ -373,7 +374,7 @@ const DEFAULTS = Object.assign({
   fontHead:'Anton', wHead:'400', headSize:1,
   fontTitle:'Inter', wTitle:'700', titleSize:1,
   fontSmall:'Inter', wSmall:'400',
-  bg:'#0b0708', glow:'#c4362f', card:'#2a2a2e', text:'#f2f2f2', head:'#ffffff', accent:'#e0412f', grainAmt:0.35, grainSize:1, flicker:0.4,
+  bg:'#0b0708', glow:'#c4362f', card:'#2a2a2e', text:'#f2f2f2', head:'#ffffff', accent:'#e0412f', grainAmt:0.35, grainSize:1, flicker:0.85, sideLight:0.75,
   format:'9:16', expStart:0, expDur:15, expFull:false, fade:true, expRes:'1',
   bgImg:true, bgImgAmt:0.45, particles:0.45, pSize:1, backlight:0.35, parallax:0.7
 }, MOTION_DEFAULTS);
@@ -384,6 +385,7 @@ const STORE = 'aria-card-v1';
 let S = Object.assign({}, DEFAULTS);
 try { const saved = JSON.parse(localStorage.getItem(STORE) || 'null'); if (saved) { if (!saved.dustV) { delete saved.particles; delete saved.pSize; delete saved.backlight; delete saved.bokeh; } Object.assign(S, saved); } } catch (e) {}
 S.dustV = 1;
+if (!S.lightV) { S.flicker = DEFAULTS.flicker; S.sideLight = DEFAULTS.sideLight; S.lightV = 1; }
 let saveTimer = 0;
 function save() { clearTimeout(saveTimer); saveTimer = setTimeout(() => { try { localStorage.setItem(STORE, JSON.stringify(S)); } catch (e) {} }, 300); }
 
@@ -744,9 +746,10 @@ function ensureAudioGraph() {
   srcNode.connect(expGain); expGain.connect(streamDest);
 }
 let level = 0, slowAvg = 0, pulse = 0;
-let env = 0, peak = 0, floor = 1, flick = 1;
+let env = 0, peak = 0, floor = 1, flick = 1, strobe = 1, clock = 0, lastBeat = -9, armed = true;
 function readPulse(dt = 1 / 60) {
-  if (!analyser || aud.paused) { pulse *= .9; flick += (1 - flick) * .05; return; }
+  clock += dt;
+  if (!analyser || aud.paused) { pulse *= .9; flick += (1 - flick) * .05; strobe += (1 - strobe) * (1 - Math.exp(-dt / .25)); return; }
   analyser.getByteFrequencyData(freq);
   let e = 0; for (let i = 1; i < 7; i++) e += freq[i]; e /= 6 * 255;
   slowAvg = slowAvg * .985 + e * .015;
@@ -761,6 +764,11 @@ function readPulse(dt = 1 / 60) {
   const lvl = Math.max(0, Math.min(1, (env - floor) / Math.max(.06, peak - floor)));
   const target = lvl * .88 + Math.random() * .12;
   flick += (target - flick) * (1 - Math.exp(-dt / .04));
+  // strobe: the light snaps on at each beat, holds briefly, then drops off (measured from the reference: about 0.25 s on)
+  if (lvl < .45) armed = true;
+  if (armed && lvl > .7 && clock - lastBeat > .16) { lastBeat = clock; armed = false; }
+  const on = clock - lastBeat < .24 ? 1 : 0;
+  strobe += (on - strobe) * (1 - Math.exp(-dt / (on ? .012 : .055)));
 }
 const fmt = t => { t = Math.max(0, t || 0); return Math.floor(t / 60) + ':' + String(Math.floor(t % 60)).padStart(2, '0'); };
 
@@ -876,7 +884,7 @@ function syncInputs() {
   for (const el of ctrls) if (el.type === 'range') el.style.setProperty('--p', ((el.value - el.min) / (el.max - el.min) * 100) + '%');
   document.querySelectorAll('.v[data-for]').forEach(sp => {
     const k = sp.dataset.for, v = S[k];
-    sp.textContent = ['speed','float','react','size','headSize','titleSize','bgImgAmt','particles','pSize','backlight','parallax','grainAmt','grainSize','flicker'].includes(k) ? (+v).toFixed(2) : v;
+    sp.textContent = ['speed','float','react','size','headSize','titleSize','bgImgAmt','particles','pSize','backlight','parallax','grainAmt','grainSize','flicker','sideLight'].includes(k) ? (+v).toFixed(2) : v;
   });
 }
 function exportRange() {
@@ -974,37 +982,44 @@ function render(now) {
   ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
   ctx.fillStyle = S.bg; ctx.fillRect(0, 0, W, H);
   const par = S.parallax;
+  const playing = analyser && !aud.paused;
+  const light = Math.max(0, 1 - S.flicker * (1 - strobe)) * (playing ? .95 + Math.random() * .05 : 1);
   if (S.bgImg && bgBlur && S.bgImgAmt > 0) {
     const sc2 = Math.max(W / bgBlur.width, H / bgBlur.height) * 1.3;
     const bw2 = bgBlur.width * sc2, bh2 = bgBlur.height * sc2;
-    ctx.globalAlpha = S.bgImgAmt;
+    ctx.globalAlpha = S.bgImgAmt * (.25 + .75 * light);
     ctx.drawImage(bgBlur, (W - bw2) / 2 - ry * par * W * .25, (H - bh2) / 2 + rx * par * H * .12 + Math.sin(t * .23) * H * .01, bw2, bh2);
     ctx.globalAlpha = 1;
   }
   const R = Math.max(W, H);
   const gx = W * (.84 + .05 * Math.sin(t * .21)), gy = H * (.12 + .04 * Math.cos(t * .17));
   let g = ctx.createRadialGradient(gx, gy, 0, gx, gy, R * .85);
-  g.addColorStop(0, rgba(S.glow, Math.min(1, .62 + pulse * S.react * .35))); g.addColorStop(.45, rgba(S.glow, .22)); g.addColorStop(1, rgba(S.glow, 0));
+  g.addColorStop(0, rgba(S.glow, Math.min(1, .62 * light))); g.addColorStop(.45, rgba(S.glow, .22 * light)); g.addColorStop(1, rgba(S.glow, 0));
   ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
   const g2x = W * (.1 + .04 * Math.cos(t * .19)), g2y = H * .92;
   g = ctx.createRadialGradient(g2x, g2y, 0, g2x, g2y, R * .55);
-  g.addColorStop(0, rgba(S.glow, .25)); g.addColorStop(1, rgba(S.glow, 0));
+  g.addColorStop(0, rgba(S.glow, .25 * light)); g.addColorStop(1, rgba(S.glow, 0));
   ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  if (S.sideLight > 0 && light > .01) {
+    const lightGlow = (cx, cy, rx2, ry2, a) => {
+      ctx.save(); ctx.translate(cx, cy); ctx.scale(rx2, ry2);
+      const gg = ctx.createRadialGradient(0, 0, 0, 0, 0, 1);
+      gg.addColorStop(0, rgba(shade(S.glow, .12), a)); gg.addColorStop(.55, rgba(S.glow, a * .35)); gg.addColorStop(1, rgba(S.glow, 0));
+      ctx.fillStyle = gg; ctx.fillRect(-1, -1, 2, 2); ctx.restore();
+    };
+    const a = S.sideLight * light;
+    if (hasHead()) lightGlow(W / 2, (L.headTop + L.headBottom) / 2, W * .62, (L.headBottom - L.headTop) * .85 + H * .04, a * .75);
+    lightGlow(0, H * .64, W * .32, H * .34, a * .8);
+    lightGlow(W, H * .3, W * .3, H * .32, a * .8);
+  }
   g = ctx.createRadialGradient(W / 2, H / 2, R * .3, W / 2, H / 2, R * .8);
   g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,.55)');
   ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
 
-  if (S.flicker > 0) {
-    const dark = S.flicker * .6 * (1 - flick);
-    if (dark > .003) { ctx.fillStyle = `rgba(0,0,0,${dark})`; ctx.fillRect(0, 0, W, H); }
-    const lift = S.flicker * Math.max(0, flick - .55) * .45;
-    if (lift > .003) { ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = rgba(S.glow, lift); ctx.fillRect(0, 0, W, H); ctx.globalCompositeOperation = 'source-over'; }
-  }
-
   if (S.backlight > 0) {
     const bx = W / 2 + ry * par * W * .12, by = L.cy - L.cardH * .05;
     g = ctx.createRadialGradient(bx, by, 0, bx, by, L.cardH * .85);
-    g.addColorStop(0, rgba(shade(S.glow, .25), Math.min(1, S.backlight * (.5 + pulse * S.react * .4))));
+    g.addColorStop(0, rgba(shade(S.glow, .25), Math.min(1, S.backlight * (.5 + pulse * S.react * .4) * (.55 + .45 * light))));
     g.addColorStop(.5, rgba(S.glow, S.backlight * .18)); g.addColorStop(1, rgba(S.glow, 0));
     ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
   }
