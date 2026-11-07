@@ -604,13 +604,13 @@ function drawLogo() {
   let drew = false;
   if (logoImg && S.logoRise) {
     const sc = Math.min(LW * .82 / logoImg.width, LH * .6 / logoImg.height), h = logoImg.height * sc;
-    drawLogoImg(c, LW / 2, LH / 2, LW * .82, LH * .6, S.logoTint ? chrome(c, LH / 2 - h / 2, LH / 2 + h / 2) : null);
-    drew = S.logoTint;
+    drawLogoImg(c, LW / 2, LH / 2, LW * .82, LH * .6, S.logoTint ? S.logoCol : null);
+    drew = false;
   } else if (S.logo.trim()) {
     c.textAlign = 'center'; c.textBaseline = 'middle'; c.direction = isHeb(S.logo) ? 'rtl' : 'ltr';
     const px = fitFont(c, S.logo, S.fontLogo, S.wLogo, LH * .26, LW * .86);
-    c.fillStyle = chrome(c, LH / 2 - px * .55, LH / 2 + px * .55); c.fillText(S.logo, LW / 2, LH / 2);
-    drew = true;
+    c.fillStyle = S.logoCol; c.fillText(S.logo, LW / 2, LH / 2);
+    drew = false;
   }
   if (drew && S.logoCol.toLowerCase() !== '#ffffff') {
     // tint the metal with the logo colour, then cut back to the logo's own shape
@@ -740,7 +740,7 @@ halo.renderOrder = 0;
 // a stack of copies behind the face, darker toward the back, reads as solid extruded letters
 const logoMat = new THREE.MeshBasicMaterial({map: logoTex, transparent: true, alphaTest: .35, opacity: 0, fog: false});
 const logoMesh = new THREE.Group(); scene.add(logoMesh);
-const logoGeo = new THREE.PlaneGeometry(1, .5), EXTRUDE = 16, logoSides = [];
+const logoGeo = new THREE.PlaneGeometry(1, .5), EXTRUDE = 0, logoSides = [];
 for (let i = EXTRUDE; i >= 1; i--) {
   const k = i / EXTRUDE, v = .42 - .34 * k;
   const m = new THREE.Mesh(logoGeo, new THREE.MeshBasicMaterial({map: logoTex, transparent: true, alphaTest: .35, opacity: 0, fog: false, color: new THREE.Color(v, v, v * 1.04)}));
@@ -1146,10 +1146,10 @@ function render(now) {
   const visW = 2 * camera.position.distanceTo(logoMesh.position) * Math.tan(camera.fov * Math.PI / 360) * camera.aspect;
   const lw = Math.min(.55 * S.logoSize, visW * .7 * Math.min(1, S.logoSize));
   logoMesh.scale.setScalar(lw * (.55 + .45 * L) * (1 + beat * .04));
-  logoMat.opacity = Math.min(1, L * 1.3); for (const m of logoSides) m.material.opacity = logoMat.opacity;
+  logoMat.opacity = Math.min(.82, L * 1.1); for (const m of logoSides) m.material.opacity = logoMat.opacity;
   logoMesh.visible = L > .003;
   flare.position.set(0, ly, 0); flare.quaternion.copy(camera.quaternion);
-  flare.material.opacity = L * r * .18 * (.8 + beat * .5);
+  flare.material.opacity = 0;
   flare.scale.setScalar(lw * 1.4);
 
   renderer.setRenderTarget(rtScene); renderer.render(scene, camera);
