@@ -198,6 +198,19 @@ input[type=color]::-moz-color-swatch{border:0;border-radius:50%}
       <div class="field"><label for="tHead">טקסט הכותרת</label><textarea id="tHead" data-k="headline" rows="2"></textarea></div>
       <label class="row"><span class="grow">קו מכחול מתחת</span><input class="switch" type="checkbox" data-k="underline"></label>
     </div>
+    <h2>ציור יד מעל הכותרת</h2>
+    <div class="group">
+      <label class="row"><span class="grow">ציור</span><select data-k="doodle">
+        <option value="none">בלי</option>
+        <option value="horns">קרניים</option>
+        <option value="crown">כתר</option>
+        <option value="halo">הילה</option>
+        <option value="sparkles">ניצוצות</option>
+      </select></label>
+      <div class="slider"><div class="sl-top"><span>גודל הציור</span><span class="v" data-for="doodleSize"></span></div><input type="range" data-k="doodleSize" min="0.5" max="2" step="0.01"></div>
+      <label class="row"><span class="grow">קווים רועדים כמו באנימציה</span><input class="switch" type="checkbox" data-k="boil"></label>
+    </div>
+    <p class="hint">הציור מופיע בצבע ההדגשה, כמו הקו שמתחת לכותרת.</p>
     <h2>הכרטיס</h2>
     <div class="group">
       <div class="field"><label for="tTitle">שם השיר</label><input type="text" id="tTitle" data-k="title"></div>
@@ -375,7 +388,7 @@ const DEFAULTS = Object.assign({
   fontHead:'Anton', wHead:'400', headSize:1,
   fontTitle:'Inter', wTitle:'700', titleSize:1,
   fontSmall:'Inter', wSmall:'400',
-  bg:'#0b0708', glow:'#c4362f', card:'#2a2a2e', text:'#f2f2f2', head:'#ffffff', accent:'#e0412f', grainAmt:0.35, grainSize:1, flicker:0.85, sideLight:0.75,
+  bg:'#0b0708', glow:'#c4362f', card:'#2a2a2e', text:'#f2f2f2', head:'#ffffff', accent:'#e0412f', grainAmt:0.35, grainSize:1, flicker:0.85, sideLight:0.75, doodle:'horns', doodleSize:1, boil:true,
   format:'9:16', expStart:0, expDur:15, expFull:false, fade:true, expRes:'1',
   bgImg:true, bgImgAmt:0.45, particles:0.45, pSize:1, backlight:0.35, parallax:0.7
 }, MOTION_DEFAULTS);
@@ -691,6 +704,52 @@ function layout() {
 }
 
 /* ---------- headline ---------- */
+/* ---------- hand-drawn doodle above the headline ---------- */
+function rng(seed) { return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+// a marker stroke through points: wobbled a little, smoothed, drawn twice like a real pen going over its line
+function handStroke(pts, w, rand, closed) {
+  for (let pass = 0; pass < 2; pass++) {
+    const j = w * (pass ? .55 : .35);
+    const q = pts.map(([x, y]) => [x + (rand() - .5) * j * 2, y + (rand() - .5) * j * 2]);
+    if (closed) q.push(q[0], q[1]);
+    ctx.beginPath(); ctx.moveTo(q[0][0], q[0][1]);
+    for (let i = 1; i < q.length - 1; i++) { const mx = (q[i][0] + q[i+1][0]) / 2, my = (q[i][1] + q[i+1][1]) / 2; ctx.quadraticCurveTo(q[i][0], q[i][1], mx, my); }
+    if (!closed) ctx.lineTo(q[q.length - 1][0], q[q.length - 1][1]);
+    ctx.lineWidth = w * (pass ? .7 : 1); ctx.globalAlpha = pass ? .8 : 1; ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+}
+function drawDoodle(cx, capTop, w0, px) {
+  if (!S.doodle || S.doodle === 'none') return;
+  const u = px * .5 * S.doodleSize, lw = Math.max(2, px * .045 * Math.sqrt(S.doodleSize));
+  const rand = rng(S.boil ? Math.floor(motionT / Math.max(.2, S.speed) * 8) + 7 : 7);
+  ctx.save();
+  ctx.shadowColor = 'transparent'; ctx.strokeStyle = S.accent; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  const base = capTop - px * .04;
+  if (S.doodle === 'horns') {
+    for (const s of [-1, 1]) {
+      const hx = cx + s * Math.min(w0 * .14, px * .62) * Math.max(1, S.doodleSize * .8);
+      // curved devil horn, tip leaning outward; the tip point is doubled so it stays sharp
+      const pts = [[-.42, .05], [-.4, -.45], [-.18, -.9], [.42, -1.3], [.42, -1.3], [.12, -.82], [.2, -.4], [.32, .05]];
+      handStroke(pts.map(([x, y]) => [hx + s * x * u, base + y * u]), lw, rand, false);
+    }
+  } else if (S.doodle === 'crown') {
+    const pts = [[-1, 0], [-1.06, -1], [-1.06, -1], [-.5, -.42], [0, -1.25], [0, -1.25], [.5, -.42], [1.06, -1], [1.06, -1], [1, 0]];
+    handStroke(pts.map(([x, y]) => [cx + x * u * 1.25, base - u * .1 + y * u]), lw, rand, true);
+  } else if (S.doodle === 'halo') {
+    const rx = Math.min(w0 * .25, px * 1.05) * S.doodleSize, ry = px * .2 * S.doodleSize, cy = base - px * .32 * S.doodleSize, pts = [];
+    for (let i = 0; i <= 26; i++) { const a = -Math.PI / 2 + i / 24 * Math.PI * 2; pts.push([cx + Math.cos(a) * rx, cy + Math.sin(a) * ry]); }
+    handStroke(pts, lw, rand, false);
+  } else if (S.doodle === 'sparkles') {
+    const star = (x, y, r) => { const pts = []; for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2 - Math.PI / 2, rr = i % 2 ? r * .3 : r; pts.push([x + Math.cos(a) * rr, y + Math.sin(a) * rr]); } handStroke(pts, lw * .85, rand, true); };
+    const half = w0 / 2, cl = (x, r) => Math.max(r + 4, Math.min(W - r - 4, x));
+    star(cl(cx - half - u * .3, u * .55), base + u * .15, u * .55);
+    star(cl(cx + half - u * .2, u * .75), base - u * .7, u * .75);
+    star(cl(cx + half + u * .55, u * .4), base + u * .05, u * .4);
+  }
+  ctx.restore();
+}
+
 function drawHeadline(L, shiftX) {
   if (!hasHead()) return;
   const lines = S.headline.split('\n').map(s => s.trim()).filter(Boolean);
@@ -708,6 +767,7 @@ function drawHeadline(L, shiftX) {
   ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
   ctx.shadowColor = 'rgba(0,0,0,.45)'; ctx.shadowBlur = px * .25; ctx.shadowOffsetY = px * .06;
   const cx = W / 2 + shiftX;
+  const firstY = y, firstW = ctx.measureText(lines[0]).width;
   lines.forEach((ln, i) => {
     ctx.direction = isHeb(ln) ? 'rtl' : 'ltr';
     ctx.fillStyle = S.head; ctx.fillText(ln, cx, y);
@@ -730,6 +790,9 @@ function drawHeadline(L, shiftX) {
     }
     y += px * lh;
   });
+  ctx.font = fontStr(S.fontHead, S.wHead, px);
+  const capH = ctx.measureText('H').actualBoundingBoxAscent || px * .72;
+  drawDoodle(cx, firstY - capH, firstW, px);
   ctx.restore();
 }
 
@@ -885,7 +948,7 @@ function syncInputs() {
   for (const el of ctrls) if (el.type === 'range') el.style.setProperty('--p', ((el.value - el.min) / (el.max - el.min) * 100) + '%');
   document.querySelectorAll('.v[data-for]').forEach(sp => {
     const k = sp.dataset.for, v = S[k];
-    sp.textContent = ['speed','float','react','size','headSize','titleSize','bgImgAmt','particles','pSize','backlight','parallax','grainAmt','grainSize','flicker','sideLight'].includes(k) ? (+v).toFixed(2) : v;
+    sp.textContent = ['speed','float','react','size','headSize','titleSize','bgImgAmt','particles','pSize','backlight','parallax','grainAmt','grainSize','flicker','sideLight','doodleSize'].includes(k) ? (+v).toFixed(2) : v;
   });
 }
 function exportRange() {
