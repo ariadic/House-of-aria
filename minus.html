@@ -206,6 +206,8 @@ nav button.on{color:var(--accent)}
   <section class="tab" id="tab-today">
     <div id="setupNote" class="status warn" hidden><span class="ic">!</span><div>כדי להתחיל, ממלאים כמה פרטים בלשונית <b>הגדרות</b>: גובה המינוס, הריבית, המשכורת וההוצאות הקבועות.</div></div>
 
+    <div id="backupNote" class="status warn" hidden><span class="ic">!</span><div style="flex:1"><b id="backupNoteT">כדאי לשמור גיבוי</b> הנתונים שמורים רק בטלפון הזה. גיבוי שומר עותק שלהם בוואטסאפ, ב־Drive או בקבצים.<br><button class="linkbtn" id="backupNow" type="button">גבה עכשיו</button></div></div>
+
     <div class="card hero" id="hero">
       <div class="lbl">מותר להוציא היום</div>
       <div class="big num" id="daily">—</div>
@@ -336,6 +338,7 @@ nav button.on{color:var(--accent)}
         <button class="btn ghost" id="exportBtn" type="button">שמור גיבוי</button>
         <button class="btn ghost" id="importBtn" type="button">טען גיבוי</button>
       </div>
+      <div class="small muted" id="lastBackupTxt" style="margin-top:10px"></div>
       <input type="file" id="importFile" accept="application/json,.json" hidden>
       <button class="btn danger full" id="resetBtn" type="button">מחק את כל הנתונים</button>
     </div>
@@ -392,7 +395,8 @@ const blank = () => ({
   expenses:[],       // {id,date:'YYYY-MM-DD',amount,cat,note}
   balHistory:[],     // {date,debt}
   cat:CATS[0],
-  tab:'today'
+  tab:'today',
+  lastBackup:''
 });
 let S = blank();
 try { const raw = localStorage.getItem(KEY); if (raw) S = Object.assign(blank(), JSON.parse(raw)); } catch(e) {}
@@ -718,11 +722,30 @@ $('fixedList').addEventListener('click', e=>{
   S.fixed = S.fixed.filter(f=>f.id!==b.dataset.fx); save(); renderAll(false);
 });
 
-$('exportBtn').addEventListener('click', ()=>{
-  const blob = new Blob([JSON.stringify(S,null,2)],{type:'application/json'});
-  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `minus-backup-${iso(today0())}.json`;
+async function backup(){
+  const name = `minus-backup-${iso(today0())}.json`;
+  const json = JSON.stringify(Object.assign({}, S, {lastBackup: iso(today0())}), null, 2);
+  const done = () => { S.lastBackup = iso(today0()); save(); renderAll(); toast('הגיבוי נשמר'); };
+  // On phones, open the share sheet so the file can go to WhatsApp, Drive or Files.
+  try {
+    const file = new File([json], name, {type:'application/json'});
+    if (navigator.canShare && navigator.canShare({files:[file]})){
+      await navigator.share({files:[file], title:'גיבוי יוצאים מהמינוס'}); done(); return;
+    }
+  } catch(e){ if (e && e.name==='AbortError') return; }
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([json],{type:'application/json'})); a.download = name;
   document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href), 1000);
-});
+  done();
+}
+$('exportBtn').addEventListener('click', backup);
+$('backupNow').addEventListener('click', backup);
+function renderBackup(){
+  const lb = S.lastBackup;
+  const days = lb ? Math.round((today0() - new Date(lb+'T00:00:00'))/864e5) : Infinity;
+  $('backupNote').hidden = !(isSetup() && days >= 7);
+  $('backupNoteT').textContent = lb ? `הגיבוי האחרון לפני ${days} ימים.` : 'עוד לא שמרת גיבוי.';
+  $('lastBackupTxt').textContent = lb ? `גיבוי אחרון: ${longDate.format(new Date(lb+'T00:00:00'))}` : 'עוד לא נשמר גיבוי.';
+}
 $('importBtn').addEventListener('click', ()=>$('importFile').click());
 $('importFile').addEventListener('change', async e=>{
   const f = e.target.files[0]; if(!f) return;
@@ -779,9 +802,11 @@ $('shCopy').addEventListener('click', async ()=>{
 
 /* ---------- render ---------- */
 function renderAll(){
-  renderChips(); renderToday(); renderExpenses(); renderSettings();
+  renderChips(); renderToday(); renderExpenses(); renderSettings(); renderBackup();
   if (S.tab==='plan') renderPlan();
 }
+// Ask the browser to keep this site's data even when storage runs low.
+try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch(e) {}
 fillSettings(); renderAll();
 showTab(isSetup() ? (S.tab||'today') : 'set');
 // Refresh at midnight-ish when the app stays open.
