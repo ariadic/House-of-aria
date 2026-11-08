@@ -263,7 +263,7 @@ button{cursor:pointer}
     </div>
   </section>
 
-  <p class="help">מנגנים במקלדת שלמטה או במקלדת המחשב: שורת A עד L, ו־W E T Y U O P לקלידים השחורים. Z ו־X מזיזים אוקטבה, ו־Esc משתיק הכול. שמונת הכפתורים הגדולים מזיזים את כל הפריסט סביב הצליל המקורי, שנמצא באמצע. גוררים מעלה ומטה, ולחיצה כפולה מחזירה למצב המקורי. בלשונית LAYERS עורכים כל אחת מארבע השכבות. CHORD מנגן אקורד שלם בלחיצה על קליד אחד, ו־EXPORT מוציא לופים, סמפלים ו־MIDI לאבלטון.</p>
+  <p class="help">מנגנים במקלדת שלמטה או במקלדת המחשב: שורת A עד L, ו־W E T Y U O P לקלידים השחורים. Z ו־X מזיזים אוקטבה, ו־Esc משתיק הכול. שמונת הכפתורים הגדולים מזיזים את כל הפריסט סביב הצליל המקורי, שנמצא באמצע. גוררים מעלה ומטה, ולחיצה כפולה מחזירה למצב המקורי. בלשונית LAYERS עורכים כל אחת מארבע השכבות. CHORD מנגן אקורד שלם בלחיצה על קליד אחד, ו־EXPORT מוציא לופים, סמפלים ו־MIDI לאבלטון.<br>הכלים המוקלטים (סינון RECORDED) מגיעים מהספריות VS Chamber Orchestra: Community Edition ו־Versilian Community Sample Library של Versilian Studios, ברישיון CC0.</p>
 
   <section class="plate keys">
     <div class="wheels">
@@ -288,7 +288,7 @@ function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');cle
 /* ================================================================
    Parameter specs
    ================================================================ */
-const SRC=[['saw','Saw'],['square','Square'],['triangle','Triangle'],['sine','Sine'],['pulse25','Pulse 25'],['pulse12','Pulse 12'],['warm','Warm Saw'],['hollow','Hollow'],['organ','Organ'],['choir','Choir'],['brass','Brass'],['glass','Glass'],['vox_ah','Vox Ahh'],['vox_oo','Vox Ooh'],['reed','Reed'],['fm','FM'],['pluck','String'],['noise','Noise'],['piano','Grand Piano'],['epno','Tine E.Piano'],['vibes','Vibraphone'],['marimba','Marimba'],['celesta','Celesta'],['bells','Tubular Bells'],['steel','Steel Pan'],['kalimba','Kalimba'],['harp','Harp'],['guitar','Nylon Guitar'],['ebass','Finger Bass'],['strings','Strings'],['choirS','Choir Soft'],['flute','Flute'],['brassS','Brass Section'],['metal','Metal (cymbal)'],['voxA','Voice Aah (F)'],['voxO','Voice Ooh (F)'],['voxE','Voice Eeh (F)'],['voxM','Voice Aah (M)'],['hum','Voice Hum'],['choirF','Choir Female'],['choirM','Choir Male'],['choirO','Choir Ooh (M)'],['violin','Violin'],['cello','Cello'],['basses','Contrabasses'],['pizz','Pizzicato'],['horn','French Horn'],['horns','Horn Section'],['trumpet','Trumpet'],['trombone','Trombone'],['oboe','Oboe'],['clarinet','Clarinet'],['timpani','Timpani'],['glock','Glockenspiel'],['xylo','Xylophone'],['gong','Gong']];
+const SRC=[['saw','Saw'],['square','Square'],['triangle','Triangle'],['sine','Sine'],['pulse25','Pulse 25'],['pulse12','Pulse 12'],['warm','Warm Saw'],['hollow','Hollow'],['organ','Organ'],['choir','Choir'],['brass','Brass'],['glass','Glass'],['vox_ah','Vox Ahh'],['vox_oo','Vox Ooh'],['reed','Reed'],['fm','FM'],['pluck','String'],['noise','Noise'],['piano','Grand Piano'],['epno','Tine E.Piano'],['vibes','Vibraphone'],['marimba','Marimba'],['celesta','Celesta'],['bells','Tubular Bells'],['steel','Steel Pan'],['kalimba','Kalimba'],['harp','Harp'],['guitar','Nylon Guitar'],['ebass','Finger Bass'],['strings','Strings'],['choirS','Choir Soft'],['flute','Flute'],['brassS','Brass Section'],['metal','Metal (cymbal)'],['voxA','Voice Aah (F)'],['voxO','Voice Ooh (F)'],['voxE','Voice Eeh (F)'],['voxM','Voice Aah (M)'],['hum','Voice Hum'],['choirF','Choir Female'],['choirM','Choir Male'],['choirO','Choir Ooh (M)'],['violin','Violin'],['cello','Cello'],['basses','Contrabasses'],['pizz','Pizzicato'],['horn','French Horn'],['horns','Horn Section'],['trumpet','Trumpet'],['trombone','Trombone'],['oboe','Oboe'],['clarinet','Clarinet'],['timpani','Timpani'],['glock','Glockenspiel'],['xylo','Xylophone'],['gong','Gong'],['rpiano','Steinway Grand (rec)'],['rvln','Violin Section (rec)'],['rvla','Viola Section (rec)'],['rvcl','Cello Section (rec)'],['rcbs','Contrabass (rec)'],['rpizz','Pizzicato (rec)'],['rharp','Harp (rec)'],['rflute','Flute (rec)'],['roboe','Oboe (rec)'],['rclar','Clarinet (rec)'],['rtpt','Trumpet (rec)'],['rhorn','French Horn (rec)'],['rtbn','Trombone (rec)'],['rsax','Tenor Sax (rec)'],['rvibes','Vibraphone (rec)'],['rmarimba','Marimba (rec)'],['rglock','Glockenspiel (rec)'],['rxylo','Xylophone (rec)'],['rtbells','Tubular Bells (rec)'],['rkalimba','Mbira (rec)'],['hit','Percussion Hit (rec)']];
 const SRCN=Object.fromEntries(SRC);
 const FT=[['lowpass','LP 24'],['highpass','HP 24'],['bandpass','BP 12']];
 const LW=[['sine','Sine'],['triangle','Triangle'],['square','Square'],['sawtooth','Saw']];
@@ -302,14 +302,14 @@ const LS={
   uni:{l:'VOICES',min:1,max:9,step:1,u:'n'},det:{l:'DETUNE',min:0,max:100,step:1,u:'c'},spr:{l:'SPREAD',min:0,max:1,u:'%'},
   fmR:{l:'RATIO',min:.25,max:16,log:1,u:'x'},fmI:{l:'INDEX',min:0,max:12,step:.05,u:''},fmD:{l:'IDX DEC',min:.01,max:5,log:1,u:'s'},
   pe:{l:'P.ENV',min:-48,max:48,step:1,u:'st',bip:1},pd:{l:'P.DEC',min:.005,max:4,log:1,u:'s'},
-  sat:{l:'DRIVE',min:0,max:1,u:'%'},
+  sat:{l:'DRIVE',min:0,max:1,u:'%'},hit:{l:'HIT',o:[['','—']]},
   ft:{l:'TYPE',o:FT},cut:{l:'CUTOFF',min:30,max:20000,log:1,u:'Hz'},res:{l:'RESO',min:0,max:24,step:.1,u:'dB'},
   fenv:{l:'ENV AMT',min:0,max:7,step:.05,u:'oct'},fkey:{l:'KEYTRK',min:0,max:1,u:'%'},
   fa:TM('ATTACK'),fd:TM('DECAY'),fs:{l:'SUSTAIN',min:0,max:1,u:'%'},fr:TM('RELEASE'),
   a:TM('ATTACK'),d:TM('DECAY'),s:{l:'SUSTAIN',min:0,max:1,u:'%'},r:TM('RELEASE'),vel:{l:'VELO',min:0,max:1,u:'%'},
   lp:{l:'VIBRATO',min:0,max:100,step:1,u:'c'},lf:{l:'WAH',min:0,max:4,step:.05,u:'oct'},la:{l:'TREMOLO',min:0,max:1,u:'%'},
 };
-const LD={on:true,src:'saw',lvl:.8,pan:0,dly:0,sat:0,oct:0,semi:0,fine:0,uni:1,det:15,spr:.7,fmR:2,fmI:2,fmD:.5,pe:0,pd:.1,ft:'lowpass',cut:9000,res:1,fenv:0,fkey:.3,fa:.001,fd:.5,fs:.5,fr:.5,a:.004,d:.5,s:.85,r:.4,vel:.5,lp:0,lf:0,la:0};
+const LD={on:true,src:'saw',lvl:.8,pan:0,dly:0,sat:0,hit:'',fb:false,oct:0,semi:0,fine:0,uni:1,det:15,spr:.7,fmR:2,fmI:2,fmD:.5,pe:0,pd:.1,ft:'lowpass',cut:9000,res:1,fenv:0,fkey:.3,fa:.001,fd:.5,fs:.5,fr:.5,a:.004,d:.5,s:.85,r:.4,vel:.5,lp:0,lf:0,la:0};
 const GS={
   chord:{l:'CHORD',o:[['off','Off'],['maj','Major'],['min','Minor'],['7','Dom 7'],['maj7','Maj 7'],['min7','Min 7'],['maj9','Maj 9'],['min9','Min 9'],['sus2','Sus 2'],['sus4','Sus 4'],['add9','Add 9'],['5','Power 5'],['oct','Octave']]},
   mono:{l:'MONO',t:'b'},glide:{l:'GLIDE',min:0,max:.5,step:.005,u:'s'},lfoWave:{l:'LFO WAVE',o:LW},lfoRate:{l:'LFO RATE',min:.05,max:20,log:1,u:'Hz'},lfoSync:{l:'LFO SYNC',o:[['off','Free'],['8','2 bars'],['4','1 bar'],['2','1/2'],['1','1/4'],['0.5','1/8'],['0.25','1/16']]},swing:{l:'SWING',min:0,max:.5,u:'%'},rType:{l:'TYPE',o:[['hall','Hall'],['room','Room'],['plate','Plate'],['cathedral','Cathedral']]},
@@ -362,7 +362,9 @@ const CATS=[['lead','LEADS'],['pad','PADS'],['pluck','PLUCKS'],['bass','BASS'],[
 const CATN=Object.fromEntries(CATS);
 const pr=(n,c,layers,g,t)=>({n,c,layers,g:g||{},t:t||[]});
 const kit=(n,k,g,t)=>Object.assign(pr(n,'drums',[{src:'sine',oct:-1,pe:30,pd:.035,a:.001,d:.45,s:0,r:.15}],g,t),{kit:k});
-const GENRES=[['house','HOUSE'],['pop','POP']];
+const GENRES=[['real','RECORDED'],['house','HOUSE'],['pop','POP']];
+const HIT=(hit,o)=>({src:'hit',hit,a:.001,d:10,s:1,r:1.5,cut:20000,fkey:0,...(o||{})});
+const RL=(src,o)=>({src,a:.001,d:20,s:1,r:.4,cut:20000,fkey:0,vel:.55,...(o||{})});
 const PRESETS=[
  pr('Aria Supersaw','lead',[{src:'saw',uni:7,det:22,spr:.85,cut:9000,res:2,fenv:1,fd:.6,...LEAD},{src:'pulse25',oct:1,lvl:.35,uni:3,det:10,...LEAD,cut:7000},{src:'sine',oct:-1,lvl:.35,...LEAD}],{delay:.25,reverb:.3,chorus:.15,width:1.2}),
  pr('Neon Sync','lead',[{src:'saw',uni:3,det:12,cut:2800,res:7,fenv:2.5,fd:.3,fs:.3,...LEAD},{src:'brass',oct:1,lvl:.4,...LEAD,cut:5000}],{mono:true,glide:.07,drive:.3,delay:.3,reverb:.2,chorus:0}),
@@ -480,11 +482,11 @@ const PRESETS=[
  pr('Tine E.Piano','keys',[{src:'epno',la:.18,cut:6000,fenv:1.2,fd:.6,fs:.4,vel:.75,a:.001,d:10,s:1,r:.4}],{lfoRate:4.8,chorus:.35,reverb:.3,delay:0},['house','pop']),
  pr('Suitcase Keys','keys',[{src:'epno',la:.32,cut:5000,vel:.8,a:.001,d:10,s:1,r:.35},{src:'epno',oct:1,lvl:.15,a:.001,d:5,s:1,r:.3}],{lfoRate:5.5,drive:.25,chorus:.2,reverb:.3,delay:0},['house']),
  pr('Vibraphone','bell',[{src:'vibes',la:.25,a:.001,d:10,s:1,r:.6}],{lfoRate:5.5,reverb:.35,chorus:.1,delay:0},['pop']),
- pr('Real Marimba','pluck',[{src:'marimba',a:.001,d:5,s:1,r:.3}],{reverb:.3,chorus:0,delay:0},['pop','house']),
+ pr('Marimba Synth','pluck',[{src:'marimba',a:.001,d:5,s:1,r:.3}],{reverb:.3,chorus:0,delay:0},['pop','house']),
  pr('Celesta Dream','bell',[{src:'celesta',a:.001,d:6,s:1,r:.8}],{reverb:.5,rSize:4,delay:.15},['pop']),
- pr('Tubular Bells Real','bell',[{src:'bells',a:.001,d:12,s:1,r:3}],{reverb:.55,rSize:5,chorus:0,delay:0}),
+ pr('Tubular Bells Synth','bell',[{src:'bells',a:.001,d:12,s:1,r:3}],{reverb:.55,rSize:5,chorus:0,delay:0}),
  pr('Steel Pan','pluck',[{src:'steel',a:.001,d:4,s:1,r:.4}],{reverb:.35,delay:.15,chorus:0},['pop','house']),
- pr('Kalimba Real','pluck',[{src:'kalimba',a:.001,d:4,s:1,r:.5}],{reverb:.4,delay:.2,chorus:0},['pop']),
+ pr('Kalimba Synth','pluck',[{src:'kalimba',a:.001,d:4,s:1,r:.5}],{reverb:.4,delay:.2,chorus:0},['pop']),
  pr('Concert Harp','pluck',[{src:'harp',a:.001,d:12,s:1,r:1.2}],{reverb:.45,rSize:3.5,chorus:0,delay:0},['pop']),
  pr('Nylon Guitar','pluck',[{src:'guitar',a:.001,d:8,s:1,r:.35}],{reverb:.25,chorus:.1,delay:0},['pop']),
  pr('Finger Bass','bass',[{src:'ebass',cut:2500,vel:.6,a:.002,d:8,s:1,r:.08},{src:'sine',lvl:.25,a:.002,d:1.5,s:.6,r:.08}],{mono:true,drive:.1,chorus:0,delay:0,reverb:0},['house','pop']),
@@ -571,6 +573,47 @@ const PRESETS=[
  pr('Crash Cymbal','drums',[{src:'metal',semi:-2,ft:'highpass',cut:4000,res:1,fkey:0,a:.002,d:2.2,s:0,r:1.2},{src:'noise',lvl:.6,ft:'highpass',cut:3500,fkey:0,a:.002,d:1.8,s:0,r:1}],{reverb:.25,chorus:0,delay:0},['house','pop']),
  pr('Tambourine','drums',[{src:'metal',oct:1,ft:'highpass',cut:8000,fkey:0,...PLK,d:.15,r:.1},{src:'metal',oct:1,ft:'highpass',cut:8000,fkey:0,dly:.02,lvl:.6,...PLK,d:.12},{src:'noise',lvl:.3,ft:'highpass',cut:7000,fkey:0,...PLK,d:.1}],{reverb:.15,chorus:0,delay:0},['pop','house']),
  pr('808 Boom','drums',[{src:'sine',oct:-1,pe:12,pd:.04,sat:.35,a:.001,d:1.4,s:0,r:.3}],{chorus:0,delay:0,reverb:0},['pop']),
+
+ // ---- recorded instruments (VSCO 2 CE + VCSL, CC0) ----
+ pr('Steinway Grand','keys',[RL('rpiano',{r:.5})],{reverb:.22,rType:'hall',rSize:2.2,chorus:0,delay:0},['real','pop','house']),
+ pr('Steinway Concert Hall','keys',[RL('rpiano',{r:.7})],{reverb:.45,rType:'hall',rSize:3.8,chorus:0,delay:0,width:1.1},['real','pop']),
+ pr('Steinway House Bright','keys',[RL('rpiano',{r:.3})],{eqHi:3.5,eqLo:-2,reverb:.2,rType:'plate',delay:.1,chorus:.1},['real','house']),
+ pr('Steinway Maj7 Chords','keys',[RL('rpiano',{r:.5})],{chord:'maj7',reverb:.3,rType:'hall',chorus:0,delay:0},['real','pop','house']),
+ pr('Steinway Garage Stab','keys',[RL('rpiano',{d:.7,s:0,r:.15})],{chord:'min7',pump:.3,eqHi:2,reverb:.25,rType:'plate',delay:.2},['real','house']),
+ pr('Steinway + Pad','keys',[RL('rpiano',{r:.5}),{src:'warm',uni:5,det:12,spr:.7,lvl:.3,cut:2500,a:.8,s:1,r:1.5}],{reverb:.4,chorus:.2,delay:0},['real','pop']),
+ pr('Violin Section','orch',[RL('rvln',{a:.12,r:.5,vel:.3}),RL('rvla',{lvl:.45,a:.15,r:.5,vel:.3})],{reverb:.45,rType:'hall',rSize:3.5,chorus:0,delay:0},['real']),
+ pr('Viola Section','orch',[RL('rvla',{a:.12,r:.5,vel:.3})],{reverb:.45,rType:'hall',rSize:3.5,chorus:0,delay:0},['real']),
+ pr('Cello Section','orch',[RL('rvcl',{a:.15,r:.6,vel:.3})],{reverb:.45,rType:'hall',rSize:3.5,chorus:0,delay:0},['real']),
+ pr('Contrabass','orch',[RL('rcbs',{a:.15,r:.6,vel:.3})],{reverb:.4,rType:'hall',rSize:3.5,chorus:0,delay:0},['real']),
+ pr('Full String Section','orch',[RL('rvln',{a:.2,r:.8,vel:.3}),RL('rvla',{lvl:.6,a:.2,r:.8,vel:.3}),RL('rvcl',{oct:-1,lvl:.7,a:.22,r:.8,vel:.3}),RL('rcbs',{oct:-2,lvl:.45,a:.25,r:.8,vel:.3})],{reverb:.5,rType:'hall',rSize:4.5,width:1.1,chorus:0,delay:0},['real','pop']),
+ pr('String Pad Slow','orch',[RL('rvln',{a:1.2,r:2,vel:.2}),RL('rvla',{lvl:.6,a:1.2,r:2,vel:.2}),RL('rvcl',{oct:-1,lvl:.6,a:1.2,r:2,vel:.2})],{reverb:.6,rType:'cathedral',rSize:5,chorus:0,delay:0},['real','pop']),
+ pr('Pizzicato Section','orch',[RL('rpizz',{r:.25})],{reverb:.4,rType:'hall',rSize:3,chorus:0,delay:0},['real','pop']),
+ pr('Harp Recorded','orch',[RL('rharp',{r:1.2,vel:.6})],{reverb:.45,rType:'hall',rSize:3.5,chorus:0,delay:0},['real','pop']),
+ pr('Flute Recorded','orch',[RL('rflute',{a:.05,r:.3,vel:.3})],{reverb:.4,rType:'hall',rSize:3,chorus:0,delay:0},['real','pop']),
+ pr('Oboe Recorded','orch',[RL('roboe',{a:.04,r:.3,vel:.5})],{reverb:.4,rType:'hall',rSize:3,chorus:0,delay:0},['real']),
+ pr('Clarinet Recorded','orch',[RL('rclar',{a:.04,r:.3})],{reverb:.4,rType:'hall',rSize:3,chorus:0,delay:0},['real']),
+ pr('Woodwind Trio','orch',[RL('rflute',{oct:1,lvl:.6,a:.06,r:.3,vel:.3}),RL('roboe',{lvl:.6,a:.05,r:.3,vel:.4}),RL('rclar',{oct:-1,lvl:.7,a:.05,r:.3})],{reverb:.45,rType:'hall',rSize:3.5,chorus:0,delay:0},['real']),
+ pr('Trumpet Recorded','orch',[RL('rtpt',{a:.03,r:.3,vel:.5})],{reverb:.35,rType:'hall',rSize:3,chorus:0,delay:0},['real','pop']),
+ pr('French Horn Recorded','orch',[RL('rhorn',{a:.06,r:.4,vel:.6})],{reverb:.45,rType:'hall',rSize:3.5,chorus:0,delay:0},['real']),
+ pr('Trombone Recorded','orch',[RL('rtbn',{a:.05,r:.35,vel:.6})],{reverb:.4,rType:'hall',rSize:3,chorus:0,delay:0},['real']),
+ pr('Brass Section Recorded','orch',[RL('rtpt',{lvl:.7,a:.04,r:.35,vel:.5}),RL('rhorn',{a:.06,r:.4,vel:.6}),RL('rtbn',{oct:-1,lvl:.8,a:.05,r:.4,vel:.6})],{reverb:.45,rType:'hall',rSize:4,chorus:0,delay:0},['real','pop']),
+ pr('Tenor Sax Recorded','lead',[RL('rsax',{a:.03,r:.3,vel:.5})],{reverb:.3,rType:'plate',delay:.15,chorus:0},['real','pop']),
+ pr('Sax House Hook','lead',[RL('rsax',{a:.02,d:.6,s:.7,r:.2,vel:.5})],{delay:.35,dDiv:'1/8.',reverb:.35,rType:'plate',pump:.3,chorus:0},['real','house']),
+ pr('Vibraphone Recorded','bell',[RL('rvibes',{la:.18,r:1,vel:.5})],{lfoRate:5.2,reverb:.35,rType:'room',chorus:0,delay:0},['real','pop','house']),
+ pr('Marimba Recorded','pluck',[RL('rmarimba',{r:.4,vel:.5})],{reverb:.3,rType:'room',chorus:0,delay:0},['real','pop','house']),
+ pr('Afro House Marimba','pluck',[RL('rmarimba',{r:.4,vel:.5})],{delay:.3,dDiv:'1/8.',reverb:.35,rType:'plate',chorus:0},['real','house']),
+ pr('Glockenspiel Recorded','bell',[RL('rglock',{r:1.2,vel:.5})],{reverb:.4,rType:'hall',chorus:0,delay:0},['real','pop']),
+ pr('Xylophone Recorded','orch',[RL('rxylo',{r:.3,vel:.5})],{reverb:.3,rType:'room',chorus:0,delay:0},['real','pop']),
+ pr('Tubular Bells Recorded','bell',[RL('rtbells',{r:3,vel:.5})],{reverb:.5,rType:'hall',rSize:4,chorus:0,delay:0},['real']),
+ pr('Mbira Recorded','pluck',[RL('rkalimba',{r:.6})],{reverb:.35,rType:'room',delay:.2,chorus:0},['real','house','pop']),
+ pr('Shaker Recorded','drums',[HIT('shaker_small_mid_shakerdouble_down_rr1')],{reverb:.1,rType:'room',chorus:0,delay:0},['real','house','pop']),
+ pr('Tambourine Recorded','drums',[HIT('tambourine_1_tamb1_hit_v2_rr1_mid')],{reverb:.1,rType:'room',chorus:0,delay:0},['real','house','pop']),
+ pr('Clap Recorded','drums',[HIT('claps_clap_rr1')],{reverb:.2,rType:'plate',chorus:0,delay:0},['real','house','pop']),
+ pr('Conga Recorded','drums',[HIT('conga_conga_hitn_v3_rr1_sum')],{reverb:.15,rType:'room',chorus:0,delay:0},['real','house']),
+ pr('Cowbell Recorded','drums',[HIT('cowbells_cowbell1_normal_v2_rr1_mid')],{reverb:.1,rType:'room',chorus:0,delay:0},['real','house']),
+ pr('Crash Recorded','drums',[HIT('suspended_cymbal_1_suscymb1_hit_stick_f1')],{reverb:.2,rType:'room',chorus:0,delay:0},['real','house','pop']),
+ kit('Latin Percussion','latin',{reverb:.2,rType:'room',rSize:1.4,chorus:0,delay:0,swing:.1},['real','house']),
+ kit('Acoustic Pop Kit','apop',{reverb:.2,rType:'room',rSize:1.3,chorus:0,delay:0},['real','pop']),
 ];
 const TAGMAP={house:['Deep House Stab','Minor 7 Stab','Pulse Pad','Chord Pulse','House Keys','Soft Organ','Acid Line','Punch Bass','Pluck Bass','Synth Kick','Gated Euphoria','Trance Driver'],
   pop:['Aria Supersaw','Pixel Lead','Electric Dream','Music Box','Synth Strings','Kalimba Dust','Marimba Drop','Silk Pad','Festival Pluck','Sub Pressure','Vox Lead','Glass Lead']};
@@ -913,7 +956,7 @@ function request(name,root){
   if(genWorker){pending.add(key);genWorker.postMessage({name,root,sr:genSR})}
   else setTimeout(()=>genRoot(name,root),0);
 }
-function genProgress(){loadingMsg=pending.size?'LOADING SAMPLES '+Math.max(0,fillTotal-pending.size)+'/'+fillTotal:'';updInfo()}
+function genProgress(){updLoading()}
 function getSample(name,f){
   const I=INST[name],note=69+12*Math.log2(f/tuneA),top=I.lo+I.step*Math.floor((I.hi-I.lo)/I.step);
   const root=clamp(I.lo+I.step*Math.round((note-I.lo)/I.step),I.lo,top),m=SMP[name];
@@ -922,8 +965,49 @@ function getSample(name,f){
   if(m&&m.size&&ctx&&!(ctx instanceof OfflineAudioContext)){let best=null,bd=99;m.forEach((r,k)=>{const d=Math.abs(k-root);if(d<bd){bd=d;best=r}});if(bd<=12){request(name,root);return best}}
   return genRoot(name,root);
 }
+
+/* ---------- recorded instruments: VS Chamber Orchestra CE + Versilian Community Sample Library (CC0) ---------- */
+const REAL={rpiano:['piano','piano'],rvln:['vln','strings'],rvla:['vla','strings'],rvcl:['vcl','strings'],rcbs:['cbs','basses'],rpizz:['vlnpz','pizz'],rharp:['harp','harp'],
+  rflute:['flute','flute'],roboe:['oboe','oboe'],rclar:['clar','clarinet'],rtpt:['tpt','trumpet'],rhorn:['horn','horn'],rtbn:['tbn','trombone'],rsax:['sax','reed'],
+  rvibes:['vibes','vibes'],rmarimba:['marimba','marimba'],rglock:['glock','glock'],rxylo:['xylo','xylo'],rtbells:['tbells','bells'],rkalimba:['kalimba','kalimba']};
+let BANKIDX=null,bankIdxP=null,bankLoading=0;const BANK={},bankP={};
+function bankIndex(){
+  if(!bankIdxP)bankIdxP=fetch('samples/index.json').then(r=>{if(!r.ok)throw new Error(r.status);return r.json()}).then(j=>{BANKIDX=j;LS.hit.o=[['','—'],...j.perc.zones.map(z=>[z.name,z.name.replace(/_/g,' ')])];return j}).catch(e=>{BANKIDX={inst:{},perc:{zones:[]}};return BANKIDX});
+  return bankIdxP;
+}
+function loadBank(key){
+  if(bankP[key])return bankP[key];
+  bankLoading++;updLoading();
+  bankP[key]=bankIndex().then(async idx=>{
+    const meta=key==='perc'?idx.perc:idx.inst[key];if(!meta||!meta.file)throw new Error('missing '+key);
+    const ab=await (await fetch('samples/'+meta.file)).arrayBuffer();
+    const DC=window.OfflineAudioContext||window.webkitOfflineAudioContext,dctx=new DC(1,1,genSR||44100);
+    const buf=await new Promise((res,rej)=>{const p=dctx.decodeAudioData(ab,res,rej);if(p&&p.catch)p.catch(rej)});
+    const d=buf.getChannelData(0);let c=0;for(;c<Math.min(d.length,30000);c++)if(d[c]>.4)break;
+    const sc=buf.sampleRate/idx.sr,nc=buf.numberOfChannels;
+    const zones=meta.zones.map(z=>{const st=Math.round(c+z.s*sc),len=Math.min(Math.round(z.n*sc),buf.length-st),zb=new AudioBuffer({length:len,numberOfChannels:nc,sampleRate:buf.sampleRate});
+      for(let ch=0;ch<nc;ch++)zb.copyToChannel(buf.getChannelData(ch).subarray(st,st+len),ch);
+      return {...z,buf:zb,ls:z.ls!=null?z.ls/idx.sr:null,le:z.le!=null?Math.min(z.le/idx.sr,len/buf.sampleRate):null}});
+    BANK[key]={zones,layers:meta.layers||1,byName:key==='perc'?Object.fromEntries(zones.map(z=>[z.name,z])):null};
+    return BANK[key];
+  });
+  bankP[key].catch(e=>{console.warn('sample bank',key,e)}).finally(()=>{bankLoading--;updLoading()});
+  return bankP[key];
+}
+function realZone(bank,midi,vel){
+  const L=bank.layers,want=Math.min(L-1,Math.floor(clamp(vel,0,.999)*L));let best=null,bs=1e9;
+  for(const z of bank.zones){const sc=Math.abs(z.root-midi)+(z.layer===want?0:2.5);if(sc<bs){bs=sc;best=z}}
+  return best;
+}
+function usedBanks(){
+  const ks=new Set(),add=Ls=>Ls.forEach(l=>{if(l.on&&REAL[l.src])ks.add(REAL[l.src][0]);if(l.on&&l.src==='hit')ks.add('perc')});
+  add(CUR.layers);if(CUR.kit)ks.add('perc');return [...ks];
+}
+async function ensureBanks(){await Promise.all(usedBanks().map(k=>loadBank(k).catch(()=>{})))}
+function updLoading(){const a=[];if(pending.size)a.push('SYNTH SAMPLES '+Math.max(0,fillTotal-pending.size)+'/'+fillTotal);if(bankLoading)a.push('LOADING RECORDINGS…');loadingMsg=a.join(' · ');updInfo()}
 let fillQ=[],fillT=0;
 function prefill(){
+  usedBanks().forEach(k=>loadBank(k));
   const used=new Set(CUR.layers.filter(l=>l.on&&INST[l.src]).map(l=>l.src));
   // keep memory in check: drop instruments this sound does not use once the cache grows
   let total=0;for(const k in SMP)SMP[k].forEach(r=>total+=r.buf.length*r.buf.numberOfChannels);
@@ -963,8 +1047,23 @@ class LayerVoice{
     this.drift=(Math.random()-.5)*2.4;
     this.ratio=Math.pow(2,L.oct+L.semi/12);
     const f=mtof(note)*this.ratio;this.f=f;
-    const src=L.src;
-    if(src==='noise'){
+    let src=L.src;
+    if(REAL[src]&&!BANK[REAL[src][0]]){loadBank(REAL[src][0]);src=REAL[src][1]}
+    if(REAL[src]||src==='hit'){
+      const bank=BANK[src==='hit'?'perc':REAL[src][0]],N=src==='hit'?1:L.uni;
+      const z=src==='hit'?bank.byName[L.hit]:realZone(bank,69+12*Math.log2(f/tuneA),vel);
+      this.sg=c.createGain();this.sg.gain.value=(src==='hit'?1:1.15)/Math.sqrt(N);this.sg.connect(this.mix);
+      if(z){
+        const rate=src==='hit'?f/mtof(60):f/(440*Math.pow(2,(z.root-69)/12))*Math.pow(2,(z.tune||0)/1200);
+        for(let i=0;i<N;i++){
+          const bs=c.createBufferSource();bs.buffer=z.buf;bs.playbackRate.value=rate;
+          if(z.ls!=null){bs.loop=true;bs.loopStart=z.ls;bs.loopEnd=z.le}
+          const x=N===1?0:i/(N-1)*2-1,pn=N>1&&c.createStereoPanner?c.createStereoPanner():null;
+          bs.connect(pn||this.sg);if(pn)pn.connect(this.sg);if(bs.detune)this.pIn.connect(bs.detune);
+          this.osc.push({o:bs,pn,x,buf:true,r:(Math.random()-.5)*2});bs.start(t,i?Math.random()*.03:0);this.srcs.push(bs);
+        }
+      }
+    }else if(src==='noise'){
       this.sg=c.createGain();this.sg.connect(this.mix);this.sg.gain.value=.35;
       const ns=c.createBufferSource();ns.buffer=noiseBuf;ns.loop=true;ns.connect(this.sg);ns.start(t,Math.random()*1.9);this.srcs.push(ns);
     }else if(src==='metal'){
@@ -1014,7 +1113,7 @@ class LayerVoice{
     this.srcs[this.srcs.length-1].onended=()=>this.cleanup();
   }
   link(a,b){a.connect(b);this.links.push([a,b])}
-  cut(){return clamp(this.L.cut*Math.pow(2,M[0]*4)*Math.pow(this.f/261.63,this.L.fkey),20,20000)}
+  cut(){return clamp(this.L.cut*Math.pow(2,M[0]*4)*Math.pow(this.f/261.63,this.L.fkey),20,Math.min(20000,ctx.sampleRate*.45))}
   live(first){
     const L=this.L,t=ctx.currentTime,s=(p,x)=>first?p.setValueAtTime(x,t):p.setTargetAtTime(x,t,.015);
     s(this.lvl.gain,L.lvl);if(this.pn)s(this.pn.pan,L.pan);
@@ -1055,7 +1154,7 @@ class Voice{
     this.layers=[];
     const K=CUR.kit?CUR.kit[note]:null;
     if(K&&(note===42||note===44))voices.forEach(v=>{if(v.note===46&&!v.killed)v.choke(t)});
-    if(!CUR.kit||K)(K||CUR.layers).forEach(L=>{if(L.on&&L.lvl>0)this.layers.push(new LayerVoice(this,L,K?60:note,vel,t))});
+    if(!CUR.kit||K)(K||CUR.layers).forEach(L=>{if(!L.on||L.lvl<=0)return;if(L.src==='hit'&&!BANK.perc){loadBank('perc');return}if(L.fb&&BANK.perc)return;this.layers.push(new LayerVoice(this,L,K?60:note,vel,t))});
     this.alive=this.layers.length;
     if(!this.alive){this.bus.disconnect();this.dead=true}
   }
@@ -1104,10 +1203,23 @@ const DP={
  timp1:[{src:'timpani',oct:-1,a:.001,d:6,s:1,r:1.2}],timp2:[{src:'timpani',oct:-1,semi:3,a:.001,d:6,s:1,r:1.2}],timp3:[{src:'timpani',oct:-1,semi:7,a:.001,d:6,s:1,r:1.2}],
  gong:[{src:'gong',oct:-1,a:.001,d:12,s:1,r:4}],
 };
-const GM={36:'kick',37:'rim',38:'snare',39:'clap',40:'snap',41:'tomL',43:'tomL',45:'tomM',47:'tomM',48:'tomH',50:'tomH',42:'hatC',44:'hatP',46:'hatO',49:'crash',57:'crash',51:'ride',59:'ride',54:'tamb',56:'cowbell',60:'bongoH',61:'bongoL',62:'congaM',63:'congaH',64:'congaL',69:'shaker',70:'shaker',75:'claves',76:'wood',77:'wood',81:'triangle'};
+const RHIT={clap:'claps_clap_rr1',hatC:'hi_hat_cymbal_hihat_hitc_v3_rr1_mid',hatP:'hi_hat_cymbal_hihat_hitloose_rr1_mid',hatO:'hi_hat_cymbal_hihat_hito_rr1_mid',shaker:'shaker_small_mid_shakerdouble_down_rr1',
+ tamb:'tambourine_1_tamb1_hit_v2_rr1_mid',congaH:'conga_quinto_hitn_v3_rr1_sum',congaM:'conga_conga_hitn_v3_rr1_sum',congaL:'conga_tumba_hitn_v3_rr1_sum',bongoH:'bongos_bongoh_hit1_v2_rr1_mid',bongoL:'bongos_bongol_hit1_v2_rr1_mid',
+ cowbell:'cowbells_cowbell1_normal_v2_rr1_mid',claves:'claves_claves1_hit_v1_rr1_mid',wood:'woodblock_wood_click_f_rr1',triangle:'triangles_triangle1_hit_mf_pt2',crash:'suspended_cymbal_1_suscymb1_hit_stick_f1',
+ cymbalOrch:'clash_cymbals_1_cymbal_crash1_ff2',tomH:'tom_1_tomh_hitm_v2_rr1_mid',kickOrch:'bass_drum_1_bdrumnew_hit_v2_rr1_sum',snareOrch:'snare_drum_modern_1_snare2_hitsn_v3_rr1_mid',gong:'gong_1_gong_f',
+ timp1:'timp_timpani1_hit_v3_rr1_sum',timp2:'timp_timpani3_hit_v3_rr1_sum',timp3:'timp_timpani5_hit_v3_rr1_sum'};
+const withFb=a=>a.slice(0,3).map(x=>({...x,fb:true}));
+for(const k in RHIT)DP[k]=[HIT(RHIT[k]),...withFb(DP[k])];
+DP.tomM=[HIT(RHIT.tomH,{semi:-4}),...withFb(DP.tomM)];DP.tomL=[HIT(RHIT.tomH,{semi:-8}),...withFb(DP.tomL)];
+DP.snareReal=[HIT(RHIT.snareOrch),...withFb(DP.snareTight)];
+Object.assign(DP,{agogoH:[HIT('agogo_bells_agogo_high_v1_rr1_mid')],agogoL:[HIT('agogo_bells_agogo_low_v1_rr1_mid')],guiroS:[HIT('guiro_guiro_hit_rr1_mid')],guiroL:[HIT('guiro_guiro_fast_rr1_mid')],
+ cabasa:[HIT('cabasa_cabasa1_hit_rr1_mid')],sleigh:[HIT('sleigh_bells_sleighbells_hit_rr1_mid')],chimes:[HIT('mark_trees_windchimes_asc1')],cajon:[HIT('cajon_cajon_hit1_f_rr1')],cajon2:[HIT('cajon_cajon_hit3_f_rr1')],
+ darbuka:[HIT('darbuka_darbuka_1_hit_vl2_rr1')],darbuka2:[HIT('darbuka_darbuka_3_hit_vl2_rr1')],frame:[HIT('frame_drum_hdruml_hit_v3_rr1_sum')],fingerCym:[HIT('finger_cymbals_fing_cymb')]});
+const GM={67:'agogoH',68:'agogoL',73:'guiroS',74:'guiroL',82:'cabasa',83:'sleigh',84:'chimes',36:'kick',37:'rim',38:'snare',39:'clap',40:'snap',41:'tomL',43:'tomL',45:'tomM',47:'tomM',48:'tomH',50:'tomH',42:'hatC',44:'hatP',46:'hatO',49:'crash',57:'crash',51:'ride',59:'ride',54:'tamb',56:'cowbell',60:'bongoH',61:'bongoL',62:'congaM',63:'congaH',64:'congaL',69:'shaker',70:'shaker',75:'claves',76:'wood',77:'wood',81:'triangle'};
 const KITS={
- house:{kick:'kickHouse'},deep:{kick:'kickDeep'},tech:{kick:'kickPunch',snare:'snareTight'},pop:{kick:'kickPunch',snare:'snareTight'},trap:{kick:'kick808',snare:'snareTight'},
- afro:{kick:'kickDeep',snare:'snareTight'},orch:{kick:'kickOrch',snare:'snareOrch',crash:'cymbalOrch',tomL:'timp1',tomM:'timp2',tomH:'timp3',_52:'gong',_53:'gong'},
+ house:{kick:'kickHouse'},deep:{kick:'kickDeep'},tech:{kick:'kickPunch',snare:'snareTight'},pop:{kick:'kickPunch',snare:'snareReal'},trap:{kick:'kick808',snare:'snareTight'},
+ afro:{kick:'kickDeep',snare:'snareTight',_58:'cajon',_65:'darbuka',_66:'darbuka2',_52:'frame'},
+ latin:{kick:'kickDeep',snare:'snareReal',_58:'cajon',_65:'darbuka',_66:'darbuka2',_52:'frame',_55:'fingerCym'},apop:{kick:'kickPunch',snare:'snareReal'},orch:{kick:'kickOrch',snare:'snareOrch',crash:'cymbalOrch',tomL:'timp1',tomM:'timp2',tomH:'timp3',_52:'gong',_53:'gong'},
 };
 function kitMap(name){
   const K=KITS[name]||{},map={},names={};
@@ -1369,7 +1481,7 @@ function renderLayers(b){
   const srcSel=lctl(li,'src');srcSel.querySelector('select').addEventListener('change',()=>renderTab());
   const parts=[
     mod('OSCILLATOR',[lctl(li,'on'),srcSel,lctl(li,'lvl'),lctl(li,'pan'),lctl(li,'oct'),lctl(li,'semi'),lctl(li,'fine'),lctl(li,'dly')]),
-    L.src==='fm'?mod('FM',[lctl(li,'fmR'),lctl(li,'fmI'),lctl(li,'fmD')]):L.src==='noise'?null:mod('UNISON',[lctl(li,'uni'),lctl(li,'det'),lctl(li,'spr')]),
+    L.src==='hit'?(BANKIDX?mod('RECORDED HIT',[lctl(li,'hit')]):(bankIndex().then(()=>{if(curTab==='layers')renderTab()}),null)):L.src==='fm'?mod('FM',[lctl(li,'fmR'),lctl(li,'fmI'),lctl(li,'fmD')]):L.src==='noise'?null:mod('UNISON',[lctl(li,'uni'),lctl(li,'det'),lctl(li,'spr')]),
     mod('PITCH ENV',[lctl(li,'pe'),lctl(li,'pd')]),
     mod('FILTER',[lctl(li,'sat'),lctl(li,'ft'),lctl(li,'cut'),lctl(li,'res'),lctl(li,'fkey')]),
     mod('FILTER ENV',[lctl(li,'fenv'),lctl(li,'fa'),lctl(li,'fd'),lctl(li,'fs'),lctl(li,'fr')]),
@@ -1561,7 +1673,7 @@ function midiFile(notes){
 }
 /* Render the current sound offline (faster than real time, no clicks), with every effect and macro. */
 async function renderOffline(dur,schedule,srOver){
-  initAudio();
+  initAudio();await ensureBanks();
   const sr=srOver||ctx.sampleRate,oc=new OfflineAudioContext(2,Math.ceil(dur*sr),sr),sv={ctx,G,WAVES,revKey};
   try{ctx=oc;revKey='';buildWaves();buildGraph();Object.keys(GD).forEach(k=>applyG(k,true));buildReverb();G.master.gain.value=1;schedule()}
   finally{ctx=sv.ctx;G=sv.G;WAVES=sv.WAVES;revKey=sv.revKey}
@@ -1692,7 +1804,7 @@ tuneA=+store.get('ariaSynth2.tune',440)||440;bendRange=+store.get('ariaSynth2.be
 function setTrim(v){trim=v;if(ctx)G.voiceBus.gain.setTargetAtTime(v,ctx.currentTime,.08)}
 function scheduleLevel(){clearTimeout(lvlT);if(!ctx)return;if(!autoLvl){setTrim(1);return}lvlT=setTimeout(measureLevel,220)}
 async function measureLevel(){
-  if(pending.size){lvlT=setTimeout(measureLevel,300);return}
+  if(pending.size||bankLoading){lvlT=setTimeout(measureLevel,300);return}
   const seq=++lvlSeq,notes=CUR.kit?[36,38,42]:CUR.c==='drums'?[60]:(CUR.c==='bass'||CUR.g.mono)?[36]:[48,55,60,64];
   const buf=await renderOffline(1.3,()=>notes.forEach(n=>{const v=new Voice(n,.8,.01);v.release(1.1)}),22050);
   if(seq!==lvlSeq||!autoLvl)return;
