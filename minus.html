@@ -106,6 +106,14 @@ section.tab.on{display:block}
 .ring .in b{font:800 17px var(--display);color:var(--bad)}
 .ring .in b.ok{color:var(--good)}
 .ring .in span{font-size:11px;color:var(--ink3)}
+.lim{margin-top:14px;padding-top:12px;border-top:1px solid var(--sep)}
+.lim .row{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:13px;color:var(--ink2)}
+.lim .row b{color:var(--ink);font-size:15px}
+.limbar{position:relative;height:12px;border-radius:6px;background:var(--fill);margin:8px 0 6px;overflow:hidden}
+.limbar i{position:absolute;inset-block:0;inset-inline-start:0;border-radius:6px;background:var(--c4)}
+.limbar i.hot{background:var(--bad)}
+.lim .room{font-weight:700}
+.lim .room.bad{color:var(--bad)} .lim .room.warn{color:var(--warn)}
 .eta{margin-top:12px;display:flex;align-items:center;gap:8px;font-size:14px;border-radius:12px;padding:9px 12px}
 .eta .ic{flex:none;width:20px;height:20px;border-radius:50%;display:grid;place-items:center;font-size:12px;font-weight:800;color:#fff}
 .eta.good{background:var(--good-bg);color:var(--good)} .eta.good .ic{background:var(--good)}
@@ -263,6 +271,7 @@ dialog textarea{width:100%;min-height:210px;margin-top:10px;background:var(--fil
             <div class="in"><b class="num" id="ringBal">—</b><span id="ringTxt">מינוס</span></div>
           </div>
         </div>
+        <div class="lim" id="limBox" hidden></div>
         <div id="eta"></div>
       </div>
 
@@ -352,6 +361,7 @@ dialog textarea{width:100%;min-height:210px;margin-top:10px;background:var(--fil
       <div class="pane" data-pane="debt" style="margin-top:12px">
         <div class="field"><label for="fDebt">כמה מינוס יש היום (₪)<small>היתרה בבנק, בלי סימן מינוס</small></label><input id="fDebt" type="number" inputmode="decimal" step="any" min="0" placeholder="0"></div>
         <div class="field"><label for="fRate">ריבית שנתית על המינוס (%)<small>מופיעה בדף החשבון או באפליקציית הבנק</small></label><input id="fRate" type="number" inputmode="decimal" step="0.1" min="0" placeholder="0"></div>
+        <div class="field"><label for="fLimit">מסגרת האשראי בחשבון (₪)<small>עד כמה הבנק מרשה לרדת. מופיע באפליקציית הבנק</small></label><input id="fLimit" type="number" inputmode="decimal" step="any" min="0" placeholder="0"></div>
         <div class="field"><label for="fPayday">באיזה יום בחודש נכנסת המשכורת</label><input id="fPayday" type="number" inputmode="numeric" min="1" max="31" placeholder="10"></div>
       </div>
 
@@ -492,7 +502,7 @@ function durationTxt(n){
 
 /* ---------- state ---------- */
 const blank = () => ({
-  v:2, debt:0, startDebt:0, rate:12, payday:10,
+  v:2, debt:0, startDebt:0, limit:0, rate:12, payday:10,
   incomes:[], fixed:[], pay:0, loanRate:'',
   entries:[], balHistory:[], cat:CATS[0].k, tab:'home', setPane:'debt',
   lastBackup:'', savedAt:0, onboarded:false
@@ -513,7 +523,7 @@ try { const raw = localStorage.getItem(KEY); if (raw) S = migrate(JSON.parse(raw
 /* Example data, shown until the user enters their own. Never saved. */
 function demoState(){
   const d = blank(), t = today0();
-  Object.assign(d, {debt:8200, startDebt:10500, rate:12.5, payday:10, pay:1100, onboarded:true,
+  Object.assign(d, {debt:8200, startDebt:10500, limit:12000, rate:12.5, payday:10, pay:1100, onboarded:true,
     incomes:[{id:'i1',name:'משכורת',amount:8400},{id:'i2',name:'עבודה נוספת',amount:1200}],
     fixed:[{id:'f1',name:'שכירות',amount:3700},{id:'f2',name:'חשבונות',amount:620},{id:'f3',name:'ביטוחים',amount:340},{id:'f4',name:'טלפון ואינטרנט',amount:160}]});
   const c = cycleOf(d), start = c.start, span = Math.max(1, Math.round((t-start)/864e5));
@@ -634,6 +644,7 @@ function renderHome(){
   $('ringBal').textContent = V.debt>0 ? money(-V.debt) : money(0);
   $('ringBal').classList.toggle('ok', V.debt<=0);
   $('ringTxt').textContent = start>0 ? `החזרת ${Math.round(pct*100)}%` : 'מינוס';
+  renderLimit();
   let eta = '';
   if (V.debt<=0) eta = etaBox('good','<b>אין מינוס.</b> כדאי להמשיך להעביר את אותו סכום לחיסכון.');
   else {
@@ -672,6 +683,20 @@ function renderHome(){
   drawDebtChart($('homeChart'), $('homeLg'), V, 0, null, null, false);
 }
 
+function renderLimit(){
+  const box = $('limBox'), lim = V.limit||0, d = V.debt;
+  if (!lim){ box.hidden = true; return; }
+  box.hidden = false;
+  const used = d/lim, room = lim - d;
+  let roomTxt, cls = '';
+  if (room < 0){ roomTxt = `חריגה של ${money(-room)} מהמסגרת. על חריגה הבנק גובה ריבית גבוהה יותר, וצ׳קים והוראות קבע עלולים לחזור.`; cls = 'bad'; }
+  else if (used >= 0.85){ roomTxt = `נשארו רק ${money(room)} עד גבול המסגרת`; cls = 'warn'; }
+  else roomTxt = `נשארו ${money(room)} עד גבול המסגרת`;
+  box.innerHTML = `<div class="row"><span>מינוס לעומת המסגרת</span><span><b class="num">${money(d)}</b> מתוך <span class="num">${money(lim)}</span> (${Math.round(used*100)}%)</span></div>
+    <div class="limbar" role="img" aria-label="ניצול המסגרת ${Math.round(used*100)}%"><i class="${used>=0.85?'hot':''}" style="width:${Math.min(100, used*100).toFixed(1)}%"></i></div>
+    <div class="small room ${cls}">${roomTxt}</div>`;
+}
+
 function drawDonut(items){
   const svg = $('donut'), R = 58, r = 40, cx = 70, cy = 70, total = items.reduce((a,i)=>a+i.v,0);
   if (!total){ svg.innerHTML = `<circle cx="${cx}" cy="${cy}" r="${(R+r)/2}" fill="none" stroke="var(--fill)" stroke-width="${R-r}"/>`; return; }
@@ -704,7 +729,7 @@ function drawDebtChart(el, lgEl, s, extra, loanRate, tblEl, big){
     if (loan.ok) series.push({name:`בהלוואה (${loanRate}%)`, color:'var(--c2)', pts:loan.pts.map((v,i)=>({x:i,v}))});
   }
   const xMin = Math.min(0, ...histPts.map(p=>p.x)), xMax = Math.max(1, ...series.map(se=>se.pts.length-1));
-  const yMaxRaw = Math.max(1, s.debt, ...histPts.map(p=>p.v));
+  const yMaxRaw = Math.max(1, s.debt, s.limit||0, ...histPts.map(p=>p.v));
   const yMax = niceMax(yMaxRaw);
   const W = Math.max(300, Math.min(900, Math.round(el.clientWidth || 640))), H = big ? 250 : 200, L = 50, R = 12, T = 12, B = 28;
   const x = v => L + (v - xMin)/(xMax - xMin)*(W-L-R);
@@ -715,6 +740,7 @@ function drawDebtChart(el, lgEl, s, extra, loanRate, tblEl, big){
   for (let m = Math.ceil(xMin); m <= xMax; m += step) g += `<text x="${x(m)}" y="${H-8}" text-anchor="middle" font-size="11" fill="var(--ink3)">${shortMonth.format(addMonths(m))}</text>`;
   if (xMin < 0) g += `<line x1="${x(0)}" x2="${x(0)}" y1="${T}" y2="${H-B}" stroke="var(--ink3)" stroke-dasharray="2 3"/><text x="${x(0)+4}" y="${T+10}" font-size="11" fill="var(--ink3)">היום</text>`;
   let marks = '';
+  if (s.limit>0) marks += `<line x1="${L}" x2="${W-R}" y1="${y(s.limit)}" y2="${y(s.limit)}" stroke="var(--bad)" stroke-width="1.5" stroke-dasharray="6 4"/><text x="${W-R}" y="${y(s.limit)-6}" direction="rtl" text-anchor="start" font-size="11" font-weight="700" fill="var(--bad)">מסגרת \u2066${shortMoney(s.limit)}\u2069</text>`;
   series.forEach((se,si)=>{
     const d = se.pts.map((p,i)=>`${i?'L':'M'}${x(p.x).toFixed(1)},${y(p.v).toFixed(1)}`).join('');
     if (si===0) marks += `<path d="${d}L${x(se.pts[se.pts.length-1].x)},${y(0)}L${x(0)},${y(0)}Z" fill="var(--c1)" opacity=".08"/>`;
@@ -867,6 +893,7 @@ $('wizBack').addEventListener('click', ()=>{ const panes = PANES.slice(0,4), i =
 $('startBtn').addEventListener('click', ()=>{ wizard = true; showTab('set'); setPane('debt'); $('fDebt').focus(); });
 
 function fillInputs(){
+  $('fLimit').value = S.limit || '';
   $('fDebt').value = S.debt || ''; $('fRate').value = S.rate || ''; $('fPayday').value = S.payday || '';
   $('loanRate').value = S.loanRate;
 }
@@ -876,6 +903,7 @@ function bindNum(id, key, after){
 bindNum('fDebt','debt',()=>{ if (!S.onboarded || S.startDebt < S.debt) S.startDebt = S.debt; });
 $('fDebt').addEventListener('change', ()=>{ if (S.onboarded){ S.balHistory.push({date:iso(today0()), debt:S.debt}); save(); renderAll(); } });
 bindNum('fRate','rate');
+bindNum('fLimit','limit');
 bindNum('fPayday','payday',()=>{ S.payday = Math.min(31, Math.max(1, Math.round(S.payday)||1)); });
 $('fPay').addEventListener('input', e=>{ S.pay = num(e.target.value); save(); renderSettings(); });
 function preEntry(){ const c = cycleOf(S); return S.entries.find(x=>x.pre && x.date>=c.startIso && x.date<c.nextIso); }
@@ -988,6 +1016,7 @@ $('balForm').addEventListener('submit', e=>{
 function shareSummary(){
   const s = V, L = [`📊 עדכון מינוס, ${longDate.format(today0())}`, ''];
   if (s.debt<=0) L.push('✅ אין מינוס!'); else L.push(`🔻 מינוס כרגע: ${money(s.debt)} (ריבית ${s.rate}% בשנה)`);
+  if (s.limit>0) L.push(`🏦 מסגרת: ${money(s.limit)}, ${s.debt>s.limit ? `חריגה של ${money(s.debt-s.limit)}` : `נשארו ${money(s.limit-s.debt)} עד הגבול`}`);
   const start = Math.max(s.startDebt, s.debt);
   if (start>s.debt) L.push(`💪 הוחזר עד עכשיו: ${money(start-s.debt)} מתוך ${money(start)} (${Math.round((start-s.debt)/start*100)}%)`);
   if (s.debt>0){
