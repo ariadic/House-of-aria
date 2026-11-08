@@ -1,0 +1,724 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f2f2f7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="יוצאים מהמינוס">
+<title>יוצאים מהמינוס</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+/* Overdraft exit planner. Everything is stored in this browser only (localStorage). */
+:root{
+  color-scheme:light;
+  --bg:#f2f2f7;
+  --card:#ffffff;
+  --fill:#e9e9ee;
+  --sep:rgba(60,60,67,.18);
+  --text:#0b0b0b;
+  --text2:#52514e;
+  --text3:#8a8984;
+  --accent:#2a78d6;
+  --accent-ink:#ffffff;
+  --series-1:#2a78d6;
+  --series-2:#eb6834;
+  --grid:rgba(60,60,67,.12);
+  --good:#1f8a3b;
+  --good-bg:#e5f4e8;
+  --bad:#c62f2f;
+  --bad-bg:#fbe9e8;
+  --warn:#9a6200;
+  --warn-bg:#fdf1d8;
+  --ui:Heebo,-apple-system,BlinkMacSystemFont,"SF Hebrew","Segoe UI",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#000000;
+    --card:#1c1c1e;
+    --fill:#2c2c2e;
+    --sep:rgba(84,84,88,.6);
+    --text:#f0efec;
+    --text2:#c3c2b7;
+    --text3:#8e8d86;
+    --accent:#3987e5;
+    --series-1:#3987e5;
+    --series-2:#d95926;
+    --grid:rgba(235,235,245,.12);
+    --good:#4cc26a;
+    --good-bg:#12301b;
+    --bad:#ff6b63;
+    --bad-bg:#3a1514;
+    --warn:#f0b43c;
+    --warn-bg:#352708;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#000000;--card:#1c1c1e;--fill:#2c2c2e;--sep:rgba(84,84,88,.6);
+  --text:#f0efec;--text2:#c3c2b7;--text3:#8e8d86;--accent:#3987e5;
+  --series-1:#3987e5;--series-2:#d95926;--grid:rgba(235,235,245,.12);
+  --good:#4cc26a;--good-bg:#12301b;--bad:#ff6b63;--bad-bg:#3a1514;--warn:#f0b43c;--warn-bg:#352708;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0}
+body{background:var(--bg);color:var(--text);font:400 16px/1.45 var(--ui);-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent;min-height:100vh}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.num{font-variant-numeric:tabular-nums;direction:ltr;unicode-bidi:isolate}
+
+.wrap{max-width:560px;margin:0 auto;padding:0 16px calc(96px + env(safe-area-inset-bottom))}
+header{padding:22px 4px 6px}
+header h1{font-size:30px;font-weight:800;margin:0;letter-spacing:-.3px}
+header p{margin:2px 0 0;color:var(--text2);font-size:14px}
+
+section.tab{display:none}
+section.tab.on{display:block}
+
+h2{font-size:13px;font-weight:500;color:var(--text2);margin:24px 14px 8px}
+.card{background:var(--card);border-radius:16px;padding:16px}
+.card+.card{margin-top:12px}
+.muted{color:var(--text2)}
+.small{font-size:13px}
+
+/* hero */
+.hero{text-align:center;padding:26px 16px 22px}
+.hero .lbl{color:var(--text2);font-size:15px}
+.hero .big{font-size:52px;font-weight:800;line-height:1.1;margin:6px 0 4px;letter-spacing:-1px}
+.hero .sub{color:var(--text2);font-size:14px}
+.hero.over .big{color:var(--bad)}
+
+/* status pill */
+.status{display:flex;gap:10px;align-items:flex-start;border-radius:12px;padding:12px 14px;font-size:14px;margin-top:12px}
+.status .ic{flex:none;width:20px;height:20px;border-radius:50%;display:grid;place-items:center;font-size:13px;font-weight:800;color:#fff}
+.status.good{background:var(--good-bg);color:var(--good)} .status.good .ic{background:var(--good)}
+.status.bad{background:var(--bad-bg);color:var(--bad)} .status.bad .ic{background:var(--bad)}
+.status.warn{background:var(--warn-bg);color:var(--warn)} .status.warn .ic{background:var(--warn)}
+.status b{font-weight:700}
+
+/* forms */
+.field{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:.5px solid var(--sep)}
+.field:last-child{border-bottom:0}
+.field label{flex:1;min-width:0}
+.field label small{display:block;color:var(--text3);font-size:12px;line-height:1.3}
+.field input,.field select{width:130px;background:var(--fill);border:0;border-radius:10px;padding:9px 10px;text-align:left;direction:ltr;font-variant-numeric:tabular-nums}
+.field input[type=text]{direction:rtl;text-align:right}
+.inrow{display:flex;gap:8px}
+.inrow input{flex:1;min-width:0;background:var(--fill);border:0;border-radius:12px;padding:12px;font-size:18px}
+.inrow input.amt{direction:ltr;text-align:left;font-variant-numeric:tabular-nums;font-weight:700}
+.btn{background:var(--accent);color:var(--accent-ink);border:0;border-radius:12px;padding:12px 18px;font-weight:700;cursor:pointer;white-space:nowrap}
+.btn:active{opacity:.8}
+.btn.ghost{background:var(--fill);color:var(--text)}
+.btn.danger{background:var(--bad-bg);color:var(--bad)}
+.btn.full{width:100%;margin-top:12px}
+.btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.btns .btn{flex:1}
+.linkbtn{background:none;border:0;color:var(--accent);cursor:pointer;padding:4px 0;font-weight:500}
+
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.chip{border:0;background:var(--fill);border-radius:999px;padding:7px 13px;font-size:14px;cursor:pointer}
+.chip.on{background:var(--accent);color:var(--accent-ink)}
+
+/* stats */
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.stat{background:var(--card);border-radius:16px;padding:14px}
+.stat .k{color:var(--text2);font-size:13px}
+.stat .v{font-size:22px;font-weight:800;margin-top:2px}
+.stat .v.s{font-size:18px}
+
+/* progress */
+.bar{height:10px;border-radius:999px;background:var(--fill);overflow:hidden;margin:10px 0 6px}
+.bar>i{display:block;height:100%;background:var(--good);border-radius:999px;transition:width .4s}
+.rowsb{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+
+/* lists */
+.list{list-style:none;margin:0;padding:0}
+.list li{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:.5px solid var(--sep)}
+.list li:last-child{border-bottom:0}
+.list .t{flex:1;min-width:0}
+.list .t small{display:block;color:var(--text3);font-size:12px}
+.list .a{font-weight:700}
+.x{background:none;border:0;color:var(--text3);font-size:20px;line-height:1;cursor:pointer;padding:4px 8px;border-radius:8px}
+.x:hover{color:var(--bad)}
+.empty{color:var(--text3);text-align:center;padding:18px 0;font-size:14px}
+.daylbl{font-size:12px;color:var(--text3);padding-top:12px}
+
+/* category bars */
+.cat{margin:10px 0}
+.cat .rowsb{font-size:14px}
+.cat .bar{height:8px;margin:5px 0 0}
+.cat .bar>i{background:var(--series-1)}
+
+/* slider */
+input[type=range]{width:100%;accent-color:var(--accent);margin:10px 0 2px}
+
+/* chart */
+.chart{position:relative;margin-top:8px;direction:ltr}
+.chart svg{display:block;width:100%;height:auto;overflow:visible}
+.chart .tip{position:absolute;pointer-events:none;background:var(--card);border:.5px solid var(--sep);box-shadow:0 4px 18px rgba(0,0,0,.14);border-radius:10px;padding:8px 10px;font-size:13px;white-space:nowrap;direction:rtl;opacity:0;transition:opacity .1s;z-index:2}
+.chart .tip .sw{display:inline-block;width:10px;height:3px;border-radius:2px;vertical-align:middle;margin-left:6px}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--text2);margin-top:6px}
+.legend span::before{content:"";display:inline-block;width:14px;height:3px;border-radius:2px;background:var(--c);vertical-align:middle;margin-left:6px}
+details summary{cursor:pointer;color:var(--accent);font-size:14px;margin-top:10px}
+table{width:100%;border-collapse:collapse;font-size:13px;margin-top:8px}
+th,td{padding:6px 4px;text-align:right;border-bottom:.5px solid var(--sep)}
+th{color:var(--text2);font-weight:500}
+
+.tips{margin:0;padding:0 18px 0 0}
+.tips li{margin:0 0 10px}
+.tips b{display:block}
+
+/* tab bar */
+nav{position:fixed;bottom:0;left:0;right:0;background:color-mix(in srgb,var(--card) 88%,transparent);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-top:.5px solid var(--sep);padding-bottom:env(safe-area-inset-bottom);z-index:5}
+nav .in{max-width:560px;margin:0 auto;display:flex}
+nav button{flex:1;background:none;border:0;padding:8px 0 9px;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:11px;color:var(--text3);cursor:pointer}
+nav button svg{width:24px;height:24px}
+nav button.on{color:var(--accent)}
+
+.toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom));transform:translate(-50%,20px);background:var(--text);color:var(--bg);padding:10px 16px;border-radius:999px;font-size:14px;opacity:0;transition:.25s;pointer-events:none;z-index:9;white-space:nowrap}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+.disclaimer{color:var(--text3);font-size:12px;text-align:center;margin:24px 8px 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>יוצאים מהמינוס</h1>
+    <p id="hdrSub">תוכנית יומית לצאת מיתרת החובה</p>
+  </header>
+
+  <!-- ============ TODAY ============ -->
+  <section class="tab" id="tab-today">
+    <div id="setupNote" class="status warn" hidden><span class="ic">!</span><div>כדי להתחיל, ממלאים כמה פרטים בלשונית <b>הגדרות</b>: גובה המינוס, הריבית, המשכורת וההוצאות הקבועות.</div></div>
+
+    <div class="card hero" id="hero">
+      <div class="lbl">מותר להוציא היום</div>
+      <div class="big num" id="daily">—</div>
+      <div class="sub" id="dailySub"></div>
+    </div>
+
+    <h2>רשמתי הוצאה</h2>
+    <div class="card">
+      <form class="inrow" id="addForm" autocomplete="off">
+        <input class="amt" id="addAmt" type="number" inputmode="decimal" step="any" min="0" placeholder="₪ 0" aria-label="סכום">
+        <button class="btn" type="submit">הוסף</button>
+      </form>
+      <div class="chips" id="catChips" role="radiogroup" aria-label="קטגוריה"></div>
+      <div class="inrow" style="margin-top:10px"><input id="addNote" type="text" placeholder="הערה (לא חובה)" style="font-size:15px;padding:10px 12px"></div>
+    </div>
+
+    <h2>המינוס שלי</h2>
+    <div class="card">
+      <div class="rowsb"><span class="muted">יתרה נוכחית</span><span class="num" style="font-size:26px;font-weight:800" id="curBal">—</span></div>
+      <div class="bar" aria-hidden="true"><i id="progBar" style="width:0"></i></div>
+      <div class="rowsb small muted"><span id="progTxt"></span><span id="progPct" class="num"></span></div>
+      <form class="inrow" id="balForm" style="margin-top:14px" autocomplete="off">
+        <input class="amt" id="balIn" type="number" inputmode="decimal" step="any" placeholder="היתרה בבנק היום (עם מינוס)" aria-label="יתרה בבנק" style="font-size:16px">
+        <button class="btn ghost" type="submit">עדכן</button>
+      </form>
+      <div id="etaStatus"></div>
+    </div>
+  </section>
+
+  <!-- ============ PLAN ============ -->
+  <section class="tab" id="tab-plan">
+    <h2>התוכנית</h2>
+    <div class="stats">
+      <div class="stat"><div class="k">מחזירים בחודש</div><div class="v num" id="sPay">—</div></div>
+      <div class="stat"><div class="k">יוצאים מהמינוס</div><div class="v s" id="sEnd">—</div></div>
+      <div class="stat"><div class="k">ריבית שתשולם</div><div class="v num" id="sInt">—</div></div>
+      <div class="stat"><div class="k">ריבית החודש</div><div class="v num" id="sIntM">—</div></div>
+    </div>
+
+    <h2>מה אם אחסוך עוד?</h2>
+    <div class="card">
+      <div class="rowsb"><span>עוד בכל חודש</span><b class="num" id="extraVal">₪0</b></div>
+      <input type="range" id="extra" min="0" max="3000" step="50" value="0" aria-label="חיסכון נוסף בחודש">
+      <div class="small muted" id="extraTxt">הזיזו כדי לראות כמה מהר יותר אפשר לצאת.</div>
+    </div>
+
+    <h2>גובה המינוס לאורך הזמן</h2>
+    <div class="card">
+      <div class="chart" id="chart"></div>
+      <div class="legend" id="legend"></div>
+      <details><summary>הצג כטבלה</summary><div id="tbl"></div></details>
+    </div>
+
+    <h2>לסגור את המינוס בהלוואה זולה?</h2>
+    <div class="card">
+      <div class="field"><label for="loanRate">ריבית שנתית על ההלוואה (%)<small>הצעה מהבנק, מקופת גמל/קרן השתלמות או מגוף אחר</small></label><input id="loanRate" type="number" inputmode="decimal" step="0.1" min="0" placeholder="למשל 6"></div>
+      <div id="loanOut" class="small muted" style="margin-top:8px">ממלאים ריבית כדי להשוות. מחזירים את ההלוואה באותו סכום חודשי.</div>
+    </div>
+
+    <h2>מה עוד עוזר</h2>
+    <div class="card">
+      <ol class="tips">
+        <li><b>חיסכון ביום המשכורת</b>מגדירים הוראת קבע שמעבירה את סכום ההחזר ביום שהמשכורת נכנסת, לפני שמספיקים להוציא.</li>
+        <li><b>מועד חיוב האשראי</b>מבקשים מחברת האשראי להעביר את יום החיוב ליום או יומיים אחרי המשכורת. כך החשבון נמצא פחות ימים במינוס, ומשלמים פחות ריבית.</li>
+        <li><b>להוריד את המסגרת בהדרגה</b>אחרי כל חודש טוב, מבקשים מהבנק להוריד את המסגרת בסכום שהחזרתם. ככה לא חוזרים אחורה.</li>
+        <li><b>לבדוק עמלות ומנויים</b>עוברים על דף החשבון ועל פירוט האשראי, ומבטלים מנויים ועמלות שלא צריך. כל 50 ₪ בחודש הם 600 ₪ בשנה.</li>
+        <li><b>לנהל משא ומתן על הריבית</b>שואלים את הבנק על ריבית נמוכה יותר על המסגרת או על הלוואה לסגירת המינוס, ומשווים להצעות אחרות.</li>
+        <li><b>כרטיס דביט או מזומן</b>להוצאות היומיות, כדי לראות מיד כמה יוצא.</li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ============ EXPENSES ============ -->
+  <section class="tab" id="tab-exp">
+    <h2 id="cycleTitle">החודש הזה</h2>
+    <div class="card">
+      <div class="rowsb"><span class="muted">הוצאתי</span><b class="num" id="cycSpent">—</b></div>
+      <div class="bar" aria-hidden="true"><i id="cycBar" style="width:0;background:var(--series-1)"></i></div>
+      <div class="rowsb small muted"><span id="cycLeft"></span><span id="cycBudget" class="num"></span></div>
+    </div>
+
+    <h2>לפי קטגוריה</h2>
+    <div class="card" id="cats"><div class="empty">אין עדיין הוצאות בחודש הזה</div></div>
+
+    <h2>כל ההוצאות בחודש</h2>
+    <div class="card"><ul class="list" id="expList"></ul></div>
+  </section>
+
+  <!-- ============ SETTINGS ============ -->
+  <section class="tab" id="tab-set">
+    <h2>החשבון</h2>
+    <div class="card">
+      <div class="field"><label for="fDebt">גובה המינוס היום (₪)<small>כמה חסר בחשבון, כמספר חיובי</small></label><input id="fDebt" type="number" inputmode="decimal" step="any" min="0" placeholder="8500"></div>
+      <div class="field"><label for="fRate">ריבית שנתית על המינוס (%)<small>מופיעה בדף החשבון או באפליקציית הבנק</small></label><input id="fRate" type="number" inputmode="decimal" step="0.1" min="0" placeholder="12"></div>
+    </div>
+
+    <h2>הכנסות</h2>
+    <div class="card">
+      <div class="field"><label for="fIncome">משכורת נטו בחודש (₪)<small>כולל הכנסות קבועות נוספות</small></label><input id="fIncome" type="number" inputmode="decimal" step="any" min="0" placeholder="9000"></div>
+      <div class="field"><label for="fPayday">יום המשכורת בחודש</label><input id="fPayday" type="number" inputmode="numeric" min="1" max="31" placeholder="10"></div>
+      <div class="field"><label for="fSpentSoFar">כבר הוצאתי מאז המשכורת האחרונה (₪)<small>הוצאות יומיות בלבד, בלי הקבועות. רק כשמתחילים באמצע החודש</small></label><input id="fSpentSoFar" type="number" inputmode="decimal" step="any" min="0" placeholder="0"></div>
+    </div>
+
+    <h2>הוצאות קבועות בחודש</h2>
+    <div class="card">
+      <ul class="list" id="fixedList"></ul>
+      <form class="inrow" id="fixedForm" style="margin-top:10px" autocomplete="off">
+        <input id="fxName" type="text" placeholder="שכירות, חשמל, טלפון..." style="font-size:15px;padding:10px 12px">
+        <input id="fxAmt" class="amt" type="number" inputmode="decimal" step="any" min="0" placeholder="₪" style="font-size:15px;padding:10px 12px;max-width:100px">
+        <button class="btn ghost" type="submit">+</button>
+      </form>
+      <div class="rowsb small" style="margin-top:12px"><span class="muted">סה״כ קבועות</span><b class="num" id="fixedTotal">₪0</b></div>
+    </div>
+
+    <h2>כמה מחזירים בחודש</h2>
+    <div class="card">
+      <div class="rowsb"><span>החזר חודשי למינוס</span><b class="num" id="payVal">₪0</b></div>
+      <input type="range" id="fPay" min="0" max="5000" step="50" value="0" aria-label="החזר חודשי">
+      <div class="rowsb small" style="margin-top:6px"><span class="muted">נשאר להוצאות יומיות (אוכל, דלק, בילויים)</span><b class="num" id="varVal">—</b></div>
+      <div id="payStatus"></div>
+    </div>
+
+    <h2>גיבוי</h2>
+    <div class="card">
+      <div class="small muted">הנתונים נשמרים רק בדפדפן הזה, ולא נשלחים לשום מקום. כדאי לשמור גיבוי מדי פעם, או כדי להעביר לטלפון אחר.</div>
+      <div class="btns">
+        <button class="btn ghost" id="exportBtn" type="button">שמור גיבוי</button>
+        <button class="btn ghost" id="importBtn" type="button">טען גיבוי</button>
+      </div>
+      <input type="file" id="importFile" accept="application/json,.json" hidden>
+      <button class="btn danger full" id="resetBtn" type="button">מחק את כל הנתונים</button>
+    </div>
+    <p class="disclaimer">החישובים הם הערכה בלבד, לפי ריבית חודשית קבועה. הריבית בבנק מחושבת יומית ועשויה להשתנות. זה לא ייעוץ פיננסי.</p>
+  </section>
+</div>
+
+<nav aria-label="ניווט">
+  <div class="in">
+    <button data-tab="today" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>היום</button>
+    <button data-tab="plan" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19h16"/><path d="M5 6l5 5 4-3 5 6"/></svg>תוכנית</button>
+    <button data-tab="exp" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h12M8 12h12M8 18h12"/><circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/></svg>הוצאות</button>
+    <button data-tab="set" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>הגדרות</button>
+  </div>
+</nav>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(() => {
+'use strict';
+const KEY = 'minus-app-v1';
+const CATS = ['אוכל וסופר','דלק ותחבורה','בילויים','קניות','בריאות','ילדים','אחר'];
+const $ = id => document.getElementById(id);
+const fmt = new Intl.NumberFormat('he-IL',{style:'currency',currency:'ILS',maximumFractionDigits:0});
+const money = n => fmt.format(Math.round(n));
+const monthFmt = new Intl.DateTimeFormat('he-IL',{month:'long',year:'numeric'});
+const shortMonth = new Intl.DateTimeFormat('he-IL',{month:'short',year:'2-digit'});
+const dayFmt = new Intl.DateTimeFormat('he-IL',{weekday:'long',day:'numeric',month:'long'});
+
+/* ---------- state ---------- */
+const blank = () => ({
+  debt:0,            // current overdraft, positive number
+  startDebt:0,       // overdraft when the plan started (for progress)
+  rate:12,           // annual % on overdraft
+  income:0,
+  payday:10,
+  fixed:[],          // {id,name,amount}
+  pay:0,             // monthly payoff toward the overdraft
+  loanRate:'',
+  expenses:[],       // {id,date:'YYYY-MM-DD',amount,cat,note}
+  balHistory:[],     // {date,debt}
+  cat:CATS[0],
+  tab:'today'
+});
+let S = blank();
+try { const raw = localStorage.getItem(KEY); if (raw) S = Object.assign(blank(), JSON.parse(raw)); } catch(e) {}
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e) {} };
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+const num = v => { const n = parseFloat(v); return isFinite(n) ? n : 0; };
+
+/* ---------- dates & pay cycle ---------- */
+const iso = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+const today0 = () => { const d = new Date(); d.setHours(0,0,0,0); return d; };
+const dayIn = (y,m,day) => new Date(y, m, Math.min(day, new Date(y, m+1, 0).getDate()));
+function cycle(){
+  const t = today0(), pd = Math.min(Math.max(1, Math.round(S.payday)||1), 31);
+  let start = dayIn(t.getFullYear(), t.getMonth(), pd);
+  if (start > t) start = dayIn(t.getFullYear(), t.getMonth()-1, pd);
+  const next = dayIn(start.getFullYear(), start.getMonth()+1, pd);
+  const daysLeft = Math.max(1, Math.round((next - t) / 864e5));
+  return {start, next, daysLeft, startIso: iso(start), nextIso: iso(next)};
+}
+
+/* ---------- money math ---------- */
+const fixedTotal = () => S.fixed.reduce((a,f)=>a+num(f.amount),0);
+const varBudget = () => S.income - fixedTotal() - S.pay;
+
+// Monthly simulation: interest on the outstanding overdraft, then the payment.
+function simulate(debt, annualRate, pay, maxMonths=600){
+  const r = annualRate/100/12, pts=[debt];
+  let b = debt, interest = 0, m = 0;
+  if (debt <= 0) return {months:0, interest:0, pts, ok:true};
+  if (pay <= debt*r) return {months:Infinity, interest:Infinity, pts, ok:false};
+  while (b > 0.5 && m < maxMonths){
+    const i = b*r; interest += i; b = b + i - pay; m++;
+    pts.push(Math.max(0,b));
+  }
+  return {months:m, interest, pts, ok:b<=0.5};
+}
+const addMonths = n => { const d = today0(); d.setDate(1); d.setMonth(d.getMonth()+n); return d; };
+const daysWord = n => n===1 ? 'יום אחד' : n===2 ? 'יומיים' : `${n} ימים`;
+const monthsWord = n => n===1 ? 'חודש אחד' : n===2 ? 'חודשיים' : `${n} חודשים`;
+function durationTxt(n){
+  if (n < 12) return monthsWord(n);
+  const y = Math.floor(n/12), m = n%12;
+  const yt = y===1 ? 'שנה' : y===2 ? 'שנתיים' : `${y} שנים`;
+  return m ? `${yt} ו${monthsWord(m)}` : yt;
+}
+
+/* ---------- UI helpers ---------- */
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function status(kind, html){ const ic = kind==='good'?'✓':'!'; return `<div class="status ${kind}"><span class="ic" aria-hidden="true">${ic}</span><div>${html}</div></div>`; }
+let toastT;
+function toast(msg){ const t=$('toast'); t.textContent=msg; t.classList.add('on'); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('on'),1800); }
+const isSetup = () => S.income > 0;
+
+/* ---------- tabs ---------- */
+function showTab(name){
+  S.tab = name; save();
+  document.querySelectorAll('section.tab').forEach(s=>s.classList.toggle('on', s.id==='tab-'+name));
+  document.querySelectorAll('nav button').forEach(b=>{ const on=b.dataset.tab===name; b.classList.toggle('on',on); b.setAttribute('aria-current', on?'page':'false'); });
+  if (name==='plan') renderPlan();
+  window.scrollTo(0,0);
+}
+document.querySelectorAll('nav button').forEach(b=>b.addEventListener('click',()=>showTab(b.dataset.tab)));
+
+/* ---------- TODAY ---------- */
+function renderChips(){
+  $('catChips').innerHTML = CATS.map(c=>`<button type="button" class="chip${c===S.cat?' on':''}" role="radio" aria-checked="${c===S.cat}" data-c="${esc(c)}">${esc(c)}</button>`).join('');
+}
+$('catChips').addEventListener('click', e=>{ const b=e.target.closest('.chip'); if(!b) return; S.cat=b.dataset.c; save(); renderChips(); });
+
+function cycleSpent(){ const c=cycle(); return S.expenses.filter(x=>x.date>=c.startIso && x.date<c.nextIso); }
+
+function renderToday(){
+  $('setupNote').hidden = isSetup();
+  const c = cycle(), spentList = cycleSpent(), todayIso = iso(today0());
+  const spent = spentList.reduce((a,x)=>a+x.amount,0);
+  const spentBeforeToday = spentList.filter(x=>x.date<todayIso).reduce((a,x)=>a+x.amount,0);
+  const spentToday = spent - spentBeforeToday;
+  const budget = varBudget();
+  // Today's allowance is fixed at the start of the day, then reduced by what was spent today.
+  const perDay = (budget - spentBeforeToday) / c.daysLeft;
+  const leftToday = perDay - spentToday;
+  const hero = $('hero');
+  if (!isSetup()){
+    $('daily').textContent='—'; $('dailySub').textContent='ממלאים הגדרות ומתחילים'; hero.classList.remove('over');
+  } else if (budget - spent < 0){
+    hero.classList.add('over');
+    $('daily').textContent = money(0);
+    $('dailySub').innerHTML = `חרגת מהתקציב החודשי ב־<span class="num">${money(spent-budget)}</span>. עד המשכורת (${daysWord(c.daysLeft)}) עדיף לא להוציא בכלל.`;
+  } else {
+    hero.classList.toggle('over', leftToday < 0);
+    $('daily').textContent = money(Math.max(0,leftToday));
+    const over = leftToday < 0 ? ` עברת את היום ב־<span class="num">${money(-leftToday)}</span>, ומחר יהיה קצת פחות.` : '';
+    $('dailySub').innerHTML = `נשארו <span class="num">${money(budget-spent)}</span> ל${daysWord(c.daysLeft)} עד המשכורת.${over}`;
+  }
+
+  // overdraft card
+  $('curBal').textContent = S.debt>0 ? money(-S.debt) : money(0);
+  $('curBal').style.color = S.debt>0 ? 'var(--bad)' : 'var(--good)';
+  const start = Math.max(S.startDebt, S.debt);
+  const paid = start - S.debt, pct = start>0 ? Math.max(0,Math.min(100, paid/start*100)) : (S.debt<=0 && isSetup() ? 100 : 0);
+  $('progBar').style.width = pct+'%';
+  $('progTxt').textContent = start>0 ? `החזרת ${money(paid)} מתוך ${money(start)}` : '';
+  $('progPct').textContent = start>0 ? Math.round(pct)+'%' : '';
+
+  let st='';
+  if (isSetup()){
+    if (S.debt<=0) st = status('good','<b>יצאת מהמינוס!</b> עכשיו כדאי להמשיך להעביר את אותו סכום לחיסכון.');
+    else {
+      const sim = simulate(S.debt, S.rate, S.pay);
+      if (!sim.ok) st = status('bad', `<b>המינוס גדל.</b> ההחזר החודשי (${money(S.pay)}) לא מכסה את הריבית (${money(S.debt*S.rate/1200)} בחודש). מגדילים את ההחזר בהגדרות.`);
+      else st = status('good', `בקצב הזה יוצאים מהמינוס ב<b>${monthFmt.format(addMonths(sim.months))}</b>, בעוד ${durationTxt(sim.months)}.`);
+    }
+  }
+  $('etaStatus').innerHTML = st;
+}
+
+$('addForm').addEventListener('submit', e=>{
+  e.preventDefault();
+  const a = num($('addAmt').value);
+  if (a<=0){ $('addAmt').focus(); return; }
+  S.expenses.push({id:uid(), date:iso(today0()), amount:a, cat:S.cat, note:$('addNote').value.trim()});
+  $('addAmt').value=''; $('addNote').value='';
+  save(); renderAll(); toast(`נרשמה הוצאה של ${money(a)}`);
+});
+
+$('balForm').addEventListener('submit', e=>{
+  e.preventDefault();
+  const raw = $('balIn').value.trim(); if (raw==='') return;
+  const bal = num(raw);
+  // A negative balance is the overdraft. A positive balance means out of the minus.
+  S.debt = Math.max(0, -bal);
+  if (S.startDebt < S.debt) S.startDebt = S.debt;
+  S.balHistory.push({date:iso(today0()), debt:S.debt});
+  $('balIn').value=''; $('fDebt').value = S.debt || '';
+  save(); renderAll(); toast('היתרה עודכנה');
+});
+
+/* ---------- PLAN ---------- */
+function renderPlan(){
+  const extra = num($('extra').value);
+  $('extraVal').textContent = money(extra);
+  const base = simulate(S.debt, S.rate, S.pay);
+  const withExtra = simulate(S.debt, S.rate, S.pay+extra);
+  const cur = extra>0 ? withExtra : base;
+  $('sPay').textContent = money(S.pay+extra);
+  $('sIntM').textContent = money(S.debt*S.rate/1200);
+  if (S.debt<=0){ $('sEnd').textContent='כבר בחוץ 🎉'; $('sInt').textContent=money(0); }
+  else if (!cur.ok){ $('sEnd').textContent='לא יוצאים'; $('sInt').textContent='∞'; }
+  else { $('sEnd').textContent = monthFmt.format(addMonths(cur.months)); $('sInt').textContent = money(cur.interest); }
+
+  if (extra>0 && S.debt>0){
+    if (withExtra.ok && base.ok){
+      const saved = base.months - withExtra.months, si = base.interest - withExtra.interest;
+      $('extraTxt').innerHTML = saved>0 ? `יוצאים <b>${monthsWord(saved)} מוקדם יותר</b> וחוסכים <b class="num">${money(si)}</b> ריבית.` : `חוסכים <b class="num">${money(si)}</b> ריבית.`;
+    } else if (withExtra.ok){
+      $('extraTxt').innerHTML = `עם התוספת הזו <b>יוצאים מהמינוס</b> תוך ${durationTxt(withExtra.months)}.`;
+    } else $('extraTxt').textContent = 'עדיין לא מספיק כדי לכסות את הריבית.';
+  } else $('extraTxt').textContent = 'הזיזו כדי לראות כמה מהר יותר אפשר לצאת.';
+
+  // loan comparison
+  const lr = S.loanRate===''? null : num(S.loanRate);
+  let loan = null;
+  if (lr!==null && S.debt>0){
+    loan = simulate(S.debt, lr, S.pay+extra);
+    if (loan.ok && cur.ok){
+      const d = cur.interest - loan.interest;
+      $('loanOut').innerHTML = d>0
+        ? status('good', `הלוואה ב־${lr}% חוסכת בערך <b class="num">${money(d)}</b> ריבית, ויוצאים ${loan.months<cur.months?`<b>${monthsWord(cur.months-loan.months)} מוקדם יותר</b>`:'באותו זמן'}. <br>חשוב: אחרי סגירת המינוס מבקשים מהבנק <b>לבטל או להקטין את המסגרת</b>, אחרת קל לחזור למינוס ולהישאר גם עם ההלוואה.`)
+        : status('warn', `הלוואה ב־${lr}% לא זולה יותר מהריבית על המינוס (${S.rate}%). לא כדאי.`);
+    } else if (loan.ok){
+      $('loanOut').innerHTML = status('good', `עם הלוואה ב־${lr}% ההחזר החודשי מספיק, ויוצאים מהחוב תוך ${durationTxt(loan.months)}. במינוס עצמו, באותו החזר, החוב רק גדל.`);
+    } else $('loanOut').innerHTML = status('bad','גם בריבית הזו ההחזר החודשי לא מכסה את הריבית.');
+  } else $('loanOut').textContent = S.debt>0 ? 'ממלאים ריבית כדי להשוות. מחזירים את ההלוואה באותו סכום חודשי.' : 'אין מינוס לסגור.';
+
+  drawChart(cur, loan && loan.ok ? loan : null, lr);
+}
+$('extra').addEventListener('input', renderPlan);
+$('loanRate').addEventListener('input', e=>{ S.loanRate = e.target.value; save(); renderPlan(); });
+
+function drawChart(main, loan, lr){
+  const el = $('chart');
+  if (S.debt<=0 || !main.ok){
+    el.innerHTML = `<div class="empty">${S.debt<=0?'אין מינוס. כל הכבוד!':'בקצב הנוכחי המינוס לא יורד, אז אין מה להציג. מגדילים את ההחזר החודשי.'}</div>`;
+    $('legend').innerHTML=''; $('tbl').innerHTML=''; return;
+  }
+  const series = [{name:'במינוס', color:'var(--series-1)', pts:main.pts}];
+  if (loan) series.push({name:`בהלוואה (${lr}%)`, color:'var(--series-2)', pts:loan.pts});
+  const n = Math.max(...series.map(s=>s.pts.length)) - 1;
+  const W=520, H=230, L=52, R=12, T=12, B=28;
+  const maxY = niceMax(S.debt);
+  const x = i => L + (n? i/n : 0)*(W-L-R);
+  const y = v => T + (1 - v/maxY)*(H-T-B);
+  const ticks = [0, maxY/4, maxY/2, maxY*3/4, maxY];
+  let g = '';
+  ticks.forEach(t=>{ g += `<line x1="${L}" x2="${W-R}" y1="${y(t)}" y2="${y(t)}" stroke="var(--grid)" stroke-width="1"/><text x="${L-8}" y="${y(t)+4}" text-anchor="end" font-size="11" fill="var(--text3)">${shortMoney(t)}</text>`; });
+  const step = Math.max(1, Math.ceil(n/5));
+  for (let i=0;i<=n;i+=step){ g += `<text x="${x(i)}" y="${H-8}" text-anchor="middle" font-size="11" fill="var(--text3)">${shortMonth.format(addMonths(i))}</text>`; }
+  let lines = '';
+  series.forEach(s=>{
+    const d = s.pts.map((v,i)=>`${i?'L':'M'}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join('');
+    lines += `<path d="${d}" fill="none" stroke="${s.color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
+    const li = s.pts.length-1;
+    lines += `<circle cx="${x(li)}" cy="${y(0)}" r="4" fill="${s.color}" stroke="var(--card)" stroke-width="2"/>`;
+  });
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="גובה המינוס לפי חודשים">${g}${lines}
+    <line id="cx" x1="0" x2="0" y1="${T}" y2="${H-B}" stroke="var(--text3)" stroke-width="1" stroke-dasharray="3 3" opacity="0"/>
+    <g id="cdots"></g>
+    <rect x="${L}" y="0" width="${W-L-R}" height="${H}" fill="transparent" id="hit"/></svg><div class="tip" id="tip"></div>`;
+  $('legend').innerHTML = series.length>1 ? series.map(s=>`<span style="--c:${s.color}">${esc(s.name)}</span>`).join('') : '';
+
+  const svg = el.querySelector('svg'), tip = $('tip'), cx = el.querySelector('#cx'), dots = el.querySelector('#cdots');
+  function move(clientX){
+    const r = svg.getBoundingClientRect();
+    const px = (clientX - r.left) / r.width * W;
+    const i = Math.max(0, Math.min(n, Math.round((px-L)/(W-L-R)*n)));
+    cx.setAttribute('x1', x(i)); cx.setAttribute('x2', x(i)); cx.setAttribute('opacity', 1);
+    dots.innerHTML = series.map(s=>{ const v = s.pts[Math.min(i,s.pts.length-1)]; return `<circle cx="${x(i)}" cy="${y(v)}" r="4.5" fill="${s.color}" stroke="var(--card)" stroke-width="2"/>`; }).join('');
+    tip.innerHTML = `<div style="color:var(--text2);margin-bottom:3px">${monthFmt.format(addMonths(i))}</div>` +
+      series.map(s=>`<div><span class="sw" style="background:${s.color}"></span>${esc(s.name)}: <b class="num">${money(-(s.pts[Math.min(i,s.pts.length-1)]))}</b></div>`).join('');
+    tip.style.opacity = 1;
+    const tx = x(i)/W*r.width, tw = tip.offsetWidth;
+    tip.style.left = Math.max(0, Math.min(r.width - tw, tx - tw/2)) + 'px';
+    tip.style.top = '-8px'; tip.style.transform = 'translateY(-100%)';
+  }
+  const hide = ()=>{ tip.style.opacity=0; cx.setAttribute('opacity',0); dots.innerHTML=''; };
+  const hit = el.querySelector('#hit');
+  hit.addEventListener('pointermove', e=>move(e.clientX));
+  hit.addEventListener('pointerdown', e=>move(e.clientX));
+  hit.addEventListener('pointerleave', hide);
+
+  // table view
+  let rows = '';
+  for (let i=0;i<=n;i++) rows += `<tr><td>${monthFmt.format(addMonths(i))}</td>${series.map(s=>`<td class="num">${i<s.pts.length?money(-s.pts[i]):money(0)}</td>`).join('')}</tr>`;
+  $('tbl').innerHTML = `<table><thead><tr><th>חודש</th>${series.map(s=>`<th>${esc(s.name)}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table>`;
+}
+function niceMax(v){ const p = Math.pow(10, Math.floor(Math.log10(v))); const m = v/p; return (m<=1?1:m<=2?2:m<=2.5?2.5:m<=5?5:10)*p; }
+function shortMoney(v){ return v>=1000 ? `₪${+(v/1000).toFixed(1)}K` : `₪${Math.round(v)}`; }
+
+/* ---------- EXPENSES ---------- */
+function renderExpenses(){
+  const c = cycle(), list = cycleSpent().slice().sort((a,b)=>b.date.localeCompare(a.date) || b.id.localeCompare(a.id));
+  const spent = list.reduce((a,x)=>a+x.amount,0), budget = Math.max(0,varBudget());
+  const endDay = new Date(c.next); endDay.setDate(endDay.getDate()-1);
+  $('cycleTitle').textContent = `מ־${c.start.getDate()}/${c.start.getMonth()+1} עד ${endDay.getDate()}/${endDay.getMonth()+1}`;
+  $('cycSpent').textContent = money(spent);
+  const pct = budget>0 ? Math.min(100, spent/budget*100) : (spent>0?100:0);
+  $('cycBar').style.width = pct+'%';
+  $('cycBar').style.background = spent>budget ? 'var(--bad)' : 'var(--series-1)';
+  $('cycLeft').textContent = spent>budget ? `חריגה של ${money(spent-budget)}` : `נשארו ${money(budget-spent)}`;
+  $('cycBudget').textContent = `תקציב ${money(budget)}`;
+
+  const by = {}; list.forEach(x=>by[x.cat]=(by[x.cat]||0)+x.amount);
+  const cats = Object.entries(by).sort((a,b)=>b[1]-a[1]);
+  const top = cats.length ? cats[0][1] : 1;
+  $('cats').innerHTML = cats.length ? cats.map(([k,v])=>`<div class="cat"><div class="rowsb"><span>${esc(k)}</span><b class="num">${money(v)}</b></div><div class="bar"><i style="width:${v/top*100}%"></i></div></div>`).join('') : '<div class="empty">אין עדיין הוצאות בחודש הזה</div>';
+
+  let html='', last='';
+  list.forEach(x=>{
+    if (x.date!==last){ last=x.date; const [Y,M,D]=x.date.split('-').map(Number); html += `<li class="daylbl">${dayFmt.format(new Date(Y,M-1,D))}</li>`; }
+    html += `<li><div class="t">${esc(x.cat)}${x.note?`<small>${esc(x.note)}</small>`:''}</div><span class="a num">${money(x.amount)}</span><button class="x" data-del="${x.id}" aria-label="מחק הוצאה">×</button></li>`;
+  });
+  $('expList').innerHTML = html || '<li class="empty" style="display:block">עוד לא נרשמו הוצאות. רושמים כל הוצאה בלשונית ״היום״.</li>';
+}
+$('expList').addEventListener('click', e=>{
+  const b = e.target.closest('[data-del]'); if(!b) return;
+  S.expenses = S.expenses.filter(x=>x.id!==b.dataset.del); save(); renderAll(); toast('ההוצאה נמחקה');
+});
+
+/* ---------- SETTINGS ---------- */
+function fillSettings(){
+  $('fDebt').value = S.debt || ''; $('fRate').value = S.rate; $('fIncome').value = S.income || ''; $('fPayday').value = S.payday;
+  $('loanRate').value = S.loanRate;
+  const pe = preEntry(); $('fSpentSoFar').value = pe ? pe.amount : '';
+}
+function renderSettings(){
+  $('fixedList').innerHTML = S.fixed.length ? S.fixed.map(f=>`<li><div class="t">${esc(f.name)}</div><span class="a num">${money(f.amount)}</span><button class="x" data-fx="${f.id}" aria-label="מחק">×</button></li>`).join('') : '<li class="empty" style="display:block">שכירות או משכנתא, חשבונות, ביטוחים, הלוואות, מנויים, גן...</li>';
+  $('fixedTotal').textContent = money(fixedTotal());
+  const free = Math.max(0, S.income - fixedTotal());
+  const slider = $('fPay');
+  slider.max = Math.max(500, Math.ceil(free/50)*50);
+  slider.value = S.pay;
+  $('payVal').textContent = money(S.pay);
+  const vb = varBudget();
+  $('varVal').textContent = money(vb);
+  $('varVal').style.color = vb<0 ? 'var(--bad)' : '';
+  let st='';
+  if (!isSetup()) st='';
+  else if (vb<0) st = status('bad','<b>אין מספיק כסף</b> להוצאות היומיות. מורידים את ההחזר החודשי או מקצצים בהוצאות הקבועות.');
+  else if (S.debt>0 && S.pay <= S.debt*S.rate/1200) st = status('bad', `ההחזר צריך להיות לפחות <b class="num">${money(S.debt*S.rate/1200+1)}</b> בחודש, רק כדי לכסות את הריבית.`);
+  else if (S.debt>0){ const sim = simulate(S.debt,S.rate,S.pay); st = status('good', `יוצאים מהמינוס תוך <b>${durationTxt(sim.months)}</b>. לכל יום נשארים בערך <b class="num">${money(vb/30.4)}</b>.`); }
+  $('payStatus').innerHTML = st;
+}
+function bindNum(id, key, after){
+  $(id).addEventListener('input', e=>{ S[key] = num(e.target.value); if(after) after(); save(); renderAll(false); });
+}
+bindNum('fDebt','debt',()=>{ if (S.startDebt < S.debt || S.balHistory.length===0) S.startDebt = S.debt; });
+$('fDebt').addEventListener('change', ()=>{ S.balHistory.push({date:iso(today0()), debt:S.debt}); save(); });
+bindNum('fRate','rate');
+const PRE_NOTE = 'לפני שהתחלתי לרשום';
+function preEntry(){ const c=cycle(); return S.expenses.find(x=>x.pre && x.date>=c.startIso && x.date<c.nextIso); }
+$('fSpentSoFar').addEventListener('input', e=>{
+  const a = num(e.target.value), c = cycle();
+  S.expenses = S.expenses.filter(x=>!(x.pre && x.date>=c.startIso && x.date<c.nextIso));
+  if (a>0) S.expenses.push({id:uid(), date:c.startIso, amount:a, cat:'אחר', note:PRE_NOTE, pre:true});
+  save(); renderAll();
+});
+bindNum('fIncome','income');
+bindNum('fPayday','payday',()=>{ S.payday = Math.min(31, Math.max(1, Math.round(S.payday)||1)); });
+$('fPay').addEventListener('input', e=>{ S.pay = num(e.target.value); save(); renderAll(false); });
+
+$('fixedForm').addEventListener('submit', e=>{
+  e.preventDefault();
+  const name = $('fxName').value.trim(), amount = num($('fxAmt').value);
+  if (!name){ $('fxName').focus(); return; }
+  if (amount<=0){ $('fxAmt').focus(); return; }
+  S.fixed.push({id:uid(), name, amount});
+  $('fxName').value=''; $('fxAmt').value=''; $('fxName').focus();
+  save(); renderAll(false);
+});
+$('fixedList').addEventListener('click', e=>{
+  const b=e.target.closest('[data-fx]'); if(!b) return;
+  S.fixed = S.fixed.filter(f=>f.id!==b.dataset.fx); save(); renderAll(false);
+});
+
+$('exportBtn').addEventListener('click', ()=>{
+  const blob = new Blob([JSON.stringify(S,null,2)],{type:'application/json'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `minus-backup-${iso(today0())}.json`;
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href), 1000);
+});
+$('importBtn').addEventListener('click', ()=>$('importFile').click());
+$('importFile').addEventListener('change', async e=>{
+  const f = e.target.files[0]; if(!f) return;
+  try { const d = JSON.parse(await f.text()); if (typeof d!=='object' || !Array.isArray(d.expenses)) throw 0; S = Object.assign(blank(), d); save(); fillSettings(); renderAll(); toast('הגיבוי נטען'); }
+  catch(err){ toast('הקובץ לא תקין'); }
+  e.target.value='';
+});
+$('resetBtn').addEventListener('click', ()=>{
+  if (!confirm('למחוק את כל הנתונים? אי אפשר לבטל.')) return;
+  S = blank(); save(); fillSettings(); renderAll(); showTab('set');
+});
+
+/* ---------- render ---------- */
+function renderAll(){
+  renderChips(); renderToday(); renderExpenses(); renderSettings();
+  if (S.tab==='plan') renderPlan();
+}
+fillSettings(); renderAll();
+showTab(isSetup() ? (S.tab||'today') : 'set');
+// Refresh at midnight-ish when the app stays open.
+document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) renderAll(); });
+})();
+</script>
+</body>
+</html>
