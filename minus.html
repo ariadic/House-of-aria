@@ -173,6 +173,16 @@ th{color:var(--text2);font-weight:500}
 .tips li{margin:0 0 10px}
 .tips b{display:block}
 
+/* share sheet */
+dialog{border:0;border-radius:20px;padding:0;width:min(520px,calc(100% - 32px));background:var(--card);color:var(--text);box-shadow:0 20px 60px rgba(0,0,0,.3)}
+dialog::backdrop{background:rgba(0,0,0,.45)}
+dialog .in{padding:18px}
+dialog h3{margin:0 0 4px;font-size:19px}
+dialog textarea{width:100%;min-height:230px;margin-top:10px;background:var(--fill);border:0;border-radius:12px;padding:12px;font:inherit;font-size:15px;line-height:1.55;resize:vertical;color:var(--text)}
+.opt{display:flex;align-items:center;gap:8px;font-size:14px;margin-top:10px;color:var(--text2)}
+.opt input{width:18px;height:18px;accent-color:var(--accent)}
+.btn.wa{background:#25d366;color:#08240f}
+
 /* tab bar */
 nav{position:fixed;bottom:0;left:0;right:0;background:color-mix(in srgb,var(--card) 88%,transparent);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-top:.5px solid var(--sep);padding-bottom:env(safe-area-inset-bottom);z-index:5}
 nav .in{max-width:560px;margin:0 auto;display:flex}
@@ -222,6 +232,7 @@ nav button.on{color:var(--accent)}
         <button class="btn ghost" type="submit">עדכן</button>
       </form>
       <div id="etaStatus"></div>
+      <button class="btn ghost full" id="shareBtn" type="button">שתף עדכון בוואטסאפ</button>
     </div>
   </section>
 
@@ -340,6 +351,20 @@ nav button.on{color:var(--accent)}
     <button data-tab="set" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>הגדרות</button>
   </div>
 </nav>
+<dialog id="shareDlg" aria-labelledby="shareTitle">
+  <div class="in">
+    <h3 id="shareTitle">שיתוף עדכון</h3>
+    <div class="small muted">זה הטקסט שיישלח. אפשר לערוך אותו לפני השליחה.</div>
+    <label class="opt"><input type="checkbox" id="shExp" checked> לכלול את ההוצאות של החודש</label>
+    <label class="opt"><input type="checkbox" id="shCats"> לכלול פילוח לפי קטגוריות</label>
+    <textarea id="shareText" aria-label="טקסט לשיתוף"></textarea>
+    <div class="btns">
+      <button class="btn wa" id="shWa" type="button">שלח בוואטסאפ</button>
+      <button class="btn ghost" id="shCopy" type="button">העתק</button>
+    </div>
+    <button class="btn ghost full" id="shClose" type="button">סגור</button>
+  </div>
+</dialog>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script>
@@ -406,6 +431,7 @@ function simulate(debt, annualRate, pay, maxMonths=600){
 }
 const addMonths = n => { const d = today0(); d.setDate(1); d.setMonth(d.getMonth()+n); return d; };
 const daysWord = n => n===1 ? 'יום אחד' : n===2 ? 'יומיים' : `${n} ימים`;
+const toDays = n => n>2 ? `ל־${n} ימים` : 'ל'+daysWord(n);
 const monthsWord = n => n===1 ? 'חודש אחד' : n===2 ? 'חודשיים' : `${n} חודשים`;
 function durationTxt(n){
   if (n < 12) return monthsWord(n);
@@ -460,7 +486,7 @@ function renderToday(){
     hero.classList.toggle('over', leftToday < 0);
     $('daily').textContent = money(Math.max(0,leftToday));
     const over = leftToday < 0 ? ` עברת את היום ב־<span class="num">${money(-leftToday)}</span>, ומחר יהיה קצת פחות.` : '';
-    $('dailySub').innerHTML = `נשארו <span class="num">${money(budget-spent)}</span> ל${daysWord(c.daysLeft)} עד המשכורת.${over}`;
+    $('dailySub').innerHTML = `נשארו <span class="num">${money(budget-spent)}</span> ${toDays(c.daysLeft)} עד המשכורת.${over}`;
   }
 
   // overdraft card
@@ -671,7 +697,7 @@ function preEntry(){ const c=cycle(); return S.expenses.find(x=>x.pre && x.date>
 $('fSpentSoFar').addEventListener('input', e=>{
   const a = num(e.target.value), c = cycle();
   S.expenses = S.expenses.filter(x=>!(x.pre && x.date>=c.startIso && x.date<c.nextIso));
-  if (a>0) S.expenses.push({id:uid(), date:c.startIso, amount:a, cat:'אחר', note:PRE_NOTE, pre:true});
+  if (a>0) S.expenses.push({id:uid(), date:c.startIso, amount:a, cat:'הוצאות קודמות', note:PRE_NOTE, pre:true});
   save(); renderAll();
 });
 bindNum('fIncome','income');
@@ -707,6 +733,48 @@ $('importFile').addEventListener('change', async e=>{
 $('resetBtn').addEventListener('click', ()=>{
   if (!confirm('למחוק את כל הנתונים? אי אפשר לבטל.')) return;
   S = blank(); save(); fillSettings(); renderAll(); showTab('set');
+});
+
+/* ---------- SHARE ---------- */
+const longDate = new Intl.DateTimeFormat('he-IL',{day:'numeric',month:'long',year:'numeric'});
+function shareSummary(){
+  const L = [`📊 עדכון מינוס, ${longDate.format(today0())}`, ''];
+  if (S.debt<=0) L.push('✅ יצאתי מהמינוס!');
+  else L.push(`🔻 מינוס כרגע: ${money(S.debt)} (ריבית ${S.rate}% בשנה)`);
+  const start = Math.max(S.startDebt, S.debt);
+  if (start>0 && start>S.debt) L.push(`💪 החזרתי עד עכשיו: ${money(start-S.debt)} מתוך ${money(start)} (${Math.round((start-S.debt)/start*100)}%)`);
+  if (S.debt>0){
+    L.push(`💸 החזר חודשי: ${money(S.pay)}`);
+    const sim = simulate(S.debt,S.rate,S.pay);
+    if (sim.ok){ L.push(`🗓️ צפי ליציאה: ${monthFmt.format(addMonths(sim.months))} (בעוד ${durationTxt(sim.months)})`); L.push(`📈 ריבית שתשולם עד אז: ${money(sim.interest)}`); }
+    else L.push(`⚠️ ההחזר החודשי עוד לא מכסה את הריבית (${money(S.debt*S.rate/1200)} בחודש)`);
+  }
+  const list = cycleSpent(), spent = list.reduce((a,x)=>a+x.amount,0), budget = Math.max(0,varBudget());
+  if ($('shExp').checked && isSetup()){
+    L.push('', `🛒 הוצאות מאז המשכורת: ${money(spent)} מתוך תקציב ${money(budget)}`);
+    L.push(spent>budget ? `   חריגה של ${money(spent-budget)}` : `   נשארו ${money(budget-spent)} ${toDays(cycle().daysLeft)}`);
+  }
+  if ($('shCats').checked && list.length){
+    const by={}; list.forEach(x=>by[x.cat]=(by[x.cat]||0)+x.amount);
+    Object.entries(by).sort((a,b)=>b[1]-a[1]).forEach(([k,v])=>L.push(`   • ${k}: ${money(v)}`));
+  }
+  return L.join('\n');
+}
+const dlg = $('shareDlg');
+const refreshShare = () => { $('shareText').value = shareSummary(); };
+$('shareBtn').addEventListener('click', ()=>{ refreshShare(); dlg.showModal(); });
+$('shExp').addEventListener('change', refreshShare);
+$('shCats').addEventListener('change', refreshShare);
+$('shClose').addEventListener('click', ()=>dlg.close());
+dlg.addEventListener('click', e=>{ if (e.target===dlg) dlg.close(); });
+$('shWa').addEventListener('click', ()=>{
+  window.open('https://wa.me/?text='+encodeURIComponent($('shareText').value), '_blank', 'noopener');
+});
+$('shCopy').addEventListener('click', async ()=>{
+  const t = $('shareText');
+  try { await navigator.clipboard.writeText(t.value); }
+  catch(e){ t.select(); try { document.execCommand('copy'); } catch(_){} }
+  toast('הטקסט הועתק');
 });
 
 /* ---------- render ---------- */
