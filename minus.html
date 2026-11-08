@@ -72,7 +72,7 @@ button,input,select{font:inherit;color:inherit}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .num{font-variant-numeric:tabular-nums;direction:ltr;unicode-bidi:isolate}
 
-.wrap{max-width:560px;margin:0 auto;padding:0 16px calc(96px + env(safe-area-inset-bottom))}
+.wrap{max-width:560px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 calc(96px + env(safe-area-inset-bottom,0px))}
 header{padding:22px 4px 6px}
 header h1{font-size:30px;font-weight:800;margin:0;letter-spacing:-.3px}
 header p{margin:2px 0 0;color:var(--text2);font-size:14px}
@@ -333,7 +333,8 @@ nav button.on{color:var(--accent)}
 
     <h2>גיבוי</h2>
     <div class="card">
-      <div class="small muted">הנתונים נשמרים רק בדפדפן הזה, ולא נשלחים לשום מקום. כדאי לשמור גיבוי מדי פעם, או כדי להעביר לטלפון אחר.</div>
+      <div id="cloudTxt" class="status good" hidden><span class="ic">✓</span><div>הנתונים נשמרים בחשבון Claude שלך. רק את/ה רואה אותם, והם זמינים מכל מכשיר שבו נכנסים לקישור.</div></div>
+      <div class="small muted" id="localTxt">הנתונים נשמרים רק בדפדפן הזה, ולא נשלחים לשום מקום. כדאי לשמור גיבוי מדי פעם, או כדי להעביר לטלפון אחר.</div>
       <div class="btns">
         <button class="btn ghost" id="exportBtn" type="button">שמור גיבוי</button>
         <button class="btn ghost" id="importBtn" type="button">טען גיבוי</button>
@@ -341,6 +342,7 @@ nav button.on{color:var(--accent)}
       <div class="small muted" id="lastBackupTxt" style="margin-top:10px"></div>
       <input type="file" id="importFile" accept="application/json,.json" hidden>
       <button class="btn danger full" id="resetBtn" type="button">מחק את כל הנתונים</button>
+      <div id="resetConfirm" class="status bad" hidden><span class="ic">!</span><div style="flex:1">למחוק הכול? אי אפשר לבטל.<div class="btns"><button class="btn danger" id="resetYes" type="button">כן, למחוק</button><button class="btn ghost" id="resetNo" type="button">ביטול</button></div></div></div>
     </div>
     <p class="disclaimer">החישובים הם הערכה בלבד, לפי ריבית חודשית קבועה. הריבית בבנק מחושבת יומית ועשויה להשתנות. זה לא ייעוץ פיננסי.</p>
   </section>
@@ -362,7 +364,7 @@ nav button.on{color:var(--accent)}
     <label class="opt"><input type="checkbox" id="shCats"> לכלול פילוח לפי קטגוריות</label>
     <textarea id="shareText" aria-label="טקסט לשיתוף"></textarea>
     <div class="btns">
-      <button class="btn wa" id="shWa" type="button">שלח בוואטסאפ</button>
+      <a class="btn wa" id="shWa" href="https://wa.me/" target="_blank" rel="noopener" style="text-align:center;text-decoration:none">שלח בוואטסאפ</a>
       <button class="btn ghost" id="shCopy" type="button">העתק</button>
     </div>
     <button class="btn ghost full" id="shClose" type="button">סגור</button>
@@ -400,7 +402,51 @@ const blank = () => ({
 });
 let S = blank();
 try { const raw = localStorage.getItem(KEY); if (raw) S = Object.assign(blank(), JSON.parse(raw)); } catch(e) {}
-const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e) {} };
+// Cloud copy: when this page runs as a claude.ai artifact, the state is also kept in the
+// viewer's private store (data/users/<id>/state), so it survives cleared browsers and new phones.
+let cloud = null, cloudTimer = null, lastCloudJson = '', cloudBusy = false;
+const stamp = () => { S.savedAt = Date.now(); };
+const save = () => {
+  stamp();
+  try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e) {}
+  if (cloud){ clearTimeout(cloudTimer); cloudTimer = setTimeout(pushCloud, 1200); }
+};
+async function pushCloud(){
+  if (!cloud) return;
+  const body = Object.assign({}, S); delete body.tab;
+  const json = JSON.stringify(body);
+  if (json === lastCloudJson) return;
+  if (cloudBusy){ clearTimeout(cloudTimer); cloudTimer = setTimeout(pushCloud, 800); return; }
+  cloudBusy = true;
+  try { await cloud.set({state: json, savedAt: S.savedAt||Date.now()}); lastCloudJson = json; }
+  catch(e){ if (e && (e.code==='invalid_argument' || e.code==='revoked' || e.code==='not_granted')) { cloud = null; renderAll(); } }
+  finally { cloudBusy = false; }
+}
+async function initCloud(){
+  const c = window.claude;
+  if (!c || typeof c.use !== 'function') return;
+  try {
+    const [db, user] = await Promise.all([c.use('db'), c.use('user')]);
+    if (!db || !user) return;
+    const id = await user.id();
+    if (!id) return;
+    const ref = db.doc('data/users/' + id + '/state');
+    const snap = await ref.get();
+    cloud = ref;
+    const remote = snap.exists ? snap.data() : null;
+    const localEmpty = !isSetup() && !S.expenses.length && !S.debt;
+    if (remote && typeof remote.state === 'string' && (localEmpty || (remote.savedAt||0) > (S.savedAt||0))){
+      const tab = S.tab;
+      S = Object.assign(blank(), JSON.parse(remote.state)); S.tab = tab;
+      lastCloudJson = remote.state;
+      try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e) {}
+      fillSettings(); renderAll(); showTab(isSetup() ? (S.tab||'today') : 'set');
+    } else {
+      renderAll();
+      if (S.savedAt) pushCloud();
+    }
+  } catch(e) { cloud = null; }
+}
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
 const num = v => { const n = parseFloat(v); return isFinite(n) ? n : 0; };
 
@@ -453,7 +499,7 @@ const isSetup = () => S.income > 0;
 
 /* ---------- tabs ---------- */
 function showTab(name){
-  S.tab = name; save();
+  S.tab = name; try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e) {}
   document.querySelectorAll('section.tab').forEach(s=>s.classList.toggle('on', s.id==='tab-'+name));
   document.querySelectorAll('nav button').forEach(b=>{ const on=b.dataset.tab===name; b.classList.toggle('on',on); b.setAttribute('aria-current', on?'page':'false'); });
   if (name==='plan') renderPlan();
@@ -726,6 +772,11 @@ async function backup(){
   const name = `minus-backup-${iso(today0())}.json`;
   const json = JSON.stringify(Object.assign({}, S, {lastBackup: iso(today0())}), null, 2);
   const done = () => { S.lastBackup = iso(today0()); save(); renderAll(); toast('הגיבוי נשמר'); };
+  // Inside claude.ai the page cannot download by itself; it asks the viewer through `downloads`.
+  try {
+    const dl = window.claude && typeof window.claude.use==='function' ? await window.claude.use('downloads') : null;
+    if (dl){ await dl.save({filename:name, data:json}); done(); return; }
+  } catch(e){ if (e && e.code==='declined') return; }
   // On phones, open the share sheet so the file can go to WhatsApp, Drive or Files.
   try {
     const file = new File([json], name, {type:'application/json'});
@@ -742,7 +793,8 @@ $('backupNow').addEventListener('click', backup);
 function renderBackup(){
   const lb = S.lastBackup;
   const days = lb ? Math.round((today0() - new Date(lb+'T00:00:00'))/864e5) : Infinity;
-  $('backupNote').hidden = !(isSetup() && days >= 7);
+  $('backupNote').hidden = !!cloud || !(isSetup() && days >= 7);
+  $('cloudTxt').hidden = !cloud; $('localTxt').hidden = !!cloud;
   $('backupNoteT').textContent = lb ? `הגיבוי האחרון לפני ${days} ימים.` : 'עוד לא שמרת גיבוי.';
   $('lastBackupTxt').textContent = lb ? `גיבוי אחרון: ${longDate.format(new Date(lb+'T00:00:00'))}` : 'עוד לא נשמר גיבוי.';
 }
@@ -753,9 +805,11 @@ $('importFile').addEventListener('change', async e=>{
   catch(err){ toast('הקובץ לא תקין'); }
   e.target.value='';
 });
-$('resetBtn').addEventListener('click', ()=>{
-  if (!confirm('למחוק את כל הנתונים? אי אפשר לבטל.')) return;
-  S = blank(); save(); fillSettings(); renderAll(); showTab('set');
+$('resetBtn').addEventListener('click', ()=>{ $('resetConfirm').hidden = false; $('resetBtn').hidden = true; });
+$('resetNo').addEventListener('click', ()=>{ $('resetConfirm').hidden = true; $('resetBtn').hidden = false; });
+$('resetYes').addEventListener('click', ()=>{
+  $('resetConfirm').hidden = true; $('resetBtn').hidden = false;
+  S = blank(); save(); fillSettings(); renderAll(); showTab('set'); toast('כל הנתונים נמחקו');
 });
 
 /* ---------- SHARE ---------- */
@@ -784,15 +838,14 @@ function shareSummary(){
   return L.join('\n');
 }
 const dlg = $('shareDlg');
-const refreshShare = () => { $('shareText').value = shareSummary(); };
+const refreshShare = () => { $('shareText').value = shareSummary(); setWa(); };
 $('shareBtn').addEventListener('click', ()=>{ refreshShare(); dlg.showModal(); });
 $('shExp').addEventListener('change', refreshShare);
 $('shCats').addEventListener('change', refreshShare);
 $('shClose').addEventListener('click', ()=>dlg.close());
 dlg.addEventListener('click', e=>{ if (e.target===dlg) dlg.close(); });
-$('shWa').addEventListener('click', ()=>{
-  window.open('https://wa.me/?text='+encodeURIComponent($('shareText').value), '_blank', 'noopener');
-});
+const setWa = () => { $('shWa').href = 'https://wa.me/?text='+encodeURIComponent($('shareText').value); };
+$('shareText').addEventListener('input', setWa);
 $('shCopy').addEventListener('click', async ()=>{
   const t = $('shareText');
   try { await navigator.clipboard.writeText(t.value); }
@@ -809,6 +862,7 @@ function renderAll(){
 try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch(e) {}
 fillSettings(); renderAll();
 showTab(isSetup() ? (S.tab||'today') : 'set');
+initCloud();
 // Refresh at midnight-ish when the app stays open.
 document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) renderAll(); });
 })();
