@@ -678,6 +678,11 @@ const RENAME={'Steinway Grand':'Grand Piano','Steinway Concert Hall':'Grand Pian
 const TAGMAP={house:['Deep House Stab','Minor 7 Stab','Pulse Pad','Chord Pulse','House Keys','Soft Organ','Acid Line','Punch Bass','Pluck Bass','Synth Kick','Gated Euphoria','Trance Driver'],
   pop:['Aria Supersaw','Pixel Lead','Electric Dream','Music Box','Synth Strings','Kalimba Dust','Marimba Drop','Silk Pad','Festival Pluck','Sub Pressure','Vox Lead','Glass Lead']};
 for(const g in TAGMAP)TAGMAP[g].forEach(n=>{const p=PRESETS.find(x=>x.n===n);if(p&&!p.t.includes(g))p.t.push(g)});
+// quicker note starts: recordings already carry their natural attack, so presets add only a touch
+{const cap=(names,a)=>PRESETS.forEach(p=>{if(names.includes(p.n))p.layers.forEach(l=>{if(l&&l.a>a)l.a=a})});
+ cap(['Violins','Violas','Cellos','Contrabass','String Section','Strings Tremolo','Solo Violin','Flute','Oboe','Clarinet','Trumpet','French Horn','Trombone','Orchestral Brass','Woodwind Section','Tenor Sax','Full Orchestra'],.03);
+ cap(['Female Choir','Male Choir','Mixed Choir Oh','Choir Aah','Choir & Strings','Solo Voice Aah','Solo Voice Ooh','Solo Voice Eeh','Male Voice Aah','Hum Mmm','Epic Choir','Angel Choir','Choir Ooh Pad'],.08);
+ cap(['Synth Strings','Dream Strings','Disco Strings','Pop Strings','Warm Analog','Synthwave Pad'],.06);}
 
 function full(p){
   const layers=[0,1,2,3].map(i=>{const l=p.layers[i];return l?{...LD,...l}:{...LD,on:false,lvl:.7}});
@@ -703,7 +708,8 @@ function initAudio(){
   if(ctx){if(ctx.state!=='running')ctx.resume();return ctx}
   try{if(navigator.audioSession)navigator.audioSession.type='playback'}catch(e){}
   const AC=window.AudioContext||window.webkitAudioContext;
-  ctx=new AC({latencyHint:'interactive'});genSR=ctx.sampleRate;
+  ctx=new AC({latencyHint:store.get('ariaSynth2.lowlat',false)?0:'interactive'});genSR=ctx.sampleRate;
+  if(!LOWPOWER)setTimeout(()=>{['pianodry','perc'].forEach(k=>{if(!bankP[k])loadBank(k)})},4000);
   buildWaves();buildGraph();
   revKey='';
   Object.keys(GD).forEach(k=>applyG(k,true));
@@ -934,7 +940,7 @@ const PK={str:[[300,180,1],[1100,450,.8],[2800,900,.5]],vln:[[280,80,1],[460,120
 function vowelAmp(fk,k,vw){let s=.015;for(const [F,B,g] of VOW[vw])s+=g*lor(fk,F,B*1.6);return s*Math.pow(k,-.6)}
 function voice(f,sr,vw,V,cents,det,stereo){
   const o=buf0(sr,3.4),o2=stereo?buf0(sr,3.4):null;
-  ensemble(o,sr,f,V,V>1?5.3:5.6,cents,det,(fk,k)=>vowelAmp(fk,k,vw),V>1?.18:.09,o2,V>1?.2:.45);
+  ensemble(o,sr,f,V,V>1?5.3:5.6,cents,det,(fk,k)=>vowelAmp(fk,k,vw),V>1?.07:.05,o2,V>1?.2:.45);
   for(const [F,B,g] of VOW[vw]){noiseBP(o,sr,(V>1?.02:.03)*g,F,F/B,.15,Infinity);if(o2)noiseBP(o2,sr,(V>1?.02:.03)*g,F,F/B,.15,Infinity)}
   return loopify(o,sr,1.3,3.3,.7,o2);
 }
@@ -979,7 +985,7 @@ const INST={
   cello:{lo:36,hi:76,step:4,gen(f,sr){return bowed(f,sr,1,14,PK.cel,.09,false)}},
   basses:{lo:24,hi:56,step:4,gen(f,sr){return bowed(f,sr,3,8,PK.bas,.12,true)}},
   choirS:{lo:40,hi:88,step:4,gen(f,sr){const o=buf0(sr,3.2),o2=buf0(sr,3.2);
-    ensemble(o,sr,f,6,5.2,14,10,(fk,k)=>Math.pow(k,-.35)*(gauss(fk,700,130)+.8*gauss(fk,1150,140)+.45*gauss(fk,2600,250)+.12)+(k===1?.4:0),.15,o2);
+    ensemble(o,sr,f,6,5.2,14,10,(fk,k)=>Math.pow(k,-.35)*(gauss(fk,700,130)+.8*gauss(fk,1150,140)+.45*gauss(fk,2600,250)+.12)+(k===1?.4:0),.07,o2);
     noiseBP(o,sr,.015,1200,1.2,.2,Infinity);noiseBP(o2,sr,.015,1200,1.2,.2,Infinity);return loopify(o,sr,1.2,3.1,.6,o2)}},
   choirF:{lo:55,hi:91,step:4,gen(f,sr){return voice(f,sr,'fa',6,12,10,true)}},
   choirM:{lo:36,hi:72,step:4,gen(f,sr){return voice(f,sr,'ma',6,10,9,true)}},
@@ -1089,7 +1095,9 @@ function loadBank(key){
     const clicks=bufs.map(b=>{const d=b.getChannelData(0);let c=0;for(;c<Math.min(d.length,30000);c++)if(d[c]>.4)break;return c});
     const zones=meta.zones.map(z=>{const buf=bufs[z.p||0],sc=buf.sampleRate/idx.sr,nc=buf.numberOfChannels,st=Math.round(clicks[z.p||0]+z.s*sc),len=Math.min(Math.round(z.n*sc),buf.length-st);
       const zb=new AudioBuffer({length:len,numberOfChannels:nc,sampleRate:buf.sampleRate});for(let ch=0;ch<nc;ch++)zb.copyToChannel(buf.getChannelData(ch).subarray(st,st+len),ch);
-      return {...z,buf:zb,ls:z.ls!=null?z.ls/idx.sr:null,le:z.le!=null?Math.min(z.le/idx.sr,len/buf.sampleRate):null}});
+      // sustained recordings often fade in: start a little later so the note speaks right away
+      let off=0;if(SUST.has(key)){const d=zb.getChannelData(0);let pk=0;for(let i=0;i<d.length;i+=4)pk=Math.max(pk,Math.abs(d[i]));const th=pk*.06;let i0=0;while(i0<d.length&&Math.abs(d[i0])<th)i0++;off=Math.max(0,i0-Math.round(.004*zb.sampleRate))/zb.sampleRate;if(z.ls!=null&&off>=z.ls/idx.sr*.8)off=0}
+      return {...z,buf:zb,off,ls:z.ls!=null?z.ls/idx.sr:null,le:z.le!=null?Math.min(z.le/idx.sr,len/buf.sampleRate):null}});
     // tame the level gap between velocity layers: soft recordings are much quieter than loud ones
     const pk=z=>{const d=z.buf.getChannelData(0);let m=0;for(let i=0;i<d.length;i+=3){const a=Math.abs(d[i]);if(a>m)m=a}return m||1e-4};
     const groupOf=z=>key==='perc'?z.g:'all',lp={};
@@ -1101,7 +1109,7 @@ function loadBank(key){
     if(key==='perc'){B.groups={};zones.forEach(z=>{(B.groups[z.g]=B.groups[z.g]||[]).push(z)})}
     B.bytes=bankBytes(B);BANK[key]=B;evictBanks();
     if(key==='piano'||key==='pianodry')loadBank('pianorel');
-    if(key==='pianodry'&&!LOWPOWER)setTimeout(()=>loadBank('piano'),2500);
+    if(key==='pianodry'&&!LOWPOWER)setTimeout(()=>{if(!bankLoading)loadBank('piano')},8000);
     return B;
   });
   bankP[key].catch(e=>{console.warn('sample bank',key,e);delete bankP[key]}).finally(()=>{bankLoading--;updLoading()});
@@ -1259,7 +1267,7 @@ function registerLibSources(){LIBS.forEach(l=>{const k='u:'+l.id;if(!SRCN[k]){SR
 registerLibSources();
 async function ensureBanks(){
   await Promise.all(CUR.layers.filter(l=>l.on&&String(l.src).startsWith('u:')).map(l=>loadUserBank(l.src.slice(2)).catch(()=>{})));await Promise.all(usedBanks().map(k=>loadBank(k).catch(()=>{})))}
-function updLoading(){const a=[];if(pending.size)a.push('SYNTH SAMPLES '+Math.max(0,fillTotal-pending.size)+'/'+fillTotal);if(bankLoading)a.push('LOADING RECORDINGS…');loadingMsg=a.join(' · ');updInfo()}
+function updLoading(){if($('hCat'))$('hCat').textContent=bankLoading?'LOADING RECORDINGS…':(CATN[CUR.c]||'');const a=[];if(pending.size)a.push('SYNTH SAMPLES '+Math.max(0,fillTotal-pending.size)+'/'+fillTotal);if(bankLoading)a.push('LOADING RECORDINGS…');loadingMsg=a.join(' · ');updInfo()}
 let fillQ=[],fillT=0;
 function prefill(){
   usedBanks().forEach(k=>loadBank(k));CUR.layers.forEach(l=>{if(l.on&&String(l.src).startsWith('u:'))loadUserBank(l.src.slice(2)).catch(()=>{})});
@@ -1338,7 +1346,7 @@ class LayerVoice{
           if(z.ls!=null){bs.loop=true;bs.loopStart=z.ls;bs.loopEnd=z.le}
           const x=N===1?0:i/(N-1)*2-1,pn=N>1&&c.createStereoPanner?c.createStereoPanner():null;
           bs.connect(pn||zg);if(pn)pn.connect(zg);if(bs.detune)this.pIn.connect(bs.detune);
-          this.osc.push({o:bs,pn,x,buf:true,r:(Math.random()-.5)*2});bs.start(t,i?Math.random()*.03:0);this.srcs.push(bs);
+          this.osc.push({o:bs,pn,x,buf:true,r:(Math.random()-.5)*2});bs.start(t,(z.off||0)+(i?Math.random()*.03:0));this.srcs.push(bs);
         }
       }
         }else if(src==='noise'){
@@ -1698,6 +1706,10 @@ const ITYPES=[['all','ALL'],['fav','★ FAVORITES'],['keys','PIANO & KEYS'],['st
 const GCHIPS=[['house','HOUSE'],['pop','POP'],['orch','ORCHESTRAL'],['real','RECORDED']];
 const STR_SRC=/^(r?(vln|vla|vcl|cbs|solovln)|rpizz|strings|violin|cello|basses|pizz|harp|rharp|r(vln|vla|vcl|cbs)(spic|trem|pz))/,WIND_SRC=/^(r?(flute|oboe|clar|tpt|horn|tbn|sax)|clarinet|trumpet|trombone|horns?|brassS|brass|reed|r(flute|oboe|clar|tpt|horn|tbn)stac)/,
   MAL_SRC=/^(r?(vibes|marimba|glock|xylo|tbells|kalimba)|celesta|bells|steel|timpani|gong|rkalimba)/,KEY_SRC=/^(r?piano|epno|organ)/;
+let pfT=0;
+function prefetchPreset(p){clearTimeout(pfT);pfT=setTimeout(()=>{const ks=new Set();if(p.kit)ks.add('perc');(p.layers||[]).forEach(l=>{if(!l||l.on===false)return;
+  if(REAL[l.src])ks.add(l.src==='rpiano'?'pianodry':REAL[l.src][0]);if(l.src==='hit')ks.add('perc');if(String(l.src).startsWith('u:'))loadUserBank(l.src.slice(2)).catch(()=>{})});
+  ks.forEach(k=>{if(!BANK[k])loadBank(k)})},120)}
 function isRec(p){return !!p.kit||p.layers.some(l=>l&&(REAL[l.src]||l.src==='hit'||String(l.src).startsWith('u:')))}
 function itype(p){
   if(p.c==='user'){const f=p.layers&&p.layers.find(l=>l&&l.on!==false);if(!f)return 'keys'}
@@ -1742,7 +1754,7 @@ function renderList(){
     if(isRec(p)){const r=document.createElement('b');r.textContent='REC';r.title='מוקלט';b.appendChild(r)}
     const pv=document.createElement('span');pv.className='pv';pv.textContent='▶';pv.title='השמע';pv.setAttribute('role','button');pv.setAttribute('aria-label','השמע את '+p.n);pv.tabIndex=0;
     pv.onclick=e=>{e.stopPropagation();audition(p)};pv.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();e.stopPropagation();audition(p)}};b.appendChild(pv);
-    b.setAttribute('aria-current',pid(p)===pid(CUR));b.onclick=()=>loadPreset(p);box.appendChild(b)});
+    b.setAttribute('aria-current',pid(p)===pid(CUR));b.onclick=()=>loadPreset(p);b.onmouseenter=()=>prefetchPreset(p);b.onpointerdown=()=>prefetchPreset(p);box.appendChild(b)});
   const cur=box.querySelector('[aria-current="true"]');if(cur)cur.scrollIntoView({block:'nearest'});
   if(!list.length){const e=document.createElement('p');e.className='hintS';e.textContent='לא נמצאו צלילים. נקה את החיפוש או בחר סוג אחר.';box.appendChild(e)}
 }
@@ -2333,6 +2345,7 @@ function renderSettings(){
   w.append(mod('STUDIO',[knob({l:'TUNE A4',min:415,max:466,step:.5,u:'Hz'},()=>tuneA,v=>{tuneA=v;store.set('ariaSynth2.tune',v)},{reset:()=>440}),
     knob({l:'BEND',min:1,max:24,step:1,u:'st'},()=>bendRange,v=>{bendRange=v;store.set('ariaSynth2.bend',v)},{reset:()=>2}),
     toggleCtl({l:'AUTO LEVEL'},()=>autoLvl,v=>{autoLvl=v;store.set('ariaSynth2.autolvl',v);scheduleLevel()}),
+    toggleCtl({l:'LOW LATENCY'},()=>!!store.get('ariaSynth2.lowlat',false),v=>{store.set('ariaSynth2.lowlat',v);toast(v?'השהיה מינימלית תופעל בטעינה הבאה של הדף. אם יש קפיצות בסאונד, כבה את זה':'השהיה רגילה תופעל בטעינה הבאה של הדף')}),
     toggleCtl({l:'MONO CHECK'},()=>monoCheck,v=>{monoCheck=v;applyG('width');toast(v?'בדיקת מונו: כך הצליל יישמע במערכת מונו':'סטריאו רגיל')})]));
   b.appendChild(w);
   const c=document.createElement('div');c.className='guide';
