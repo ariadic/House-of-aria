@@ -217,6 +217,15 @@ body:not(.edit) .editOnly{display:none!important}
 @media (hover:none){.pi .pv{opacity:.8}}
 details.more{margin-top:6px}
 details.more summary{cursor:pointer;font:600 11px var(--hw);letter-spacing:.14em;color:var(--ink2)}
+.wiz{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:8px}
+.wiz li{display:flex;gap:10px;align-items:flex-start;border:1px solid var(--scr-line);border-radius:8px;padding:8px 10px;background:rgba(0,0,0,.2);direction:rtl;text-align:right}
+.wiz li b{display:block;font:600 13px var(--he);color:var(--ink)}
+.wiz li small{display:block;font:400 11px/1.5 var(--he);color:var(--ink3);margin-top:2px}
+.wiz li .sbtn{margin-inline-start:auto;flex:none;align-self:center}
+.wst{flex:none;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font:700 12px var(--mono);border:1px solid var(--scr-line);color:var(--ink3)}
+.wiz li[data-s="ok"]{border-color:rgba(70,200,255,.5)}
+.wiz li[data-s="ok"] .wst{background:var(--hot);color:#04121e;border-color:var(--hot)}
+.wiz li[data-s="ok"] small{display:none}
 .toast{position:fixed;left:50%;top:max(16px,env(safe-area-inset-top,0px));transform:translateX(-50%);background:#0f2a44;border:1px solid var(--hot);color:var(--ink);padding:9px 16px;border-radius:9px;font:500 13px var(--he);z-index:50;opacity:0;transition:opacity .25s;pointer-events:none;direction:rtl}
 .toast.show{opacity:1}
 
@@ -296,6 +305,7 @@ details.more summary{cursor:pointer;font:600 11px var(--hw);letter-spacing:.14em
   </section>
 </div>
 <div class="toast" id="toast"></div>
+<div class="modal" id="libModal" hidden><div class="mbox plate" role="dialog" aria-modal="true" aria-labelledby="libTitle"><div class="mhead"><b id="libTitle">YOUR SAMPLES</b><button class="hb nled" id="libClose" aria-label="סגירה">✕</button></div><div class="mbody screen" id="libBody"></div></div></div>
 <div class="modal" id="setModal" hidden><div class="mbox plate" role="dialog" aria-modal="true" aria-labelledby="setTitle"><div class="mhead"><b id="setTitle">SETTINGS</b><button class="hb nled" id="setClose" aria-label="סגירה">✕</button></div><div class="mbody screen" id="setBody"></div></div></div>
 
 <script>
@@ -1090,7 +1100,8 @@ function loadBank(key){
     const B={zones,layers:meta.layers||1,groups:null};
     if(key==='perc'){B.groups={};zones.forEach(z=>{(B.groups[z.g]=B.groups[z.g]||[]).push(z)})}
     B.bytes=bankBytes(B);BANK[key]=B;evictBanks();
-    if(key==='piano')loadBank('pianorel');
+    if(key==='piano'||key==='pianodry')loadBank('pianorel');
+    if(key==='pianodry'&&!LOWPOWER)setTimeout(()=>loadBank('piano'),2500);
     return B;
   });
   bankP[key].catch(e=>{console.warn('sample bank',key,e);delete bankP[key]}).finally(()=>{bankLoading--;updLoading()});
@@ -1116,14 +1127,142 @@ function hitZone(bank,g,vel){
 function setExpr(v){expr=clamp(v,0,1);if(ctx&&G.expr)G.expr.offset.setTargetAtTime(expr,ctx.currentTime,.03);if(typeof refreshMacros==='function')refreshMacros()}
 function exprMode(){return CUR.layers.some(l=>l.on&&REAL[l.src]&&SUST.has(REAL[l.src][0]))}
 function usedBanks(){
-  const ks=new Set(),add=Ls=>Ls.forEach(l=>{if(l.on&&REAL[l.src]){ks.add(REAL[l.src][0]);if(l.src==='rpiano')ks.add('pianorel')}if(l.on&&l.src==='hit')ks.add('perc')});
+  const ks=new Set(),add=Ls=>Ls.forEach(l=>{if(l.on&&REAL[l.src]){ks.add(l.src==='rpiano'?(holdOn?'piano':'pianodry'):REAL[l.src][0]);if(l.src==='rpiano'){ks.add('pianorel');if(BANK.piano||bankP.piano)ks.add('piano')}}if(l.on&&l.src==='hit')ks.add('perc')});
   add(CUR.layers);if(CUR.kit)ks.add('perc');return [...ks];
 }
-async function ensureBanks(){await Promise.all(usedBanks().map(k=>loadBank(k).catch(()=>{})))}
+
+/* ---------- your own sample libraries: WAV / FLAC / MP3 / OGG files, folders, or SFZ instruments ---------- */
+const UBANK={},ubankP={};let LIBS=store.get('ariaSynth2.libs',[]);if(!Array.isArray(LIBS))LIBS=[];
+function idb(){return new Promise((res,rej)=>{try{const r=indexedDB.open('ariaSynthLibrary',1);r.onupgradeneeded=()=>r.result.createObjectStore('banks');r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)}catch(e){rej(e)}})}
+async function idbOp(mode,fn){const db=await idb();return new Promise((res,rej)=>{const tx=db.transaction('banks',mode),st=tx.objectStore('banks'),rq=fn(st);tx.oncomplete=()=>res(rq&&rq.result);tx.onerror=()=>rej(tx.error);tx.onabort=()=>rej(tx.error)})}
+const NOTE_PC={c:0,d:2,e:4,f:5,g:7,a:9,b:11};
+function noteFromText(t){
+  const m=/(?:^|[^a-z])([a-g])(#|b|s(?=-?\d))?(-?\d)(?![0-9])/i.exec(t);
+  if(m){const n=12*(+m[3]+1)+NOTE_PC[m[1].toLowerCase()]+(m[2]==='#'||m[2]==='s'?1:m[2]==='b'?-1:0);if(n>=0&&n<=127)return n}
+  const k=/(?:^|[_\-\s.])(\d{2,3})(?=[_\-\s.]|$)/.exec(t);if(k&&+k[1]>=12&&+k[1]<=120)return +k[1];
+  return null;
+}
+const VEL_WORDS=['ppp','pp','p','mp','mf','f','ff','fff','soft','med','medium','hard','loud'];
+function velKeyFromText(t){
+  const b=t.replace(/(?:^|[^a-z])[a-g](#|b|s)?-?\d(?![0-9])/ig,'_');let w=0;
+  VEL_WORDS.forEach((x,i)=>{if(new RegExp('(^|[_\\-\\s.])'+x+'($|[_\\-\\s.\\d])','i').test(b))w=Math.max(w,[1,2,3,4,5,6,7,8,2,4,4,7,7][i])});
+  const m=/(?:^|[_\-\s.])(?:v|vl|vel|velocity|layer)[_\-]?(\d{1,3})(?=[_\-\s.]|$)/i.exec(b);return w*1000+(m?+m[1]:0);
+}
+function rrFromText(t){const m=/(?:rr|round|var)[_\-]?(\d+)/i.exec(t);return m?+m[1]:1}
+function wavSmpl(ab){
+  // reads the root key and first loop that samplers store in a WAV file's "smpl" chunk
+  try{const v=new DataView(ab);if(v.getUint32(0,false)!==0x52494646)return null;let o=12;
+    while(o+8<=v.byteLength){const id=v.getUint32(o,false),sz=v.getUint32(o+4,true);
+      if(id===0x736d706c){const unity=v.getUint32(o+8+12,true),nl=v.getUint32(o+8+28,true),r={root:unity<128?unity:null};
+        if(nl>0){const lo=o+8+36;r.ls=v.getUint32(lo+8,true);r.le=v.getUint32(lo+12,true)+1}return r}
+      o+=8+sz+(sz&1)}}catch(e){}return null;
+}
+function detectRoot(buf){
+  const sr=buf.sampleRate,d=buf.getChannelData(0),st=Math.min(d.length-1,Math.floor(sr*.08)),N=Math.min(8192,d.length-st-1);if(N<2048)return null;
+  const minL=Math.floor(sr/1500),maxL=Math.min(N-1,Math.floor(sr/30)),cs=new Float32Array(maxL+1);let c0=0,best=0;
+  for(let i=0;i<N;i++)c0+=d[st+i]*d[st+i];
+  for(let L=minL;L<maxL;L++){let c=0;for(let i=0;i+L<N;i+=2)c+=d[st+i]*d[st+i+L];cs[L]=c;if(c>best)best=c}
+  if(best<c0*.15)return null;
+  for(let L=minL+1;L<maxL-1;L++)if(cs[L]>=best*.86&&cs[L]>=cs[L-1]&&cs[L]>=cs[L+1]){const f=sr/L;return Math.round(69+12*Math.log2(f/440))}
+  return null;
+}
+function parseSFZ(text){
+  text=text.replace(/\/\*[\s\S]*?\*\//g,' ').replace(/\/\/[^\n]*/g,' ');
+  const defs={};text=text.replace(/#define\s+(\$\w+)\s+(\S+)/g,(m,k,v)=>{defs[k]=v;return ' '});
+  for(const k in defs)text=text.split(k).join(defs[k]);
+  const out=[],ctx_={control:{},global:{},master:{},group:{}};let cur=null,curType='';
+  const parts=text.split(/(<\w+>)/);
+  const ops=str=>{const o={};const rx=/(\w+)=([\s\S]*?)(?=\s+\w+=|\s*$)/g;let m;while((m=rx.exec(str)))o[m[1].toLowerCase()]=m[2].trim();return o};
+  for(let i=0;i<parts.length;i++){
+    const h=/^<(\w+)>$/.exec(parts[i]);
+    if(h){curType=h[1].toLowerCase();
+      if(curType==='global'){ctx_.global={};ctx_.master={};ctx_.group={}}else if(curType==='master'){ctx_.master={};ctx_.group={}}else if(curType==='group'){ctx_.group={}}else if(curType==='control'){ctx_.control={}}
+      continue}
+    const o=ops(parts[i]);
+    if(curType==='region')out.push({...ctx_.control,...ctx_.global,...ctx_.master,...ctx_.group,...o});
+    else if(ctx_[curType])Object.assign(ctx_[curType],o);
+  }
+  return out;
+}
+function sfzNote(v){if(v==null||v==='')return null;if(/^-?\d+$/.test(v))return +v;return noteFromText('_'+v)}
+async function decodeAny(ab){const DC=window.OfflineAudioContext||window.webkitOfflineAudioContext,c=new DC(1,1,genSR||48000);return new Promise((res,rej)=>{const p=c.decodeAudioData(ab.slice(0),res,rej);if(p&&p.catch)p.catch(rej)})}
+// Build zone metadata (no audio) from the chosen files; returns {name, files:[{path,ab}], zones}
+async function buildLibrary(files,status){
+  const all=[...files].map(f=>({f,path:(f.webkitRelativePath||f.name).replace(/\\/g,'/')}));
+  const sfz=all.find(x=>/\.sfz$/i.test(x.path));
+  const audio=all.filter(x=>/\.(wav|wave|flac|mp3|ogg|oga|m4a|aac|aif|aiff)$/i.test(x.path));
+  const keep=[],zones=[];
+  if(sfz){
+    const regions=parseSFZ(await sfz.f.text()),base=sfz.path.includes('/')?sfz.path.slice(0,sfz.path.lastIndexOf('/')+1):'';
+    const byPath=new Map(audio.map(x=>[x.path.toLowerCase(),x])),byBase=new Map(audio.map(x=>[x.path.split('/').pop().toLowerCase(),x]));
+    const norm=p=>{const a=[];p.split('/').forEach(s=>{if(s==='..')a.pop();else if(s&&s!=='.')a.push(s)});return a.join('/')};
+    const idx=new Map();let missing=0;
+    for(const r of regions){
+      if(!r.sample)continue;const rel=((r.default_path||'')+r.sample).replace(/\\/g,'/');
+      const hit=byPath.get(norm(base+rel).toLowerCase())||byBase.get(rel.split('/').pop().toLowerCase());
+      if(!hit){missing++;continue}
+      if(!idx.has(hit.path)){idx.set(hit.path,keep.length);keep.push(hit)}
+      const key=sfzNote(r.key),lo=sfzNote(r.lokey)??key??0,hi=sfzNote(r.hikey)??key??127,root=sfzNote(r.pitch_keycenter)??key??lo;
+      zones.push({file:idx.get(hit.path),root:root+(+r.transpose||0)*-1,lo,hi,lv:+(r.lovel??1),hv:+(r.hivel??127),tune:+(r.tune||0),gain:+(r.volume||0),
+        rel:/release/i.test(r.trigger||''),rr:+(r.seq_position||1),off:+(r.offset||0),
+        loop:/loop_(continuous|sustain)/.test(r.loop_mode||'')?[+(r.loop_start??r.loopstart??0),+(r.loop_end??r.loopend??0)]:null,smplLoop:!r.loop_mode});
+    }
+    if(missing)status('לא נמצאו '+missing+' קבצים שה־SFZ מפנה אליהם. בחר את כל התיקייה של הכלי.');
+    if(!zones.length)throw new Error('לא נמצאו דגימות בקובץ ה־SFZ');
+    return {name:sfz.path.split('/').pop().replace(/\.sfz$/i,''),files:keep,zones,mode:'sfz'};
+  }
+  if(!audio.length)throw new Error('לא נבחרו קבצי שמע');
+  // plain files: read note from file name, the WAV smpl chunk, or the measured pitch
+  const items=[];
+  for(let i=0;i<audio.length;i++){
+    const x=audio[i],nm=x.path.split('/').pop();status('מנתח '+(i+1)+'/'+audio.length+': '+nm);
+    let root=noteFromText(nm.replace(/\.\w+$/,'')),info=null;
+    if(root==null&&/\.wav/i.test(nm)){info=wavSmpl(await x.f.arrayBuffer());if(info&&info.root!=null)root=info.root}
+    if(root==null){try{root=detectRoot(await decodeAny(await x.f.arrayBuffer()))}catch(e){}}
+    items.push({x,root:root??60,vk:velKeyFromText(nm),rr:rrFromText(nm)});
+  }
+  const vks=[...new Set(items.map(i=>i.vk))].sort((a,b)=>a-b),L=vks.length;
+  items.forEach((it,i)=>{keep.push(it.x);it.file=i;it.layer=vks.indexOf(it.vk)});
+  for(let l=0;l<L;l++){
+    const roots=[...new Set(items.filter(i=>i.layer===l).map(i=>i.root))].sort((a,b)=>a-b);
+    items.filter(i=>i.layer===l).forEach(it=>{const k=roots.indexOf(it.root),prev=roots[k-1],next=roots[k+1];
+      zones.push({file:it.file,root:it.root,lo:prev==null?0:Math.floor((prev+it.root)/2)+1,hi:next==null?127:Math.floor((it.root+next)/2),
+        lv:Math.round(l*127/L)+1,hv:Math.round((l+1)*127/L),tune:0,gain:0,rel:false,rr:it.rr,smplLoop:true})});
+  }
+  const folder=(audio[0].path.includes('/')?audio[0].path.split('/')[0]:'')||audio[0].path.split('/').pop().replace(/\.\w+$/,'').replace(/[_\-\s]*[a-g](#|b)?-?\d.*$/i,'');
+  return {name:folder||'My Samples',files:keep,zones,mode:'files'};
+}
+// decode a stored library into playable zones
+async function loadUserBank(id){
+  if(UBANK[id])return UBANK[id];if(ubankP[id])return ubankP[id];
+  bankLoading++;updLoading();
+  ubankP[id]=(async()=>{
+    const rec=await idbOp('readonly',st=>st.get(id));if(!rec)throw new Error('library not found');
+    const bufs=[],smpl=[];for(const f of rec.files){bufs.push(await decodeAny(f.ab));smpl.push(/\.wav/i.test(f.path)?wavSmpl(f.ab):null)}
+    const zones=rec.zones.map(z=>{const b=bufs[z.file],sr=b.sampleRate;let ls=null,le=null;
+      if(z.loop&&z.loop[1]>z.loop[0]){ls=z.loop[0]/sr;le=z.loop[1]/sr}else if(z.smplLoop&&smpl[z.file]&&smpl[z.file].le){ls=smpl[z.file].ls/sr;le=smpl[z.file].le/sr}
+      return {...z,buf:b,ls,le,off:(z.off||0)/sr}});
+    UBANK[id]={id,name:rec.name,zones};return UBANK[id];
+  })();
+  ubankP[id].catch(e=>{console.warn('library',id,e);delete ubankP[id]}).finally(()=>{bankLoading--;updLoading()});
+  return ubankP[id];
+}
+const urr={};
+function userZone(B,midi,v127,rel){
+  let c=B.zones.filter(z=>!!z.rel===!!rel&&midi>=z.lo&&midi<=z.hi&&v127>=z.lv&&v127<=z.hv);
+  if(!c.length){if(rel)return null;c=B.zones.filter(z=>!z.rel&&midi>=z.lo&&midi<=z.hi);if(!c.length){let bd=1e9;B.zones.forEach(z=>{if(z.rel)return;const d=Math.abs(z.root-midi);if(d<bd){bd=d;c=[z]}else if(d===bd)c.push(z)})}}
+  if(c.length<2)return c[0]||null;
+  const k=B.id+':'+c[0].lo+':'+c[0].lv+':'+(rel?1:0);urr[k]=((urr[k]||0)+1)%c.length;return c.slice().sort((a,b)=>a.rr-b.rr)[urr[k]];
+}
+function libSrcName(src){const L=LIBS.find(l=>'u:'+l.id===src);return L?L.name+' (yours)':'Your samples'}
+function registerLibSources(){LIBS.forEach(l=>{const k='u:'+l.id;if(!SRCN[k]){SRC.push([k,l.name+' (yours)']);SRCN[k]=l.name+' (yours)'}})}
+registerLibSources();
+async function ensureBanks(){
+  await Promise.all(CUR.layers.filter(l=>l.on&&String(l.src).startsWith('u:')).map(l=>loadUserBank(l.src.slice(2)).catch(()=>{})));await Promise.all(usedBanks().map(k=>loadBank(k).catch(()=>{})))}
 function updLoading(){const a=[];if(pending.size)a.push('SYNTH SAMPLES '+Math.max(0,fillTotal-pending.size)+'/'+fillTotal);if(bankLoading)a.push('LOADING RECORDINGS…');loadingMsg=a.join(' · ');updInfo()}
 let fillQ=[],fillT=0;
 function prefill(){
-  usedBanks().forEach(k=>loadBank(k));
+  usedBanks().forEach(k=>loadBank(k));CUR.layers.forEach(l=>{if(l.on&&String(l.src).startsWith('u:'))loadUserBank(l.src.slice(2)).catch(()=>{})});
   const used=new Set(CUR.layers.filter(l=>l.on&&INST[l.src]).map(l=>l.src));
   // keep memory in check: drop instruments this sound does not use once the cache grows
   let total=0;for(const k in SMP)SMP[k].forEach(r=>total+=r.buf.length*r.buf.numberOfChannels);
@@ -1164,9 +1303,22 @@ class LayerVoice{
     this.ratio=Math.pow(2,L.oct+L.semi/12);
     const f=mtof(note)*this.ratio;this.f=f;
     let src=L.src;
-    if(REAL[src]&&!BANK[REAL[src][0]]){loadBank(REAL[src][0]);src=REAL[src][1]}
-    if(REAL[src]||src==='hit'){
-      const key=src==='hit'?'perc':REAL[src][0],bank=BANK[key],N=src==='hit'?1:L.uni;bankUse[key]=performance.now();
+    // piano: dry recordings normally, pedal-down recordings (open strings ringing along) while sustain is held
+    let bk=REAL[src]?REAL[src][0]:null;
+    if(src==='rpiano'){const want=holdOn?'piano':'pianodry',alt=holdOn?'pianodry':'piano';if(!BANK[want])loadBank(want);bk=BANK[want]?want:(BANK[alt]?alt:want)}
+    this.bk=bk;
+    if(bk&&!BANK[bk]){loadBank(bk);src=REAL[src][1]}
+    if(String(src).startsWith('u:')&&!UBANK[src.slice(2)]){loadUserBank(src.slice(2)).catch(()=>{});src='triangle'}
+    if(String(src).startsWith('u:')){
+      const B=UBANK[src.slice(2)],m=69+12*Math.log2(f/tuneA),v127=Math.round(clamp(vel,0,1)*126)+1,z=userZone(B,Math.round(m),v127,false);
+      this.sg=c.createGain();this.sg.gain.value=1/Math.sqrt(L.uni);this.sg.connect(this.mix);
+      if(B.zones.some(q=>q.rel))this.urel={B,m,v127};
+      if(z){const rate=f/(440*Math.pow(2,(z.root-69)/12))*Math.pow(2,(z.tune||0)/1200),zg=c.createGain();zg.gain.value=Math.pow(10,(z.gain||0)/20);zg.connect(this.sg);
+        for(let i=0;i<L.uni;i++){const bs=c.createBufferSource();bs.buffer=z.buf;bs.playbackRate.value=rate;if(z.ls!=null&&z.le>z.ls){bs.loop=true;bs.loopStart=z.ls;bs.loopEnd=z.le}
+          const x=L.uni===1?0:i/(L.uni-1)*2-1,pn=L.uni>1&&c.createStereoPanner?c.createStereoPanner():null;bs.connect(pn||zg);if(pn)pn.connect(zg);if(bs.detune)this.pIn.connect(bs.detune);
+          this.osc.push({o:bs,pn,x,buf:true,r:(Math.random()-.5)*2});bs.start(t,z.off||0);this.srcs.push(bs)}}
+    }else if(REAL[src]||src==='hit'){
+      const key=src==='hit'?'perc':(this.bk||REAL[src][0]),bank=BANK[key],N=src==='hit'?1:L.uni;bankUse[key]=performance.now();
       this.sg=c.createGain();this.sg.gain.value=(src==='hit'?1:1.15)/Math.sqrt(N)*(src==='hit'?1+(Math.random()-.5)*.14:1);this.sg.connect(this.mix);
       let zs;
       if(src==='hit'){const z=hitZone(bank,L.hit,vel);zs=z?[[z,1,null]]:[]}
@@ -1261,6 +1413,7 @@ class LayerVoice{
   }
   release(t){
     const L=this.L,R=macroR(L.r);
+    if(this.urel&&!this.v.killed){try{const u=this.urel,z=userZone(u.B,Math.round(u.m),u.v127,true);if(z){const bs=ctx.createBufferSource(),g=ctx.createGain();bs.buffer=z.buf;bs.playbackRate.value=this.f/(440*Math.pow(2,(z.root-69)/12));g.gain.value=Math.pow(10,(z.gain||0)/20)*L.lvl*.3;bs.connect(g);g.connect(G.voiceBus);bs.start(Math.max(t,ctx.currentTime));bs.onended=()=>{try{g.disconnect()}catch(e){}}}}catch(e){}}
     if(this.rel&&!this.v.killed){try{const r=this.rel,bs=ctx.createBufferSource(),g=ctx.createGain();bs.buffer=r.z.buf;bs.playbackRate.value=this.f/(440*Math.pow(2,(r.z.root-69)/12));
       g.gain.value=.22*(.4+.6*r.vel)*L.lvl;bs.connect(g);g.connect(G.voiceBus);bs.start(Math.max(t,ctx.currentTime));bs.onended=()=>{try{g.disconnect()}catch(e){}}}catch(e){}}
     holdP(this.amp.gain,t);this.amp.gain.setTargetAtTime(0,t,R/4);
@@ -1426,6 +1579,7 @@ function noteUp(note){
 }
 function setHold(on){
   holdOn=on;$('bHold').setAttribute('aria-pressed',on);
+  if(on&&CUR.layers.some(l=>l.on&&l.src==='rpiano'))loadBank('piano');
   if(!on){
     if(CUR.g.arpOn){for(let i=arpNotes.length-1;i>=0;i--)if(!physical.has(arpNotes[i]))arpNotes.splice(i,1)}
     for(const n of sustained)if(!physical.has(n))triggerOff(n);sustained.clear();paintKeys();
@@ -1544,7 +1698,7 @@ const ITYPES=[['all','ALL'],['fav','★ FAVORITES'],['keys','PIANO & KEYS'],['st
 const GCHIPS=[['house','HOUSE'],['pop','POP'],['orch','ORCHESTRAL'],['real','RECORDED']];
 const STR_SRC=/^(r?(vln|vla|vcl|cbs|solovln)|rpizz|strings|violin|cello|basses|pizz|harp|rharp|r(vln|vla|vcl|cbs)(spic|trem|pz))/,WIND_SRC=/^(r?(flute|oboe|clar|tpt|horn|tbn|sax)|clarinet|trumpet|trombone|horns?|brassS|brass|reed|r(flute|oboe|clar|tpt|horn|tbn)stac)/,
   MAL_SRC=/^(r?(vibes|marimba|glock|xylo|tbells|kalimba)|celesta|bells|steel|timpani|gong|rkalimba)/,KEY_SRC=/^(r?piano|epno|organ)/;
-function isRec(p){return !!p.kit||p.layers.some(l=>l&&(REAL[l.src]||l.src==='hit'))}
+function isRec(p){return !!p.kit||p.layers.some(l=>l&&(REAL[l.src]||l.src==='hit'||String(l.src).startsWith('u:')))}
 function itype(p){
   if(p.c==='user'){const f=p.layers&&p.layers.find(l=>l&&l.on!==false);if(!f)return 'keys'}
   if(p.kit||p.c==='drums')return 'drums';if(p.c==='vox')return 'voice';
@@ -1559,7 +1713,7 @@ function matchType(p,t){return t==='all'||(t==='fav'?FAV.includes(pid(p)):t==='u
 function matchGenre(p,g){return !g||(g==='real'?isRec(p):g==='orch'?(p.c==='orch'||(p.t||[]).includes('orch')||(['strings','winds'].includes(itype(p))&&isRec(p))):(p.t||[]).includes(g))}
 function visiblePresets(){return allPresets().filter(p=>!p.hidden)}
 function renderBrowser(b){
-  b.innerHTML=`<div class="brw"><div class="cats" id="cats"></div><div class="plcol"><div class="srch"><input id="q" type="search" placeholder="SEARCH…" aria-label="חיפוש צליל"><div class="gchips" id="gchips"></div></div><div class="plist" id="plist"></div></div>
+  b.innerHTML=`<div class="brw"><div class="cats" id="cats"></div><div class="plcol"><div class="srch"><input id="q" type="search" placeholder="SEARCH…" aria-label="חיפוש צליל"><div class="gchips" id="gchips"></div><button class="sbtn" id="addLib" title="ייבוא דגימות משלך">+ ADD SAMPLES</button></div><div class="plist" id="plist"></div></div>
   <div class="pinfo"><h3 id="pn"></h3><div class="meta" id="pm"></div><div class="lchips" id="lch"></div><canvas id="scope" width="460" height="140"></canvas>
   <div class="prow"><button class="sbtn" id="star">★ FAVORITE</button><button class="sbtn" id="audition">▶ LISTEN</button></div>
   <details class="more"><summary>SAVE · FILES</summary><div class="saveRow" style="margin-top:8px"><input id="sname" placeholder="NEW NAME" aria-label="שם לצליל" maxlength="40"><button class="sbtn" id="save">SAVE</button></div>
@@ -1568,7 +1722,7 @@ function renderBrowser(b){
   const gc=$('gchips');GCHIPS.forEach(([g,l])=>{const x=document.createElement('button');x.className='gchip';x.textContent=l;x.setAttribute('aria-pressed',curGenre===g);x.onclick=()=>{curGenre=curGenre===g?'':g;renderBrowser($('sbody'))};gc.appendChild(x)});
   $('save').onclick=saveUser;$('sname').onkeydown=e=>{if(e.key==='Enter')saveUser()};
   $('star').onclick=()=>{const id=pid(CUR),i=FAV.indexOf(id);if(i>=0)FAV.splice(i,1);else FAV.push(id);store.set('ariaSynth2.fav',FAV);renderCats();renderList();renderPInfo()};
-  $('audition').onclick=()=>audition(null);
+  $('audition').onclick=()=>audition(null);$('addLib').onclick=openLib;
   $('exp').onclick=exportPreset;$('imp').onchange=importPreset;
   $('del').onclick=()=>{const i=USER.findIndex(u=>u.n===CUR.n);if(i<0)return;USER.splice(i,1);store.set('ariaSynth2.user',USER);toast('הצליל נמחק');curCat='all';loadPreset(PRESETS[0]);renderTab()};
   renderCats();renderList();renderPInfo();
@@ -2079,7 +2233,7 @@ function onMidi(e){
     if(clk.ints.length>=24){const avg=clk.ints.reduce((x,y)=>x+y)/clk.ints.length,nb=Math.round(60000/(avg*24));clk.bpm=nb;if(nb!==bpm&&nb>=40&&nb<=240){setBpm(nb);$('bpm').title='BPM מסונכרן ל־MIDI Clock'}}}}clk.last=now;return}
   if(s===0xFA||s===0xFB){if(ctx){tick=0;nextTick=ctx.currentTime+.005;RT.i=0}return}
   if(s>=0xF0)return;
-  if(cmd===0x90&&b>0){initAudio();keyDown(a,b/127)}
+  if(cmd===0x90&&b>0){initAudio();lastMidiNoteAt=performance.now();keyDown(a,b/127)}
   else if(cmd===0x80||(cmd===0x90&&b===0))keyUp(a);
   else if(cmd===0xe0){setBend(((b<<7|a)-8192)/8192);wheels[0]._draw()}
   else if(cmd===0xb0){
@@ -2107,12 +2261,42 @@ async function setOutput(id,label){
   catch(e){toast('לא הצלחתי לעבור ליציאה הזו ('+(e.name||'שגיאה')+')');return false}
 }
 function latencyMs(){if(!ctx)return null;return Math.round(((ctx.baseLatency||0)+(ctx.outputLatency||0))*1000)}
+let lastMidiNoteAt=0,lastSoundAt=0,dawOuts=[];
+// setup wizard: every step checks itself live and offers the fix
+const WIZ=[
+  {id:'bh',t:'BlackHole מותקן במחשב',ok:()=>dawOuts.some(d=>/blackhole/i.test(d.label))?1:dawOuts.some(d=>d.label)?0:-1,
+   help:'מתקינים את BlackHole 2ch (חינמי) מ־existential.audio/blackhole ומפעילים מחדש את הדפדפן.',fix:['בדוק',async()=>{dawOuts=await listOutputs(true);updWizard()}]},
+  {id:'out',t:'הכלי שולח את הסאונד ל־BlackHole',ok:()=>/blackhole/i.test(sinkLabel)&&ctx&&ctx.sinkId===sinkId?1:0,
+   help:'כך הסאונד נכנס לאבלטון. באבלטון: Settings ← Audio ← Audio Input Device = BlackHole 2ch.',fix:['בחר BlackHole',async()=>{if(!dawOuts.length)dawOuts=await listOutputs(true);const d=dawOuts.find(x=>/blackhole/i.test(x.label));if(d)await setOutput(d.deviceId,d.label);else toast('לא נמצא BlackHole. התקן אותו קודם');updWizard()}]},
+  {id:'midi',t:'MIDI מחובר דרך IAC Driver',ok:()=>midiIns.some(n=>/iac/i.test(n))?1:midiIns.length?0:-1,
+   help:'ב־Audio MIDI Setup ← Show MIDI Studio ← לחיצה כפולה על IAC Driver ← Device is online. באבלטון: ערוץ MIDI עם MIDI To = IAC Driver.',fix:['חבר MIDI',async()=>{await connectMidi();updWizard()}]},
+  {id:'clk',t:'אבלטון שולח טמפו (MIDI Clock)',ok:()=>clk.last&&performance.now()-clk.last<1500?1:0,
+   help:'באבלטון: Settings ← Link, Tempo & MIDI ← בשורה של IAC Driver בעמודת Output מדליקים Sync, ולוחצים Play.'},
+  {id:'notes',t:'תווים מגיעים מאבלטון',ok:()=>lastMidiNoteAt&&performance.now()-lastMidiNoteAt<8000?1:0,
+   help:'מנגנים קליפ בערוץ ה־MIDI שמכוון ל־IAC Driver, או מנגנים במקלדת MIDI שמחוברת לאבלטון.'},
+  {id:'snd',t:'יש סאונד ביציאה של הכלי',ok:()=>lastSoundAt&&performance.now()-lastSoundAt<2500?1:0,
+   help:'מנגנים תו. באבלטון יוצרים ערוץ אודיו עם Audio From = Ext. In 1/2, Monitor = In, ולוחצים Arm כדי להקליט.'},
+];
+function renderWizard(b){
+  const c=mod('ABLETON SETUP · CHECKLIST',[]);c.style.flex='1 1 100%';c.lastChild.remove();
+  const ol=document.createElement('ol');ol.className='wiz';
+  WIZ.forEach((w,i)=>{const li=document.createElement('li');li.id='wz_'+w.id;
+    li.innerHTML='<span class="wst" aria-hidden="true"></span><div><b></b><small></small></div>';li.querySelector('b').textContent=(i+1)+'. '+w.t;li.querySelector('small').textContent=w.help;
+    if(w.fix){const bt=document.createElement('button');bt.className='sbtn';bt.textContent=w.fix[0];bt.onclick=w.fix[1];li.appendChild(bt)}ol.appendChild(li)});
+  c.appendChild(ol);b.appendChild(c);updWizard();
+  if(!dawOuts.length)listOutputs(false).then(l=>{dawOuts=l;updWizard()}).catch(()=>{});
+}
+function updWizard(){
+  WIZ.forEach(w=>{const li=$('wz_'+w.id);if(!li)return;const v=w.ok();li.dataset.s=v>0?'ok':v<0?'unk':'no';li.querySelector('.wst').textContent=v>0?'✓':v<0?'?':'·';
+    li.setAttribute('aria-label',w.t+(v>0?': תקין':': עדיין לא'))});
+}
 function dawStatus(){
-  const e=$('dawState');if(e&&$('setModal').hidden)return;if(!e)return;
+  const e=$('dawState');if(e&&$('setModal').hidden)return;updWizard();if(!e)return;
   const clkOn=clk.last&&performance.now()-clk.last<1500;
   e.textContent=[(midiIns.length?'MIDI IN: '+midiIns.join(', '):'MIDI: לא מחובר'),clkOn?'CLOCK: '+(clk.bpm||bpm)+' BPM ●':'CLOCK: —',ctx?'LATENCY ≈ '+latencyMs()+' ms':''].filter(Boolean).join('   ·   ');
 }
 function renderDaw(b){
+  const wz=document.createElement('div');wz.className='mods';wz.style.marginBottom='14px';renderWizard(wz);b.appendChild(wz);
   const w=document.createElement('div');w.className='mods';
   // 1. output
   const out=xcard('1 · OUTPUT','בוחרים לאן הסאונד של הכלי יוצא. כדי להקליט באבלטון בוחרים BlackHole 2ch. באבלטון מגדירים Monitor = In בערוץ, ושומעים את הכלי דרך אבלטון.',[]);
@@ -2164,6 +2348,44 @@ addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('setModal').hidden){close
 function applyMode(){document.body.classList.toggle('edit',editMode);$('bEdit').setAttribute('aria-pressed',editMode);store.set('ariaSynth2.edit',editMode);renderTabs();renderTab();renderPInfo()}
 $('bEdit').onclick=()=>{editMode=!editMode;applyMode()};
 
+
+/* ---------- import window ---------- */
+function renderLib(){
+  const b=$('libBody');b.innerHTML='';
+  const w=document.createElement('div');w.className='mods';
+  const card=xcard('ADD A LIBRARY','בוחרים קבצי שמע או תיקייה שלמה. אם יש בתיקייה קובץ SFZ, הכלי ממפה כל דגימה בדיוק לפיו: טווח קלידים, עוצמה, כיוון, לופים, גרסאות מתחלפות וצלילי שחרור. בלי SFZ, הכלי מזהה את התו מהשם של כל קובץ (למשל Piano_C4_v2.wav), מהמידע שבתוך קובץ ה־WAV, או לפי מדידת הגובה. הספרייה נשמרת בדפדפן הזה ונטענת שוב בפעם הבאה.',[]);
+  const fi=document.createElement('input');fi.type='file';fi.multiple=true;fi.accept='audio/*,.sfz,.wav,.flac,.mp3,.ogg,.m4a,.aif,.aiff';fi.hidden=true;
+  const fd=document.createElement('input');fd.type='file';fd.webkitdirectory=true;fd.multiple=true;fd.hidden=true;
+  const st=document.createElement('p');st.id='libStatus';st.setAttribute('aria-live','polite');
+  const go=async list=>{if(!list||!list.length)return;try{st.textContent='קורא קבצים…';await importLibrary(list,m=>st.textContent=m);}catch(e){st.textContent='הייבוא נכשל: '+(e.message||e)}};
+  fi.onchange=()=>go(fi.files);fd.onchange=()=>go(fd.files);
+  card.append(xrow([xbtn('בחר קבצים',()=>fi.click(),true),xbtn('בחר תיקייה',()=>fd.click(),true)]),fi,fd,st);
+  const note=document.createElement('p');note.textContent='קבצים נתמכים: WAV, FLAC, MP3, OGG ו־M4A. קובצי AIFF נפתחים רק ב־Safari. ספריות בפורמט סגור (Kontakt, Nexus) לא נתמכות.';card.appendChild(note);
+  w.appendChild(card);
+  const lc=xcard('YOUR LIBRARIES',LIBS.length?'הספריות שייבאת. לחיצה טוענת את הצליל.':'עדיין לא ייבאת ספריות.',[]);
+  LIBS.forEach(l=>{const r=xrow([xbtn('▶ '+l.name+' ('+l.count+')',()=>{const p=USER.find(u=>u.layers&&u.layers[0]&&u.layers[0].src==='u:'+l.id);if(p){closeLib();loadPreset({...p,c:'user'})}},true),
+    xbtn('מחק',async()=>{try{await idbOp('readwrite',st=>st.delete(l.id))}catch(e){}LIBS=LIBS.filter(x=>x.id!==l.id);store.set('ariaSynth2.libs',LIBS);
+      USER=USER.filter(u=>!(u.layers&&u.layers.some(x=>x&&x.src==='u:'+l.id)));store.set('ariaSynth2.user',USER);delete UBANK[l.id];toast('הספרייה נמחקה');renderLib()})]);lc.appendChild(r)});
+  w.appendChild(lc);b.appendChild(w);
+}
+async function importLibrary(fileList,status){
+  const lib=await buildLibrary(fileList,status);
+  status('שומר '+lib.files.length+' קבצים…');
+  const id='L'+Date.now().toString(36),files=[];for(const x of lib.files)files.push({path:x.path,ab:await x.f.arrayBuffer()});
+  try{await idbOp('readwrite',st=>st.put({name:lib.name,files,zones:lib.zones},id))}catch(e){throw new Error('הדפדפן לא מאפשר לשמור את הקבצים ('+(e&&e.name||'storage')+')')}
+  const layers=new Set(lib.zones.map(z=>z.lv+'-'+z.hv)).size;
+  LIBS.push({id,name:lib.name,count:lib.zones.length});store.set('ariaSynth2.libs',LIBS);registerLibSources();
+  status('מפענח…');await loadUserBank(id);
+  const rec={n:lib.name,c:'user',layers:[{src:'u:'+id,a:.001,d:30,s:1,r:.4,cut:20000,fkey:0,vel:.6}],g:{reverb:.2,rType:'hall',chorus:0,delay:0}};
+  USER=USER.filter(u=>u.n!==rec.n);USER.push(rec);store.set('ariaSynth2.user',USER);
+  status('מוכן: '+lib.name+' · '+lib.zones.length+' דגימות · '+layers+' שכבות עוצמה'+(lib.mode==='sfz'?' · ממופה לפי SFZ':''));
+  curCat='user';loadPreset(rec);renderLib();
+}
+function openLib(){renderLib();$('libModal').hidden=false;$('libClose').focus()}
+function closeLib(){$('libModal').hidden=true}
+$('libClose').onclick=closeLib;$('libModal').addEventListener('click',e=>{if(e.target.id==='libModal')closeLib()});
+addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('libModal').hidden){closeLib();e.stopPropagation()}},true);
+
 /* ---------- frame loop: meter, scope, step cursor ---------- */
 let tbuf=null,infoQ=-1;
 function frame(){
@@ -2176,7 +2398,7 @@ function frame(){
   }
   if(!tbuf)tbuf=new Float32Array(G.an.fftSize);
   G.an.getFloatTimeDomainData(tbuf);
-  let pk=0;for(let i=0;i<tbuf.length;i++){const v=Math.abs(tbuf[i]);if(v>pk)pk=v}
+  let pk=0;for(let i=0;i<tbuf.length;i++){const v=Math.abs(tbuf[i]);if(v>pk)pk=v}if(pk>.01)lastSoundAt=performance.now();
   const mx=$('meter').getContext('2d');mx.clearRect(0,0,16,46);
   const h=Math.min(46,pk*46),gr=mx.createLinearGradient(0,46,0,0);gr.addColorStop(0,'#46c8ff');gr.addColorStop(.75,'#ffb340');gr.addColorStop(1,'#ff4d4d');
   mx.fillStyle=gr;mx.fillRect(3,46-h,10,h);
