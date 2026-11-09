@@ -651,6 +651,7 @@ function initAudio(){
   nextTick=ctx.currentTime+.05;setInterval(clock,25);
   requestAnimationFrame(frame);
   document.addEventListener('visibilitychange',()=>{if(!document.hidden&&ctx.state!=='running')ctx.resume()});
+  setTimeout(()=>applySavedSink(),0);
   return ctx;
 }
 function buildGraph(){
@@ -1394,7 +1395,7 @@ function lctl(li,k){return ctl(LS[k],()=>CUR.layers[li][k],v=>setL(li,k,v),()=>S
 /* ================================================================
    Screen tabs
    ================================================================ */
-const TABS=[['browser','BROWSER'],['layers','LAYERS'],['mixer','MIXER'],['fx','EFFECTS'],['arp','ARP'],['gate','GATE'],['export','EXPORT']];
+const TABS=[['browser','BROWSER'],['layers','LAYERS'],['mixer','MIXER'],['fx','EFFECTS'],['arp','ARP'],['gate','GATE'],['export','EXPORT'],['daw','ABLETON']];
 let curTab='browser',curLayer=0;
 function renderTabs(){
   const n=$('stabs');n.innerHTML='';
@@ -1404,7 +1405,7 @@ function renderTabs(){
 function updInfo(){const i=$('sinfo');if(!i)return;const g=CUR.g,a=[];if(loadingMsg)a.push(loadingMsg);if(g.arpOn)a.push('ARP '+g.arpDiv);if(g.gateOn)a.push('GATE '+g.gateDiv);if(g.mono)a.push('MONO');a.push(CUR.layers.filter(l=>l.on).length+' LAYERS');a.push(voices.filter(v=>!v.released).length+' VOICES');i.textContent=a.join(' · ')}
 function renderTab(){
   const b=$('sbody');b.innerHTML='';
-  ({browser:renderBrowser,layers:renderLayers,mixer:renderMixer,fx:renderFx,arp:renderArp,gate:renderGate,export:renderExport})[curTab](b);
+  ({browser:renderBrowser,layers:renderLayers,mixer:renderMixer,fx:renderFx,arp:renderArp,gate:renderGate,export:renderExport,daw:renderDaw})[curTab](b);
 }
 
 /* browser */
@@ -1886,17 +1887,22 @@ const setMod=v=>{modWheel=clamp(v,0,1);if(ctx)G.vib.gain.setTargetAtTime(modWhee
 const wheels=[wheel($('wPitch'),()=>bendVal,setBend,true),wheel($('wMod'),()=>modWheel*2-1,v=>setMod((v+1)/2),false)];
 
 /* ---------- MIDI ---------- */
-$('bMidi').onclick=()=>{
-  if(!navigator.requestMIDIAccess){toast('הדפדפן הזה לא תומך ב־MIDI. נסה Chrome או Edge');return}
-  initAudio();navigator.requestMIDIAccess().then(acc=>{
-    const hook=()=>{let c=0;acc.inputs.forEach(i=>{i.onmidimessage=onMidi;c++});toast(c?'MIDI: '+c+' התקנים מחוברים':'לא נמצא התקן MIDI');$('bMidi').textContent=c?'MIDI ●':'MIDI'};
-    acc.onstatechange=hook;hook();}).catch(()=>toast('הדפדפן לא אישר גישה ל־MIDI'));
-};
-const clk={last:0,ints:[]};
+let midiAcc=null,midiIns=[];
+function connectMidi(){
+  if(!navigator.requestMIDIAccess){toast('הדפדפן הזה לא תומך ב־MIDI. נסה Chrome או Edge');return Promise.resolve(false)}
+  initAudio();
+  return navigator.requestMIDIAccess().then(acc=>{
+    midiAcc=acc;
+    const hook=quiet=>{midiIns=[];acc.inputs.forEach(i=>{i.onmidimessage=onMidi;midiIns.push(i.name)});if(!quiet)toast(midiIns.length?'MIDI: '+midiIns.join(', '):'לא נמצא התקן MIDI');$('bMidi').textContent=midiIns.length?'MIDI ●':'MIDI';if(curTab==='daw')renderTab()};
+    acc.onstatechange=()=>hook(true);hook(false);return true;
+  }).catch(()=>{toast('הדפדפן לא אישר גישה ל־MIDI');return false});
+}
+$('bMidi').onclick=connectMidi;
+const clk={last:0,ints:[],bpm:0};
 function onMidi(e){
   const [s,a,b]=e.data,cmd=s&0xf0;
   if(s===0xF8){const now=e.timeStamp||performance.now();if(clk.last){const d=now-clk.last;if(d>4&&d<120){clk.ints.push(d);if(clk.ints.length>48)clk.ints.shift();
-    if(clk.ints.length>=24){const avg=clk.ints.reduce((x,y)=>x+y)/clk.ints.length,nb=Math.round(60000/(avg*24));if(nb!==bpm&&nb>=40&&nb<=240){setBpm(nb);$('bpm').title='BPM מסונכרן ל־MIDI Clock'}}}}clk.last=now;return}
+    if(clk.ints.length>=24){const avg=clk.ints.reduce((x,y)=>x+y)/clk.ints.length,nb=Math.round(60000/(avg*24));clk.bpm=nb;if(nb!==bpm&&nb>=40&&nb<=240){setBpm(nb);$('bpm').title='BPM מסונכרן ל־MIDI Clock'}}}}clk.last=now;return}
   if(s===0xFA||s===0xFB){if(ctx){tick=0;nextTick=ctx.currentTime+.005;RT.i=0}return}
   if(s>=0xF0)return;
   if(cmd===0x90&&b>0){initAudio();keyDown(a,b/127)}
@@ -1908,6 +1914,56 @@ function onMidi(e){
     else if(a>=70&&a<=77){const i=a-70;M[i]=b/63.5-1;if(Math.abs(M[i])<.02)M[i]=0;macroApply(i);macroKnobs[i]._draw()}
     else if(a===123||a===120)panic();
   }
+}
+
+
+/* ---------- Ableton: audio output device, MIDI from the DAW, latency ---------- */
+let sinkId=store.get('ariaSynth2.sink',''),sinkLabel=store.get('ariaSynth2.sinkLabel','');
+async function applySavedSink(){if(sinkId&&ctx&&ctx.setSinkId){try{await ctx.setSinkId(sinkId)}catch(e){sinkId='';sinkLabel=''}}}
+async function listOutputs(unlock){
+  if(!navigator.mediaDevices||!navigator.mediaDevices.enumerateDevices)return [];
+  if(unlock){try{const st=await navigator.mediaDevices.getUserMedia({audio:true});st.getTracks().forEach(t=>t.stop())}catch(e){}}
+  return (await navigator.mediaDevices.enumerateDevices()).filter(d=>d.kind==='audiooutput');
+}
+async function setOutput(id,label){
+  initAudio();
+  if(!ctx.setSinkId){toast('הדפדפן הזה לא יכול לבחור יציאת שמע. השתמש ב־Chrome או Edge, או בחר את BlackHole כפלט של המחשב');return false}
+  try{await ctx.setSinkId(id||'');sinkId=id||'';sinkLabel=label||'';store.set('ariaSynth2.sink',sinkId);store.set('ariaSynth2.sinkLabel',sinkLabel);toast('הסאונד יוצא עכשיו ל־'+(label||'יציאת ברירת המחדל'));return true}
+  catch(e){toast('לא הצלחתי לעבור ליציאה הזו ('+(e.name||'שגיאה')+')');return false}
+}
+function latencyMs(){if(!ctx)return null;return Math.round(((ctx.baseLatency||0)+(ctx.outputLatency||0))*1000)}
+function dawStatus(){
+  const e=$('dawState');if(!e)return;
+  const clkOn=clk.last&&performance.now()-clk.last<1500;
+  e.textContent=[(midiIns.length?'MIDI IN: '+midiIns.join(', '):'MIDI: לא מחובר'),clkOn?'CLOCK: '+(clk.bpm||bpm)+' BPM ●':'CLOCK: —',ctx?'LATENCY ≈ '+latencyMs()+' ms':''].filter(Boolean).join('   ·   ');
+}
+function renderDaw(b){
+  const w=document.createElement('div');w.className='mods';
+  // 1. output
+  const out=xcard('1 · OUTPUT','בוחרים לאן הסאונד של הכלי יוצא. כדי להקליט באבלטון בוחרים BlackHole 2ch. באבלטון מגדירים Monitor = In בערוץ, ושומעים את הכלי דרך אבלטון.',[]);
+  const row=xrow([]);const sel=document.createElement('select');sel.setAttribute('aria-label','יציאת שמע');
+  const fill=async unlock=>{const list=await listOutputs(unlock);sel.innerHTML='';const o0=document.createElement('option');o0.value='';o0.textContent='ברירת המחדל של המחשב';sel.appendChild(o0);
+    list.forEach(d=>{if(d.deviceId==='default'||d.deviceId==='communications')return;const o=document.createElement('option');o.value=d.deviceId;o.textContent=d.label||'התקן ללא שם (לחץ על הצג התקנים)';sel.appendChild(o)});
+    sel.value=[...sel.options].some(o=>o.value===sinkId)?sinkId:'';};
+  const lab=document.createElement('label');lab.textContent='OUTPUT';lab.appendChild(sel);row.appendChild(lab);
+  row.append(xbtn('הצג התקנים',async()=>{await fill(true);toast('התקני השמע עודכנו')}),xbtn('בחר',async()=>{await setOutput(sel.value,sel.selectedOptions[0]&&sel.selectedOptions[0].textContent)},true));
+  out.appendChild(row);fill(false);
+  const note=document.createElement('p');note.textContent='הדפדפן מבקש פעם אחת הרשאת מיקרופון רק כדי להציג את שמות ההתקנים. הכלי לא מקליט מהמיקרופון.';out.appendChild(note);
+  // 2. MIDI
+  const md=xcard('2 · MIDI FROM ABLETON','אבלטון מנגן את הכלי מקליפי MIDI, והארפ, הגייט וה־PUMP מסתנכרנים לטמפו של אבלטון דרך MIDI Clock.',[xrow([xbtn(midiIns.length?'MIDI ● מחובר':'חבר MIDI',()=>connectMidi(),!midiIns.length)])]);
+  // 3. latency
+  const lt=xcard('3 · LATENCY','הצליל מהדפדפן מגיע לאבלטון באיחור קטן. מכניסים את המספר הזה כ־Track Delay שלילי בערוץ האודיו שמקליט, וההקלטה יושבת בדיוק על הגריד.',[]);
+  const lp=document.createElement('p');lp.style.cssText='font:700 22px var(--mono);color:var(--ink);direction:ltr;text-align:left;margin:4px 0';lp.textContent=ctx?('≈ '+latencyMs()+' ms  →  Track Delay -'+latencyMs()+' ms'):'מנגנים תו אחד כדי למדוד';lt.appendChild(lp);
+  w.append(out,md,lt);b.appendChild(w);
+  const st=document.createElement('div');st.id='dawState';st.className='hintS';st.style.cssText='direction:ltr;text-align:left;font-family:var(--mono);color:var(--ink2);margin-top:10px';b.appendChild(st);dawStatus();
+  const g=document.createElement('div');g.className='guide';
+  g.innerHTML='<b>חיבור ל־Ableton Live 12 ב־Mac (פעם אחת):</b><br>'+
+   '<b>א. סאונד:</b> מתקינים את BlackHole 2ch (חינמי, existential.audio/blackhole). בכלי בוחרים OUTPUT = BlackHole 2ch. באבלטון: Settings ← Audio ← Audio Input Device = BlackHole 2ch. יוצרים ערוץ אודיו, Audio From = Ext. In 1/2, Monitor = In כדי לשמוע, ולוחצים על כפתור ה־Arm (●).<br>'+
+   '<b>ב. MIDI:</b> פותחים Audio MIDI Setup ← Window ← Show MIDI Studio ← לחיצה כפולה על IAC Driver ← מסמנים Device is online. באבלטון: Settings ← Link, Tempo &amp; MIDI ← בשורה של IAC Driver בעמודת Output מדליקים Track ו־Sync. יוצרים ערוץ MIDI עם MIDI To = IAC Driver. בכלי לוחצים על "חבר MIDI".<br>'+
+   '<b>ג. הקלטה:</b> הקליפים בערוץ ה־MIDI מנגנים את הכלי, והסאונד נכנס לערוץ האודיו. לוחצים Record באבלטון. בסיום מכבים את Monitor או את ה־Arm כדי לא לשמוע כפול.<br>'+
+   '<b>טיפ:</b> אפשר לנגן גם ישירות במקלדת של הכלי או במקלדת MIDI שמחוברת למחשב, ואבלטון רק מקליט.'+
+   (window.self!==window.top?'<br><b>שים לב:</b> בתצוגה בקישור הדפדפן חוסם MIDI ובחירת יציאת שמע. החיבור לאבלטון עובד בגרסה באתר.':'');
+  b.appendChild(g);
 }
 
 /* ---------- frame loop: meter, scope, step cursor ---------- */
@@ -1933,7 +1989,7 @@ function frame(){
     x.strokeStyle='#46c8ff';x.lineWidth=2;x.shadowColor='#46c8ff';x.shadowBlur=6;x.beginPath();
     const n=tbuf.length/2;for(let i=0;i<n;i++){const xx=i/n*w,y=hh/2-tbuf[s0+i]*hh*.45;i?x.lineTo(xx,y):x.moveTo(xx,y)}x.stroke();
   }
-  const q=Math.floor(t*4);if(q!==infoQ){infoQ=q;updInfo()}
+  const q=Math.floor(t*4);if(q!==infoQ){infoQ=q;updInfo();dawStatus()}
 }
 
 /* ---------- record: WAV + MIDI of what you play ---------- */
