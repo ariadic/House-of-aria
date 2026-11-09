@@ -185,6 +185,10 @@ section.tab.on{display:block}
 .list{list-style:none;margin:0;padding:0}
 .list li{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--sep)}
 .list li:last-child{border-bottom:0}
+.list li.ed{cursor:pointer;border-radius:10px}
+.list li.ed:hover{background:var(--fill)}
+.list li.editing{background:var(--accent-soft);border-radius:10px;padding-inline:8px}
+.list .pen{color:var(--ink3);font-size:12px;font-weight:600}
 .list .dotc{flex:none;width:10px;height:10px;border-radius:3px;background:var(--c)}
 .list .t{flex:1;min-width:0}
 .list .t small{display:block;color:var(--ink3);font-size:12px}
@@ -307,7 +311,8 @@ dialog textarea{width:100%;min-height:210px;margin-top:10px;background:var(--fil
           <div class="stat"><div class="k">הכנסות נוספות</div><div class="v num" id="lsInc">—</div></div>
         </div>
         <div class="chips" id="filterChips" style="margin-top:12px"></div>
-        <ul class="list" id="entryList" style="margin-top:6px"></ul>
+        <div class="small faint" style="margin-top:10px">לחיצה על שורה פותחת אותה לעריכה</div>
+        <ul class="list" id="entryList"></ul>
       </div>
     </div>
   </section>
@@ -366,7 +371,7 @@ dialog textarea{width:100%;min-height:210px;margin-top:10px;background:var(--fil
       </div>
 
       <div class="pane" data-pane="inc" style="margin-top:12px" hidden>
-        <div class="small muted">כל ההכנסות הקבועות בחודש, נטו: משכורת, עבודה נוספת, קצבה, שכר דירה שמקבלים. הכנסה חד־פעמית רושמים בכפתור <b>+</b>.</div>
+        <div class="small muted">כל ההכנסות הקבועות בחודש, נטו: משכורת, עבודה נוספת, קצבה, שכר דירה שמקבלים. הכנסה חד־פעמית רושמים בכפתור <b>+</b>. לחיצה על שורה פותחת אותה לעריכה.</div>
         <ul class="list" id="incList"></ul>
         <form class="inrow" id="incForm" autocomplete="off" style="margin-top:8px">
           <input id="incName" type="text" placeholder="משכורת, עבודה נוספת..." aria-label="שם ההכנסה">
@@ -377,7 +382,7 @@ dialog textarea{width:100%;min-height:210px;margin-top:10px;background:var(--fil
       </div>
 
       <div class="pane" data-pane="fixed" style="margin-top:12px" hidden>
-        <div class="small muted">הוצאות שחוזרות כל חודש: שכירות או משכנתא, חשבונות, ביטוחים, הלוואות, מנויים, גן.</div>
+        <div class="small muted">הוצאות שחוזרות כל חודש: שכירות או משכנתא, חשבונות, ביטוחים, הלוואות, מנויים, גן. לחיצה על שורה פותחת אותה לעריכה.</div>
         <ul class="list" id="fixedList"></ul>
         <form class="inrow" id="fixedForm" autocomplete="off" style="margin-top:8px">
           <input id="fxName" type="text" placeholder="שכירות, חשמל..." aria-label="שם ההוצאה">
@@ -434,7 +439,7 @@ dialog textarea{width:100%;min-height:210px;margin-top:10px;background:var(--fil
     <input class="bigamt" id="addAmt" type="number" inputmode="decimal" step="any" min="0" placeholder="₪ 0" aria-label="סכום">
     <div class="chips" id="catChips" role="radiogroup" aria-label="קטגוריה"></div>
     <div class="inrow"><input id="addNote" type="text" placeholder="הערה (לא חובה)"><input id="addDate" type="date" aria-label="תאריך" style="max-width:160px"></div>
-    <div class="btns" style="margin-top:0"><button class="btn ghost" type="button" id="addCancel">ביטול</button><button class="btn" type="submit">שמור</button></div>
+    <div class="btns" style="margin-top:0"><button class="btn ghost" type="button" id="addCancel">ביטול</button><button class="btn danger" type="button" id="addDelete" hidden>מחק</button><button class="btn" type="submit">שמור</button></div>
   </form>
 </dialog>
 
@@ -803,15 +808,17 @@ function renderList(){
   list.forEach(x=>{
     if (x.date!==last){ last=x.date; html += `<li class="day">${dayFmt.format(parseIso(x.date))}</li>`; }
     const inc = x.type==='inc';
-    html += `<li><span class="dotc" style="--c:${inc?'var(--good)':catColor(x.cat)}"></span><div class="t">${esc(inc?'הכנסה':x.cat)}${x.note?`<small>${esc(x.note)}</small>`:''}</div><span class="a num${inc?' inc':''}">${inc?'+':''}${money(x.amount)}</span>${isSetup()?`<button class="x" data-del="${esc(x.id)}" aria-label="מחק">×</button>`:''}</li>`;
+    html += `<li${isSetup()?` class="ed" data-edit="${esc(x.id)}" tabindex="0" role="button" aria-label="עריכה"`:''}><span class="dotc" style="--c:${inc?'var(--good)':catColor(x.cat)}"></span><div class="t">${esc(inc?'הכנסה':x.cat)}${x.note?`<small>${esc(x.note)}</small>`:''}</div><span class="a num${inc?' inc':''}">${inc?'+':''}${money(x.amount)}</span>${isSetup()?`<button class="x" data-del="${esc(x.id)}" aria-label="מחק">×</button>`:''}</li>`;
   });
   $('entryList').innerHTML = html || '<li class="empty" style="display:block;border:0">עוד אין תנועות החודש. רושמים בכפתור +</li>';
 }
 $('filterChips').addEventListener('click', e=>{ const b=e.target.closest('[data-f]'); if(!b) return; filter=b.dataset.f; renderList(); });
 $('entryList').addEventListener('click', e=>{
-  const b = e.target.closest('[data-del]'); if(!b) return;
-  S.entries = S.entries.filter(x=>x.id!==b.dataset.del); save(); renderAll(); toast('נמחק');
+  const b = e.target.closest('[data-del]');
+  if (b){ S.entries = S.entries.filter(x=>x.id!==b.dataset.del); save(); renderAll(); toast('נמחק'); return; }
+  const row = e.target.closest('[data-edit]'); if (row) openEdit(row.dataset.edit);
 });
+$('entryList').addEventListener('keydown', e=>{ const row = e.target.closest('[data-edit]'); if (row && (e.key==='Enter'||e.key===' ')){ e.preventDefault(); openEdit(row.dataset.edit); } });
 
 /* ---------- PLAN ---------- */
 function renderPlan(){
@@ -861,9 +868,9 @@ function renderSettings(){
     $('wizBack').hidden = i===0;
     $('wizNext').textContent = i===panes.length-1 ? 'סיום' : 'הבא';
   }
-  $('incList').innerHTML = S.incomes.map(f=>`<li><span class="dotc" style="--c:var(--good)"></span><div class="t">${esc(f.name)}</div><span class="a num">${money(f.amount)}</span><button class="x" data-inc="${esc(f.id)}" aria-label="מחק">×</button></li>`).join('') || '<li class="faint small" style="border:0">עוד לא נוספו הכנסות</li>';
+  $('incList').innerHTML = S.incomes.map(f=>`<li class="ed${editing.incomes===f.id?' editing':''}" data-edit-inc="${esc(f.id)}"><span class="dotc" style="--c:var(--good)"></span><div class="t">${esc(f.name)}</div><span class="a num">${money(f.amount)}</span><button class="x" data-inc="${esc(f.id)}" aria-label="מחק">×</button></li>`).join('') || '<li class="faint small" style="border:0">עוד לא נוספו הכנסות</li>';
   $('incTotal').textContent = money(incomeTotal(S));
-  $('fixedList').innerHTML = S.fixed.map(f=>`<li><span class="dotc" style="--c:var(--a-fixed)"></span><div class="t">${esc(f.name)}</div><span class="a num">${money(f.amount)}</span><button class="x" data-fx="${esc(f.id)}" aria-label="מחק">×</button></li>`).join('') || '<li class="faint small" style="border:0">עוד לא נוספו הוצאות קבועות</li>';
+  $('fixedList').innerHTML = S.fixed.map(f=>`<li class="ed${editing.fixed===f.id?' editing':''}" data-edit-fx="${esc(f.id)}"><span class="dotc" style="--c:var(--a-fixed)"></span><div class="t">${esc(f.name)}</div><span class="a num">${money(f.amount)}</span><button class="x" data-fx="${esc(f.id)}" aria-label="מחק">×</button></li>`).join('') || '<li class="faint small" style="border:0">עוד לא נוספו הוצאות קבועות</li>';
   $('fixedTotal').textContent = money(fixedTotal(S));
   const free = Math.max(0, incomeTotal(S) - fixedTotal(S));
   const sl = $('fPay'); sl.max = Math.max(500, Math.ceil(free/50)*50); sl.value = S.pay;
@@ -913,21 +920,38 @@ $('fSpentSoFar').addEventListener('input', e=>{
   if (a>0) S.entries.push({id:uid(), date:c.startIso, amount:a, cat:PRE_CAT, note:'לפני שהתחלתי לרשום', type:'exp', pre:true});
   save();
 });
+const editing = {incomes:null, fixed:null};
 function listForm(formId, nameId, amtId, arr){
+  const btn = $(formId).querySelector('button[type=submit]');
   $(formId).addEventListener('submit', e=>{
     e.preventDefault();
     const name = $(nameId).value.trim(), amount = num($(amtId).value);
     if (!name){ $(nameId).focus(); return; }
     if (amount<=0){ $(amtId).focus(); return; }
-    S[arr].push({id:uid(), name, amount});
+    const cur = editing[arr] && S[arr].find(f=>f.id===editing[arr]);
+    if (cur){ cur.name = name; cur.amount = amount; editing[arr] = null; btn.textContent = '+'; toast('השינוי נשמר'); }
+    else S[arr].push({id:uid(), name, amount});
     $(nameId).value=''; $(amtId).value=''; $(nameId).focus();
     save(); renderSettings();
   });
+  return (id) => {
+    const f = S[arr].find(x=>x.id===id); if (!f) return;
+    editing[arr] = id; $(nameId).value = f.name; $(amtId).value = f.amount; btn.textContent = 'שמור';
+    renderSettings(); $(amtId).focus(); $(amtId).select();
+  };
 }
-listForm('incForm','incName','incAmt','incomes');
-listForm('fixedForm','fxName','fxAmt','fixed');
-$('incList').addEventListener('click', e=>{ const b=e.target.closest('[data-inc]'); if(!b) return; S.incomes = S.incomes.filter(f=>f.id!==b.dataset.inc); save(); renderSettings(); });
-$('fixedList').addEventListener('click', e=>{ const b=e.target.closest('[data-fx]'); if(!b) return; S.fixed = S.fixed.filter(f=>f.id!==b.dataset.fx); save(); renderSettings(); });
+const editInc = listForm('incForm','incName','incAmt','incomes');
+const editFx = listForm('fixedForm','fxName','fxAmt','fixed');
+$('incList').addEventListener('click', e=>{
+  const b=e.target.closest('[data-inc]');
+  if (b){ S.incomes = S.incomes.filter(f=>f.id!==b.dataset.inc); if (editing.incomes===b.dataset.inc){ editing.incomes=null; $('incName').value=''; $('incAmt').value=''; $('incForm').querySelector('button[type=submit]').textContent='+'; } save(); renderSettings(); return; }
+  const row=e.target.closest('[data-edit-inc]'); if (row) editInc(row.dataset.editInc);
+});
+$('fixedList').addEventListener('click', e=>{
+  const b=e.target.closest('[data-fx]');
+  if (b){ S.fixed = S.fixed.filter(f=>f.id!==b.dataset.fx); if (editing.fixed===b.dataset.fx){ editing.fixed=null; $('fxName').value=''; $('fxAmt').value=''; $('fixedForm').querySelector('button[type=submit]').textContent='+'; } save(); renderSettings(); return; }
+  const row=e.target.closest('[data-edit-fx]'); if (row) editFx(row.dataset.editFx);
+});
 
 /* backup */
 async function backup(){
@@ -971,26 +995,48 @@ $('resetYes').addEventListener('click', ()=>{
 });
 
 /* ---------- quick add ---------- */
-let addType = 'exp';
+let addType = 'exp', editId = null, editCat = null;
+const curCat = () => editId ? editCat : S.cat;
 function renderCatChips(){
   $('catChips').hidden = addType==='inc';
-  $('catChips').innerHTML = CATS.map(c=>`<button type="button" class="chip${c.k===S.cat?' on':''}" role="radio" aria-checked="${c.k===S.cat}" data-c="${esc(c.k)}"><span class="sw" style="--c:var(${c.c})"></span>${esc(c.k)}</button>`).join('');
+  const cats = CATS.map(c=>c.k);
+  if (editId && editCat && !cats.includes(editCat)) cats.push(editCat);
+  $('catChips').innerHTML = cats.map(k=>`<button type="button" class="chip${k===curCat()?' on':''}" role="radio" aria-checked="${k===curCat()}" data-c="${esc(k)}"><span class="sw" style="--c:${catColor(k)}"></span>${esc(k)}</button>`).join('');
 }
+function setTypeUI(){ document.querySelectorAll('#typeSeg button').forEach(b=>b.classList.toggle('on', b.dataset.t===addType)); }
+function openEdit(id){
+  const x = S.entries.find(e=>e.id===id); if (!x) return;
+  editId = id; editCat = x.cat || S.cat; addType = x.type==='inc' ? 'inc' : 'exp'; setTypeUI();
+  $('addTitle').textContent = 'עריכה'; $('addDelete').hidden = false;
+  $('addAmt').value = x.amount; $('addNote').value = x.note || ''; $('addDate').value = x.date; renderCatChips();
+  $('addDlg').showModal();
+}
+$('addDelete').addEventListener('click', ()=>{
+  if (!editId) return;
+  S.entries = S.entries.filter(x=>x.id!==editId); editId = null;
+  save(); $('addDlg').close(); renderAll(); toast('נמחק');
+});
 function openAdd(){
   if (!isSetup()){ toast('קודם מזינים את הנתונים שלך'); wizard = true; showTab('set'); setPane('debt'); return; }
-  addType = 'exp'; document.querySelectorAll('#typeSeg button').forEach(b=>b.classList.toggle('on', b.dataset.t==='exp'));
+  editId = null; addType = 'exp'; setTypeUI(); $('addTitle').textContent = 'רישום'; $('addDelete').hidden = true;
   $('addAmt').value=''; $('addNote').value=''; $('addDate').value = iso(today0()); renderCatChips();
   $('addDlg').showModal(); setTimeout(()=>$('addAmt').focus(), 50);
 }
 $('addBtn').addEventListener('click', openAdd);
 $('typeSeg').addEventListener('click', e=>{ const b=e.target.closest('[data-t]'); if(!b) return; addType=b.dataset.t; document.querySelectorAll('#typeSeg button').forEach(x=>x.classList.toggle('on', x===b)); renderCatChips(); });
-$('catChips').addEventListener('click', e=>{ const b=e.target.closest('[data-c]'); if(!b) return; S.cat=b.dataset.c; saveLocal(); renderCatChips(); });
+$('catChips').addEventListener('click', e=>{ const b=e.target.closest('[data-c]'); if(!b) return; if (editId) editCat=b.dataset.c; else { S.cat=b.dataset.c; saveLocal(); } renderCatChips(); });
 $('addCancel').addEventListener('click', ()=>$('addDlg').close());
 $('addForm').addEventListener('submit', e=>{
   e.preventDefault();
   const a = num($('addAmt').value); if (a<=0){ $('addAmt').focus(); return; }
   const date = $('addDate').value || iso(today0());
-  S.entries.push({id:uid(), date, amount:a, cat: addType==='inc' ? '' : S.cat, note:$('addNote').value.trim(), type:addType});
+  const note = $('addNote').value.trim();
+  if (editId){
+    const x = S.entries.find(e=>e.id===editId);
+    if (x){ Object.assign(x, {date, amount:a, cat: addType==='inc' ? '' : editCat, note, type:addType}); delete x.pre; }
+    editId = null; save(); $('addDlg').close(); renderAll(); toast('השינוי נשמר'); return;
+  }
+  S.entries.push({id:uid(), date, amount:a, cat: addType==='inc' ? '' : S.cat, note, type:addType});
   save(); $('addDlg').close(); renderAll();
   toast(addType==='inc' ? `נרשמה הכנסה של ${money(a)}` : `נרשמה הוצאה של ${money(a)}`);
 });
