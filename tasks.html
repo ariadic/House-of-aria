@@ -26,6 +26,7 @@
   --e1:#34c759; --e2:#ff9500; --e3:#ff2d55;
   --accent:var(--indigo);
   --shadow:0 1px 2px rgba(0,0,0,.04), 0 8px 24px rgba(0,0,0,.06);
+  --sheetgroup:#ffffff; --segon:#ffffff;
 }
 @media (prefers-color-scheme: dark){
   :root{
@@ -38,10 +39,10 @@
     --blue:#0a84ff; --red:#ff453a; --orange:#ff9f0a; --yellow:#ffd60a; --green:#30d158;
     --teal:#40c8e0; --indigo:#5e5ce6; --purple:#bf5af2; --pink:#ff375f; --gray:#98989d;
     --e1:#30d158; --e2:#ff9f0a; --e3:#ff375f;
-    --shadow:none;
+    --shadow:none; --sheetgroup:#2c2c2e; --segon:#636366;
   }
-  .sheet .group{background:var(--card2)}
 }
+
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;height:100%}
 body{
@@ -170,7 +171,7 @@ svg{display:block}
 .link{color:var(--accent);font-size:17px;padding:6px 0}
 .link.strong{font-weight:600}
 .link:active{opacity:.4}
-.sheet .group{margin-bottom:22px}
+.sheet .group{margin-bottom:22px;background:var(--sheetgroup)}
 .field{width:100%;border:0;outline:none;background:none;padding:13px 16px;display:block;font-size:17px}
 .field.title{font-size:20px;font-weight:600}
 .field::placeholder{color:var(--ink3)}
@@ -178,8 +179,7 @@ svg{display:block}
 .seg{display:flex;background:var(--fill);border-radius:9px;padding:2px;margin:10px 12px}
 .seg button{flex:1;padding:7px 0;font-size:13px;font-weight:500;border-radius:7px;display:flex;align-items:center;justify-content:center;gap:5px;letter-spacing:-.08px}
 .seg button svg{width:18px;height:10px}
-.seg button.on{background:var(--card);box-shadow:0 3px 8px rgba(0,0,0,.12),0 3px 1px rgba(0,0,0,.04);font-weight:600}
-@media (prefers-color-scheme: dark){.seg button.on{background:#636366}}
+.seg button.on{background:var(--segon);box-shadow:0 3px 8px rgba(0,0,0,.12),0 3px 1px rgba(0,0,0,.04);font-weight:600}
 .step-row{display:flex;align-items:center;gap:12px;padding:0 16px;min-height:46px;position:relative}
 .step-row:not(:last-child)::after{content:"";position:absolute;bottom:0;left:0;inset-inline-start:52px;height:.5px;background:var(--sep)}
 .step-row .tx{flex:1;padding:11px 0}
@@ -235,6 +235,29 @@ svg{display:block}
 .party .s{color:var(--ink2);font-size:15px;margin-bottom:18px;line-height:1.5}
 #confetti{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:41}
 
+.hdr{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.hbtn{display:flex;align-items:center;gap:6px;color:var(--accent);font-size:15px;font-weight:600;background:var(--card);border-radius:16px;padding:7px 12px;box-shadow:var(--shadow)}
+.hbtn svg{width:16px;height:16px}
+.qrbox{background:#fff;border-radius:18px;padding:14px;width:min(78vw,300px);margin:6px auto 0;aspect-ratio:1;display:grid;place-items:center;color:#000}
+.qrbox svg{width:100%;height:auto;display:block}
+.cam{position:relative;border-radius:18px;overflow:hidden;background:#000;aspect-ratio:1;width:min(78vw,300px);margin:12px auto}
+.cam video{width:100%;height:100%;object-fit:cover;display:block}
+.cam::after{content:"";position:absolute;inset:18%;border:3px solid rgba(255,255,255,.85);border-radius:16px}
+textarea.field{resize:none;font-size:15px;font-family:ui-monospace,Menlo,monospace;letter-spacing:0;direction:ltr;text-align:left}
+.stack{display:flex;flex-direction:column;gap:10px}
+.err{color:var(--red);font-size:15px;text-align:center;min-height:20px;margin-top:10px}
+.sw-wrap{position:relative;overflow:hidden}
+.sw-wrap>.row,.sw-wrap>.slot{position:relative;z-index:1;background:var(--card);transition:transform .25s cubic-bezier(.32,.72,0,1);touch-action:pan-y}
+.sw-wrap.open>.row,.sw-wrap.open>.slot{transform:translateX(92px)}
+.sw-del{position:absolute;left:0;top:0;bottom:0;width:92px;background:var(--red);color:#fff;font-weight:600;font-size:15px;display:flex;align-items:center;justify-content:center}
+.group>.sw-wrap:not(:last-child)::after{content:"";position:absolute;bottom:0;left:0;inset-inline-start:50px;height:.5px;background:var(--sep);z-index:2}
+.slots{display:flex;flex-direction:column;gap:10px}
+.slots>.sw-wrap{border-radius:16px;box-shadow:var(--shadow)}
+.slots .slot{margin-bottom:0;box-shadow:none}
+.step-row .se{flex:1;border:0;outline:none;background:none;padding:11px 0;font-size:17px;min-width:0;border-radius:6px}
+.step-row .se:focus{background:var(--fill);padding-inline:8px}
+.step-row.d .se{color:var(--ink2);text-decoration:line-through}
+button.won{cursor:pointer}
 .toast{position:fixed;left:50%;bottom:calc(140px + env(safe-area-inset-bottom));transform:translate(-50%,20px);background:rgba(30,30,30,.92);color:#fff;border-radius:22px;padding:10px 16px;font-size:15px;opacity:0;pointer-events:none;transition:all .3s;z-index:50;display:flex;gap:14px;align-items:center;max-width:90vw;backdrop-filter:blur(10px)}
 .toast.on{opacity:1;transform:translate(-50%,0);pointer-events:auto}
 .toast button{color:#64d2ff;font-weight:600;white-space:nowrap}
@@ -251,6 +274,7 @@ svg{display:block}
   <symbol id="i-skip" viewBox="0 0 24 24"><path d="M14 6 8 12l6 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
   <symbol id="i-flame" viewBox="0 0 24 24"><path d="M12 2.5c.6 3.2 5.5 5.6 5.5 11a5.5 5.5 0 0 1-11 0c0-2.6 1.4-4.2 2.6-5.2.2 1.6 1 2.7 2.1 3.1C10.6 8.5 11.4 5 12 2.5z" fill="currentColor"/></symbol>
   <symbol id="i-star" viewBox="0 0 24 24"><path d="m12 2.8 2.8 5.9 6.4.8-4.7 4.4 1.2 6.4L12 17.2l-5.7 3.1 1.2-6.4-4.7-4.4 6.4-.8z" fill="currentColor"/></symbol>
+  <symbol id="i-sync" viewBox="0 0 24 24"><path d="M4 9a8 8 0 0 1 14.3-3.3M20 15a8 8 0 0 1-14.3 3.3" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><path d="M19 2.5v4h-4M5 21.5v-4h4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
   <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3" fill="currentColor"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
   <symbol id="i-bat1" viewBox="0 0 30 16"><rect x="1" y="1" width="25" height="14" rx="4" fill="none" stroke="currentColor" stroke-width="1.6" opacity=".45"/><rect x="27" y="5.5" width="2" height="5" rx="1" fill="currentColor" opacity=".45"/><rect x="3.5" y="3.5" width="6" height="9" rx="2" fill="var(--e1)"/></symbol>
   <symbol id="i-bat2" viewBox="0 0 30 16"><rect x="1" y="1" width="25" height="14" rx="4" fill="none" stroke="currentColor" stroke-width="1.6" opacity=".45"/><rect x="27" y="5.5" width="2" height="5" rx="1" fill="currentColor" opacity=".45"/><rect x="3.5" y="3.5" width="13" height="9" rx="2" fill="var(--e2)"/></symbol>
@@ -390,7 +414,7 @@ function render(){
 /* ---------- NOW: one task, one step ---------- */
 let skip = 0, dur = 5;
 function candidates(){
-  let list = todayTasks(), from = 'מתוך 3 של היום';
+  let list = todayTasks(), from = 'מתוך המשימות של היום';
   if (!list.length){ list = pool().sort((a,b) => a.created - b.created); from = 'מהמאגר, כי היום עוד ריק'; }
   const e = curEnergy();
   if (e){
@@ -468,41 +492,40 @@ function renderToday(){
   const won = db.tasks.filter(t => t.done && t.doneAt && ymd(new Date(t.doneAt)) === today()).sort((a,b) => b.doneAt - a.doneAt);
   const r = timeRatio();
   const date = new Intl.DateTimeFormat('he-IL', {weekday:'long', day:'numeric', month:'long'}).format(new Date());
-  const slots = [0,1,2].map(i => {
-    const t = list[i];
-    if (!t) return `<button class="slot emptyslot press" data-pick><span class="num">${i+1}</span><span class="tx">בחירה מהמאגר</span></button>`;
+  const slots = list.map((t, i) => {
     const ds = t.steps.filter(s => s.done).length;
-    return `<div class="slot"><span class="num">${i+1}</span>
+    return `<div class="sw-wrap"><button class="sw-del" data-kill="${t.id}">מחיקה</button><div class="slot"><span class="num">${i+1}</span>
       <button class="tx press" data-open="${t.id}" style="text-align:start"><div class="t">${esc(t.title)}</div>
         <div class="m">${bat(t.energy)}<span>בערך ${t.est} דק'</span>${t.steps.length ? `<span>${ds}/${t.steps.length} צעדים</span>` : ''}</div></button>
-      <button class="play press" data-play="${t.id}" aria-label="להתחיל"><svg><use href="#i-play"/></svg></button></div>`;
-  }).join('');
+      <button class="play press" data-play="${t.id}" aria-label="להתחיל"><svg><use href="#i-play"/></svg></button></div></div>`;
+  }).join('') + `<button class="slot emptyslot press" data-pick><span class="num">＋</span><span class="tx">בחירה מהמאגר</span></button>`;
   el.innerHTML = `
     <h1 class="large">היום</h1>
     <p class="sub">${date}</p>
     ${left.length ? `<div class="banner"><div class="t">${left.length === 1 ? 'משימה אחת נשארה' : `${left.length} משימות נשארו`} מאתמול</div>
       <div class="s">זה בסדר גמור. מה עושים איתן?</div>
       <div class="btns"><button class="p" data-left="keep">להמשיך היום</button><button data-left="pool">חזרה למאגר</button></div></div>` : ''}
-    <h2 class="h2" style="margin-top:4px">3 הדברים של היום</h2>
-    ${slots}
-    <p class="hint">שלושה זה מספיק. כל השאר מחכה במאגר ולא הולך לאיבוד.</p>
+    <h2 class="h2" style="margin-top:4px">לעשות היום${list.length ? ` · ${list.length}` : ''}</h2>
+    <div class="slots">${slots}</div>
+    ${list.length > 1 ? '<p class="hint">לא צריך הכל בבת אחת. במסך "עכשיו" מוצגת רק אחת בכל פעם.</p>' : ''}
     ${won.length ? `<h2 class="h2">ניצחונות היום 🏆</h2><div class="group">${won.map(t => `
-      <div class="row won"><span class="chk on"><svg><use href="#i-check"/></svg></span>
-      <span class="lbl"><div class="t">${esc(t.title)}</div>${t.spent > 60 ? `<div class="m">לקח ${mins(t.spent)} דק' · הערכת ${t.est}</div>` : ''}</span></div>`).join('')}</div>` : ''}
+      <button class="row won" data-undo="${t.id}"><span class="chk on"><svg><use href="#i-check"/></svg></span>
+      <span class="lbl"><div class="t">${esc(t.title)}</div>${t.spent > 60 ? `<div class="m">לקח ${mins(t.spent)} דק' · הערכת ${t.est}</div>` : ''}</span></button>`).join('')}</div>
+      <p class="hint">סימנת בטעות? לחיצה על משימה מחזירה אותה לרשימה.</p>` : ''}
     ${r ? `<div class="insight"><div class="t">תובנת זמן</div><div class="s">${r > 1.15 ? `משימות לוקחות לך בממוצע <b>פי ${r.toFixed(1)}</b> ממה שהערכת. כדאי לתכנן עם מרווח.` : r < .85 ? 'משימות לוקחות לך פחות ממה שהערכת. אפשר להעריך פחות.' : 'ההערכות שלך מדויקות. יפה מאוד.'}</div></div>` : ''}`;
 }
 $('#t-today').addEventListener('click', e => {
+  const u = e.target.closest('[data-undo]');
+  if (u){ const t = byId(u.dataset.undo); t.done = false; t.doneAt = 0; t.day = today(); save(); renderToday(); toast('הוחזרה ללעשות היום'); return; }
   const o = e.target.closest('[data-open]'); if (o) return editTask(byId(o.dataset.open));
   const p = e.target.closest('[data-play]'); if (p){ setTab('now'); return startFocus(byId(p.dataset.play), dur); }
   if (e.target.closest('[data-pick]')) return pickForToday();
   const l = e.target.closest('[data-left]');
   if (l){
-    let bumped = 0;
     leftovers().forEach((t, i) => {
-      if (l.dataset.left === 'keep' && todayTasks().length < 3){ t.day = today(); t.order = Date.now() + i; }
-      else { if (l.dataset.left === 'keep') bumped++; t.day = ''; }
+      if (l.dataset.left === 'keep'){ t.day = today(); t.order = Date.now() + i; }
+      else t.day = '';
     });
-    if (bumped) toast('נכנסו עד 3. השאר חזרו למאגר');
     save(); renderToday();
   }
 });
@@ -512,16 +535,18 @@ function renderPool(){
   const el = $('#t-pool');
   const list = db.tasks.filter(t => !t.done).sort((a,b) => (isToday(b) - isToday(a)) || (a.energy - b.energy) || (a.created - b.created));
   el.innerHTML = `
-    <h1 class="large">מאגר</h1>
+    <div class="hdr"><h1 class="large">מאגר</h1><button class="hbtn press" id="moveBtn"><svg><use href="#i-sync"/></svg>העברה</button></div>
     <p class="sub">${list.length ? `${list.length} דברים מחכים כאן. לא צריך לעשות הכל, רק לבחור.` : ''}</p>
     ${list.length ? `<div class="group">${list.map(t => `
-      <div class="row"><button class="chk press" data-done="${t.id}" aria-label="סימון כבוצע"><svg><use href="#i-check"/></svg></button>
+      <div class="sw-wrap"><button class="sw-del" data-kill="${t.id}">מחיקה</button><div class="row"><button class="chk press" data-done="${t.id}" aria-label="סימון כבוצע"><svg><use href="#i-check"/></svg></button>
         <button class="lbl press" data-open="${t.id}"><div>${esc(t.title)}</div>
           <div class="m">${bat(t.energy)}<span>בערך ${t.est} דק'</span>${t.steps.length ? `<span>${t.steps.filter(s=>s.done).length}/${t.steps.length} צעדים</span>` : ''}</div></button>
-        <button class="addtoday ${isToday(t)?'in':''}" data-today="${t.id}">${isToday(t) ? '✓ היום' : 'להיום'}</button></div>`).join('')}</div>`
+        <button class="addtoday ${isToday(t)?'in':''}" data-today="${t.id}">${isToday(t) ? '✓ היום' : 'להיום'}</button></div></div>`).join('')}</div>
+      <p class="hint">החלקה ימינה על משימה מציגה כפתור מחיקה. לחיצה על משימה פותחת אותה לעריכה.</p>`
     : `<div class="empty"><div class="em">📭</div><div class="big">המאגר ריק</div>כשמשהו עולה בראש, לוחצים על ＋ ושוכחים ממנו.</div>`}`;
 }
 $('#t-pool').addEventListener('click', e => {
+  if (e.target.closest('#moveBtn')) return transferMenu();
   const o = e.target.closest('[data-open]'); if (o) return editTask(byId(o.dataset.open));
   const d = e.target.closest('[data-done]');
   if (d){ d.classList.add('on'); setTimeout(() => completeTask(byId(d.dataset.done), 0), 250); return; }
@@ -529,7 +554,6 @@ $('#t-pool').addEventListener('click', e => {
 });
 function toggleToday(t){
   if (isToday(t)){ t.day = ''; save(); return true; }
-  if (todayTasks().length >= 3){ toast('היום כבר מלא. 3 זה מספיק 💙', 'להחליף', () => pickForToday(t)); return false; }
   t.day = today(); t.order = Date.now(); save(); return true;
 }
 
@@ -543,7 +567,7 @@ function completeTask(t, extraSpent){
   const time = t.spent > 60 ? `לקח ${mins(t.spent)} דק', הערכת ${t.est}` : '';
   const left = todayTasks().length;
   celebrate(pick(['🎉','🏆','🚀','💪','🌟']), pick(['כל הכבוד!', 'עשית את זה!', 'איזה יופי!']),
-    [`+3 ניצחונות · ${winsToday()} היום`, time, left ? `נשארו ${left} להיום` : 'סיימת את ה-3 של היום!'].filter(Boolean).join('<br>'));
+    [`+3 ניצחונות · ${winsToday()} היום`, time, left ? `נשארו ${left} להיום` : 'סיימת את כל המשימות של היום!'].filter(Boolean).join('<br>'));
   render();
 }
 function celebrate(em, t, s){
@@ -635,7 +659,7 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden && db
 /* ---------- sheets ---------- */
 const sheet = $('#sheet'), scrim = $('#scrim');
 function openSheet(html){ sheet.innerHTML = `<div class="grab"></div>` + html; scrim.classList.add('on'); sheet.classList.add('on'); }
-function closeSheet(){ scrim.classList.remove('on'); sheet.classList.remove('on'); document.activeElement?.blur(); stopMic(); render(); }
+function closeSheet(){ scrim.classList.remove('on'); sheet.classList.remove('on'); document.activeElement?.blur(); stopMic(); stopCam(); render(); }
 scrim.onclick = () => sheet.querySelector('[data-x=close]')?.click();
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && sheet.classList.contains('on')) scrim.onclick(); });
 
@@ -684,17 +708,21 @@ function editTask(t){
       <div class="cap">צעדים קטנים. כל צעד = ניצחון ⭐</div>
       <div class="group">
         ${t.steps.map(s => `<div class="step-row ${s.done?'d':''}"><button class="chk ${s.done?'on':''}" data-st="${s.id}"><svg><use href="#i-check"/></svg></button>
-          <span class="tx">${esc(s.t)}</span><button class="x" data-del="${s.id}" aria-label="מחיקה">×</button></div>`).join('')}
+          <input class="se" data-se="${s.id}" value="${esc(s.t)}" enterkeyhint="done" autocomplete="off" aria-label="עריכת צעד"><button class="x" data-del="${s.id}" aria-label="מחיקת צעד">×</button></div>`).join('')}
         <div class="step-row"><span class="plus"><svg><use href="#i-plus"/></svg></span><input id="eStep" placeholder="${t.steps.length ? 'הצעד הבא?' : 'מה הצעד הראשון, הכי קטן שיש?'}" enterkeyhint="done" autocomplete="off"></div>
       </div>
       <div class="cap">כמה אנרגיה זה דורש?</div>
       <div class="group"><div class="seg">${[1,2,3].map(n => `<button data-en="${n}" class="${t.energy===n?'on':''}">${bat(n)}${ENERGY[n]}</button>`).join('')}</div></div>
       <div class="cap">כמה זמן זה ייקח, להערכתך?</div>
       <div class="group"><div class="seg">${[5,15,30,60].map(m => `<button data-est="${m}" class="${t.est===m?'on':''}">${m} דק'</button>`).join('')}</div></div>
-      <div class="group"><div class="row"><span class="lbl">ב-3 של היום</span><label class="sw"><input type="checkbox" id="eToday" ${isToday(t)?'checked':''}><span></span></label></div></div>
+      <div class="group"><div class="row"><span class="lbl">לעשות היום</span><label class="sw"><input type="checkbox" id="eToday" ${isToday(t)?'checked':''}><span></span></label></div></div>
       <div class="group"><button class="row danger" data-x="del"><span class="lbl">מחיקה</span></button></div>`);
   };
-  const pullTitle = () => { const v = $('#eTitle')?.value.trim(); if (v) t.title = v; };
+  const pullTitle = () => {
+    const v = $('#eTitle')?.value.trim(); if (v) t.title = v;
+    sheet.querySelectorAll('[data-se]').forEach(inp => { const st = t.steps.find(x => x.id === inp.dataset.se); if (st) st.t = inp.value.trim(); });
+    t.steps = t.steps.filter(x => x.t);   // a step cleared to nothing is removed
+  };
   const addStep = () => { const v = $('#eStep')?.value.trim(); if (v) t.steps.push({id:uid(), t:v, done:false}); };
   sheet.onclick = e => {
     const st = e.target.closest('[data-st]');
@@ -705,12 +733,10 @@ function editTask(t){
     const es = e.target.closest('[data-est]'); if (es){ t.est = +es.dataset.est; pullTitle(); addStep(); save(); return draw(); }
     const x = e.target.closest('[data-x]')?.dataset.x;
     if (x === 'close'){ pullTitle(); addStep(); save(); return closeSheet(); }
-    if (x === 'del'){
-      const i = db.tasks.indexOf(t); db.tasks.splice(i, 1); save(); closeSheet();
-      toast('נמחק', 'ביטול', () => { db.tasks.splice(i, 0, t); save(); render(); });
-    }
+    if (x === 'del'){ closeSheet(); deleteTask(t); }
   };
   sheet.onkeydown = e => {
+    if ((e.target.dataset.se || e.target.id === 'eTitle') && e.key === 'Enter' && !e.isComposing){ e.target.blur(); return; }
     if (e.target.id === 'eStep' && e.key === 'Enter' && !e.isComposing){
       pullTitle(); addStep(); save(); draw();
       setTimeout(() => $('#eStep')?.focus(), 30);
@@ -720,12 +746,41 @@ function editTask(t){
   draw();
 }
 
-/* pick from the pool into today, or choose which one to swap out */
-function pickForToday(incoming){
-  const swap = !!incoming;
-  const list = swap ? todayTasks() : pool().sort((a,b) => (a.energy - b.energy) || (a.created - b.created));
+function deleteTask(t){
+  const i = db.tasks.indexOf(t); if (i < 0) return;
+  db.tasks.splice(i, 1); if (db.focus?.id === t.id) db.focus = null; save(); render();
+  toast('המשימה נמחקה', 'ביטול', () => { db.tasks.splice(Math.min(i, db.tasks.length), 0, t); save(); render(); });
+}
+/* swipe a row right (the trailing side in RTL) to reveal Delete, like iOS */
+let swX = null, swY = 0, swEl = null;
+const closeSwipes = except => document.querySelectorAll('.sw-wrap.open').forEach(w => w !== except && w.classList.remove('open'));
+document.addEventListener('touchstart', e => {
+  swEl = e.target.closest('.sw-wrap'); if (!swEl) { closeSwipes(); return; }
+  swX = e.touches[0].clientX; swY = e.touches[0].clientY;
+}, {passive:true});
+document.addEventListener('touchend', e => {
+  if (!swEl || swX === null) return;
+  const dx = e.changedTouches[0].clientX - swX, dy = Math.abs(e.changedTouches[0].clientY - swY);
+  if (Math.abs(dx) > 40 && Math.abs(dx) > dy * 1.5){
+    if (dx > 0){ closeSwipes(swEl); swEl.classList.add('open'); } else swEl.classList.remove('open');
+    swEl.dataset.swiped = Date.now();
+  }
+  swX = null;
+});
+document.addEventListener('click', e => {
+  const w = e.target.closest('.sw-wrap');
+  if (w && Date.now() - (w.dataset.swiped || 0) < 400){ e.stopPropagation(); e.preventDefault(); return; }   // the swipe itself is not a tap
+  const k = e.target.closest('[data-kill]');
+  if (k){ e.stopPropagation(); deleteTask(byId(k.dataset.kill)); return; }
+  if (w && w.classList.contains('open')){ e.stopPropagation(); w.classList.remove('open'); return; }
+  closeSwipes();
+}, true);
+
+/* pick from the pool into today */
+function pickForToday(){
+  const list = pool().sort((a,b) => (a.energy - b.energy) || (a.created - b.created));
   openSheet(`
-    <div class="sheet-nav"><button class="link" data-x="close">ביטול</button><span class="ttl">${swap ? 'מה יוצא מהיום?' : 'מה נכנס להיום?'}</span><span></span></div>
+    <div class="sheet-nav"><button class="link" data-x="close">ביטול</button><span class="ttl">מה נכנס להיום?</span><span></span></div>
     ${list.length ? `<div class="group">${list.map(t => `<button class="row" data-p="${t.id}"><span class="lbl"><div>${esc(t.title)}</div>
       <div class="m">${bat(t.energy)}<span>בערך ${t.est} דק'</span></div></span></button>`).join('')}</div>`
       : `<div class="empty"><div class="big">המאגר ריק</div>אפשר לרשום משהו חדש עם ＋</div>`}`);
@@ -734,9 +789,162 @@ function pickForToday(incoming){
     if (e.target.closest('[data-x=close]')) return closeSheet();
     const p = e.target.closest('[data-p]'); if (!p) return;
     const t = byId(p.dataset.p);
-    if (swap){ t.day = ''; incoming.day = today(); incoming.order = Date.now(); }
-    else if (todayTasks().length < 3){ t.day = today(); t.order = Date.now(); }
+    t.day = today(); t.order = Date.now();
     save(); closeSheet();
+  };
+}
+
+/* ---------- move tasks between devices (QR code or a copied code, no server) ---------- */
+const QR_LIB = 'https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js';
+const SCAN_LIB = 'https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js';
+const loadScript = src => new Promise((ok, no) => {
+  if (document.querySelector(`script[src="${src}"]`)?.dataset.ready) return ok();
+  const s = document.createElement('script'); s.src = src;
+  s.onload = () => { s.dataset.ready = 1; ok(); }; s.onerror = no; document.head.appendChild(s);
+});
+const b64u = bytes => { let s = ''; for (const b of bytes) s += String.fromCharCode(b); return btoa(s).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''); };
+const unb64u = str => Uint8Array.from(atob(str.replace(/-/g,'+').replace(/_/g,'/')), c => c.charCodeAt(0));
+const through = async (bytes, stream) => new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(stream)).arrayBuffer());
+async function packData(){
+  const raw = new TextEncoder().encode(JSON.stringify({v:1, tasks:db.tasks, days:db.days}));
+  try { if (window.CompressionStream) return 'NOW1:' + b64u(await through(raw, new CompressionStream('deflate-raw'))); } catch {}
+  return 'NOW0:' + b64u(raw);
+}
+async function unpackData(code){
+  const m = String(code).match(/NOW([01]):([A-Za-z0-9_-]+)/);
+  if (!m) throw new Error('הקוד לא נראה כמו קוד של האפליקציה. כדאי להעתיק אותו שוב, במלואו.');
+  let bytes;
+  try { bytes = unb64u(m[2]); if (m[1] === '1') bytes = await through(bytes, new DecompressionStream('deflate-raw')); }
+  catch { throw new Error('הקוד חלקי או פגום. כדאי להעתיק אותו שוב, במלואו.'); }
+  const d = JSON.parse(new TextDecoder().decode(bytes));
+  if (!Array.isArray(d.tasks)) throw new Error('בקוד אין משימות.');
+  return d;
+}
+const navBack = (title, back = true) => `<div class="sheet-nav">${back ? '<button class="link" data-x="back">חזרה</button>' : '<span></span>'}<span class="ttl">${title}</span><button class="link strong" data-x="close">סיום</button></div>`;
+function sheetNav(e){
+  const x = e.target.closest('[data-x]')?.dataset.x;
+  if (x === 'close'){ closeSheet(); return true; }
+  if (x === 'back'){ stopCam(); transferMenu(); return true; }
+  return false;
+}
+
+function transferMenu(){
+  openSheet(`${navBack('העברה בין מכשירים', false)}
+    <p class="cap" style="font-size:15px;margin-bottom:14px">המשימות נשמרות רק במכשיר הזה. כדי להעביר אותן למכשיר אחר, שולחים מכאן ומקבלים שם.</p>
+    <div class="group">
+      <button class="row" data-m="send"><span class="lbl"><div><b>שליחה מהמכשיר הזה</b></div><div class="m">מציג קוד QR לסריקה</div></span></button>
+      <button class="row" data-m="get"><span class="lbl"><div><b>קבלה ממכשיר אחר</b></div><div class="m">סורקים או מדביקים קוד</div></span></button>
+    </div>
+    <p class="hint">באייפון, צריך לעשות את זה מתוך האפליקציה שבמסך הבית. ל-Safari ולאפליקציה שבמסך הבית יש זיכרון נפרד.</p>`);
+  sheet.onkeydown = sheet.onchange = null;
+  sheet.onclick = e => {
+    if (sheetNav(e)) return;
+    const m = e.target.closest('[data-m]')?.dataset.m;
+    if (m === 'send') sendSheet();
+    if (m === 'get') getSheet();
+  };
+}
+
+async function sendSheet(){
+  const open = db.tasks.filter(t => !t.done).length;
+  openSheet(`${navBack('שליחה')}
+    <div class="qrbox" id="qrBox"><span style="color:#666">מכין קוד…</span></div>
+    <p class="hint" style="text-align:center;margin-top:10px">${db.tasks.length} משימות (${open} פתוחות) והניצחונות שלך</p>
+    <div class="stack" style="margin-top:16px"><button class="big-btn ghost" id="copyCode">העתקת הקוד</button></div>
+    <p class="hint" style="margin-top:14px">במכשיר השני: מאגר ← העברה ← קבלה, וסורקים את הקוד.<br>אם שני המכשירים של Apple, אפשר גם להעתיק כאן ולהדביק שם.</p>`);
+  sheet.onkeydown = sheet.onchange = null;
+  const code = await packData();
+  sheet.onclick = async e => {
+    if (sheetNav(e)) return;
+    if (e.target.closest('#copyCode')){
+      try { await navigator.clipboard.writeText(code); toast('הקוד הועתק'); }
+      catch { const t = document.createElement('textarea'); t.value = code; document.body.appendChild(t); t.select(); try { document.execCommand('copy'); toast('הקוד הועתק'); } catch { toast('לא הצלחתי להעתיק. אפשר לסרוק את הקוד במקום.'); } t.remove(); }
+    }
+  };
+  const box = $('#qrBox'); if (!box) return;
+  try {
+    await loadScript(QR_LIB);
+    const q = qrcode(0, 'L'); q.addData(code); q.make();
+    box.innerHTML = q.createSvgTag({cellSize:4, margin:0, scalable:true});
+  } catch (err) {
+    box.innerHTML = `<span style="color:#666;text-align:center;padding:12px">${/overflow/i.test(String(err)) ? 'יש יותר מדי משימות בשביל קוד QR. אפשר להשתמש ב"העתקת הקוד".' : 'אין חיבור לאינטרנט, אז אי אפשר להציג קוד QR. אפשר להשתמש ב"העתקת הקוד".'}</span>`;
+  }
+}
+
+let camStream = null;
+function stopCam(){ camStream?.getTracks().forEach(t => t.stop()); camStream = null; }
+function getSheet(){
+  openSheet(`${navBack('קבלה')}
+    <div class="stack"><button class="big-btn" id="scanBtn">סריקת קוד QR</button></div>
+    <div class="cam" id="cam" hidden><video id="camV" playsinline muted></video></div>
+    <div class="cap" style="margin-top:22px">או הדבקה של קוד שהועתק</div>
+    <div class="group" style="margin-bottom:10px"><textarea class="field" id="codeIn" rows="3" placeholder="NOW1:…" autocomplete="off" spellcheck="false"></textarea></div>
+    <div class="stack"><button class="big-btn ghost" id="useCode">המשך</button></div>
+    <div class="err" id="impErr"></div>`);
+  sheet.onkeydown = sheet.onchange = null;
+  const fail = msg => { const el = $('#impErr'); if (el) el.textContent = msg; };
+  const got = async code => { try { previewImport(await unpackData(code)); } catch (err) { fail(err.message); } };
+  sheet.onclick = async e => {
+    if (sheetNav(e)) return;
+    if (e.target.closest('#useCode')) return got($('#codeIn').value);
+    if (e.target.closest('#scanBtn')){
+      if (camStream){ stopCam(); $('#cam').hidden = true; $('#scanBtn').textContent = 'סריקת קוד QR'; return; }
+      fail('');
+      try {
+        await loadScript(SCAN_LIB);
+        camStream = await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}, audio:false});
+      } catch (err) {
+        return fail(err?.name === 'NotAllowedError' ? 'אין הרשאה למצלמה. אפשר לאשר אותה בהגדרות, או להדביק את הקוד.' : 'לא הצלחתי לפתוח את המצלמה. אפשר להדביק את הקוד במקום.');
+      }
+      const v = $('#camV'); $('#cam').hidden = false; $('#scanBtn').textContent = 'עצירת הסריקה';
+      v.srcObject = camStream; try { await v.play(); } catch {}
+      const c = document.createElement('canvas'), x = c.getContext('2d', {willReadFrequently:true});
+      const loop = () => {
+        if (!camStream) return;
+        if (v.readyState >= 2 && v.videoWidth){
+          const k = Math.min(1, 640 / v.videoWidth);
+          c.width = Math.round(v.videoWidth * k); c.height = Math.round(v.videoHeight * k);
+          x.drawImage(v, 0, 0, c.width, c.height);
+          const r = jsQR(x.getImageData(0, 0, c.width, c.height).data, c.width, c.height, {inversionAttempts:'dontInvert'});
+          if (r && r.data.startsWith('NOW')){ stopCam(); ding(); return got(r.data); }
+        }
+        requestAnimationFrame(loop);
+      };
+      loop();
+    }
+  };
+}
+
+function previewImport(d){
+  const incoming = d.tasks.filter(t => t && t.id && t.title);
+  const norm0 = x => x.title.trim().replace(/\s+/g, ' ');
+  const fresh = incoming.filter(t => !byId(t.id) && !db.tasks.some(x => !x.done && !t.done && norm0(x) === norm0(t))).length;
+  openSheet(`${navBack('קבלה')}
+    <div class="empty" style="padding:18px 8px 8px"><div class="em">📦</div><div class="big">נמצאו ${incoming.length} משימות</div>${fresh} מהן חדשות למכשיר הזה.</div>
+    <div class="stack" style="margin-top:12px">
+      <button class="big-btn" data-imp="merge">לאחד עם מה שיש כאן</button>
+      <button class="big-btn ghost" data-imp="replace" id="repBtn">להחליף את מה שיש כאן</button>
+    </div>
+    <p class="hint" style="margin-top:12px">איחוד שומר את המשימות שכבר כאן ומוסיף את החדשות. משימה שקיימת בשני המכשירים מתעדכנת לגרסה שהגיעה, אלא אם כאן היא כבר בוצעה.</p>`);
+  let armed = false;
+  sheet.onclick = e => {
+    if (sheetNav(e)) return;
+    const m = e.target.closest('[data-imp]')?.dataset.imp; if (!m) return;
+    if (m === 'replace' && !armed){ armed = true; $('#repBtn').textContent = 'בטוח? לחיצה נוספת מוחקת את מה שיש כאן'; $('#repBtn').style.color = 'var(--red)'; return; }
+    if (m === 'replace'){ db.tasks = incoming; db.days = {...(d.days || {})}; }
+    else {
+      const norm = x => x.title.trim().replace(/\s+/g, ' ');
+      incoming.forEach(t => {
+        // same task, or the same open task typed on both devices (like the example tasks)
+        let i = db.tasks.findIndex(x => x.id === t.id);
+        if (i < 0) i = db.tasks.findIndex(x => !x.done && !t.done && norm(x) === norm(t));
+        if (i < 0) db.tasks.push(t);
+        else if (!(db.tasks[i].done && !t.done)) db.tasks[i] = t;
+      });
+      for (const [k, n] of Object.entries(d.days || {})) db.days[k] = Math.max(db.days[k] || 0, n);
+    }
+    db.focus = null; save(); closeSheet(); setTab('pool');
+    toast(m === 'replace' ? `${incoming.length} משימות הועברו` : `${fresh} משימות חדשות נוספו`);
   };
 }
 
