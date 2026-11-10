@@ -26,6 +26,7 @@
   --e1:#34c759; --e2:#ff9500; --e3:#ff2d55;
   --accent:var(--indigo);
   --shadow:0 1px 2px rgba(0,0,0,.04), 0 8px 24px rgba(0,0,0,.06);
+  --sheetgroup:#ffffff; --segon:#ffffff;
 }
 @media (prefers-color-scheme: dark){
   :root{
@@ -38,10 +39,10 @@
     --blue:#0a84ff; --red:#ff453a; --orange:#ff9f0a; --yellow:#ffd60a; --green:#30d158;
     --teal:#40c8e0; --indigo:#5e5ce6; --purple:#bf5af2; --pink:#ff375f; --gray:#98989d;
     --e1:#30d158; --e2:#ff9f0a; --e3:#ff375f;
-    --shadow:none;
+    --shadow:none; --sheetgroup:#2c2c2e; --segon:#636366;
   }
-  .sheet .group{background:var(--card2)}
 }
+
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;height:100%}
 body{
@@ -170,7 +171,7 @@ svg{display:block}
 .link{color:var(--accent);font-size:17px;padding:6px 0}
 .link.strong{font-weight:600}
 .link:active{opacity:.4}
-.sheet .group{margin-bottom:22px}
+.sheet .group{margin-bottom:22px;background:var(--sheetgroup)}
 .field{width:100%;border:0;outline:none;background:none;padding:13px 16px;display:block;font-size:17px}
 .field.title{font-size:20px;font-weight:600}
 .field::placeholder{color:var(--ink3)}
@@ -178,8 +179,7 @@ svg{display:block}
 .seg{display:flex;background:var(--fill);border-radius:9px;padding:2px;margin:10px 12px}
 .seg button{flex:1;padding:7px 0;font-size:13px;font-weight:500;border-radius:7px;display:flex;align-items:center;justify-content:center;gap:5px;letter-spacing:-.08px}
 .seg button svg{width:18px;height:10px}
-.seg button.on{background:var(--card);box-shadow:0 3px 8px rgba(0,0,0,.12),0 3px 1px rgba(0,0,0,.04);font-weight:600}
-@media (prefers-color-scheme: dark){.seg button.on{background:#636366}}
+.seg button.on{background:var(--segon);box-shadow:0 3px 8px rgba(0,0,0,.12),0 3px 1px rgba(0,0,0,.04);font-weight:600}
 .step-row{display:flex;align-items:center;gap:12px;padding:0 16px;min-height:46px;position:relative}
 .step-row:not(:last-child)::after{content:"";position:absolute;bottom:0;left:0;inset-inline-start:52px;height:.5px;background:var(--sep)}
 .step-row .tx{flex:1;padding:11px 0}
