@@ -246,6 +246,18 @@ svg{display:block}
 textarea.field{resize:none;font-size:15px;font-family:ui-monospace,Menlo,monospace;letter-spacing:0;direction:ltr;text-align:left}
 .stack{display:flex;flex-direction:column;gap:10px}
 .err{color:var(--red);font-size:15px;text-align:center;min-height:20px;margin-top:10px}
+.sw-wrap{position:relative;overflow:hidden}
+.sw-wrap>.row,.sw-wrap>.slot{position:relative;z-index:1;background:var(--card);transition:transform .25s cubic-bezier(.32,.72,0,1);touch-action:pan-y}
+.sw-wrap.open>.row,.sw-wrap.open>.slot{transform:translateX(92px)}
+.sw-del{position:absolute;left:0;top:0;bottom:0;width:92px;background:var(--red);color:#fff;font-weight:600;font-size:15px;display:flex;align-items:center;justify-content:center}
+.group>.sw-wrap:not(:last-child)::after{content:"";position:absolute;bottom:0;left:0;inset-inline-start:50px;height:.5px;background:var(--sep);z-index:2}
+.slots{display:flex;flex-direction:column;gap:10px}
+.slots>.sw-wrap{border-radius:16px;box-shadow:var(--shadow)}
+.slots .slot{margin-bottom:0;box-shadow:none}
+.step-row .se{flex:1;border:0;outline:none;background:none;padding:11px 0;font-size:17px;min-width:0;border-radius:6px}
+.step-row .se:focus{background:var(--fill);padding-inline:8px}
+.step-row.d .se{color:var(--ink2);text-decoration:line-through}
+button.won{cursor:pointer}
 .toast{position:fixed;left:50%;bottom:calc(140px + env(safe-area-inset-bottom));transform:translate(-50%,20px);background:rgba(30,30,30,.92);color:#fff;border-radius:22px;padding:10px 16px;font-size:15px;opacity:0;pointer-events:none;transition:all .3s;z-index:50;display:flex;gap:14px;align-items:center;max-width:90vw;backdrop-filter:blur(10px)}
 .toast.on{opacity:1;transform:translate(-50%,0);pointer-events:auto}
 .toast button{color:#64d2ff;font-weight:600;white-space:nowrap}
@@ -482,10 +494,10 @@ function renderToday(){
   const date = new Intl.DateTimeFormat('he-IL', {weekday:'long', day:'numeric', month:'long'}).format(new Date());
   const slots = list.map((t, i) => {
     const ds = t.steps.filter(s => s.done).length;
-    return `<div class="slot"><span class="num">${i+1}</span>
+    return `<div class="sw-wrap"><button class="sw-del" data-kill="${t.id}">מחיקה</button><div class="slot"><span class="num">${i+1}</span>
       <button class="tx press" data-open="${t.id}" style="text-align:start"><div class="t">${esc(t.title)}</div>
         <div class="m">${bat(t.energy)}<span>בערך ${t.est} דק'</span>${t.steps.length ? `<span>${ds}/${t.steps.length} צעדים</span>` : ''}</div></button>
-      <button class="play press" data-play="${t.id}" aria-label="להתחיל"><svg><use href="#i-play"/></svg></button></div>`;
+      <button class="play press" data-play="${t.id}" aria-label="להתחיל"><svg><use href="#i-play"/></svg></button></div></div>`;
   }).join('') + `<button class="slot emptyslot press" data-pick><span class="num">＋</span><span class="tx">בחירה מהמאגר</span></button>`;
   el.innerHTML = `
     <h1 class="large">היום</h1>
@@ -494,14 +506,17 @@ function renderToday(){
       <div class="s">זה בסדר גמור. מה עושים איתן?</div>
       <div class="btns"><button class="p" data-left="keep">להמשיך היום</button><button data-left="pool">חזרה למאגר</button></div></div>` : ''}
     <h2 class="h2" style="margin-top:4px">לעשות היום${list.length ? ` · ${list.length}` : ''}</h2>
-    ${slots}
+    <div class="slots">${slots}</div>
     ${list.length > 1 ? '<p class="hint">לא צריך הכל בבת אחת. במסך "עכשיו" מוצגת רק אחת בכל פעם.</p>' : ''}
     ${won.length ? `<h2 class="h2">ניצחונות היום 🏆</h2><div class="group">${won.map(t => `
-      <div class="row won"><span class="chk on"><svg><use href="#i-check"/></svg></span>
-      <span class="lbl"><div class="t">${esc(t.title)}</div>${t.spent > 60 ? `<div class="m">לקח ${mins(t.spent)} דק' · הערכת ${t.est}</div>` : ''}</span></div>`).join('')}</div>` : ''}
+      <button class="row won" data-undo="${t.id}"><span class="chk on"><svg><use href="#i-check"/></svg></span>
+      <span class="lbl"><div class="t">${esc(t.title)}</div>${t.spent > 60 ? `<div class="m">לקח ${mins(t.spent)} דק' · הערכת ${t.est}</div>` : ''}</span></button>`).join('')}</div>
+      <p class="hint">סימנת בטעות? לחיצה על משימה מחזירה אותה לרשימה.</p>` : ''}
     ${r ? `<div class="insight"><div class="t">תובנת זמן</div><div class="s">${r > 1.15 ? `משימות לוקחות לך בממוצע <b>פי ${r.toFixed(1)}</b> ממה שהערכת. כדאי לתכנן עם מרווח.` : r < .85 ? 'משימות לוקחות לך פחות ממה שהערכת. אפשר להעריך פחות.' : 'ההערכות שלך מדויקות. יפה מאוד.'}</div></div>` : ''}`;
 }
 $('#t-today').addEventListener('click', e => {
+  const u = e.target.closest('[data-undo]');
+  if (u){ const t = byId(u.dataset.undo); t.done = false; t.doneAt = 0; t.day = today(); save(); renderToday(); toast('הוחזרה ללעשות היום'); return; }
   const o = e.target.closest('[data-open]'); if (o) return editTask(byId(o.dataset.open));
   const p = e.target.closest('[data-play]'); if (p){ setTab('now'); return startFocus(byId(p.dataset.play), dur); }
   if (e.target.closest('[data-pick]')) return pickForToday();
@@ -523,10 +538,11 @@ function renderPool(){
     <div class="hdr"><h1 class="large">מאגר</h1><button class="hbtn press" id="moveBtn"><svg><use href="#i-sync"/></svg>העברה</button></div>
     <p class="sub">${list.length ? `${list.length} דברים מחכים כאן. לא צריך לעשות הכל, רק לבחור.` : ''}</p>
     ${list.length ? `<div class="group">${list.map(t => `
-      <div class="row"><button class="chk press" data-done="${t.id}" aria-label="סימון כבוצע"><svg><use href="#i-check"/></svg></button>
+      <div class="sw-wrap"><button class="sw-del" data-kill="${t.id}">מחיקה</button><div class="row"><button class="chk press" data-done="${t.id}" aria-label="סימון כבוצע"><svg><use href="#i-check"/></svg></button>
         <button class="lbl press" data-open="${t.id}"><div>${esc(t.title)}</div>
           <div class="m">${bat(t.energy)}<span>בערך ${t.est} דק'</span>${t.steps.length ? `<span>${t.steps.filter(s=>s.done).length}/${t.steps.length} צעדים</span>` : ''}</div></button>
-        <button class="addtoday ${isToday(t)?'in':''}" data-today="${t.id}">${isToday(t) ? '✓ היום' : 'להיום'}</button></div>`).join('')}</div>`
+        <button class="addtoday ${isToday(t)?'in':''}" data-today="${t.id}">${isToday(t) ? '✓ היום' : 'להיום'}</button></div></div>`).join('')}</div>
+      <p class="hint">החלקה ימינה על משימה מציגה כפתור מחיקה. לחיצה על משימה פותחת אותה לעריכה.</p>`
     : `<div class="empty"><div class="em">📭</div><div class="big">המאגר ריק</div>כשמשהו עולה בראש, לוחצים על ＋ ושוכחים ממנו.</div>`}`;
 }
 $('#t-pool').addEventListener('click', e => {
@@ -692,7 +708,7 @@ function editTask(t){
       <div class="cap">צעדים קטנים. כל צעד = ניצחון ⭐</div>
       <div class="group">
         ${t.steps.map(s => `<div class="step-row ${s.done?'d':''}"><button class="chk ${s.done?'on':''}" data-st="${s.id}"><svg><use href="#i-check"/></svg></button>
-          <span class="tx">${esc(s.t)}</span><button class="x" data-del="${s.id}" aria-label="מחיקה">×</button></div>`).join('')}
+          <input class="se" data-se="${s.id}" value="${esc(s.t)}" enterkeyhint="done" autocomplete="off" aria-label="עריכת צעד"><button class="x" data-del="${s.id}" aria-label="מחיקת צעד">×</button></div>`).join('')}
         <div class="step-row"><span class="plus"><svg><use href="#i-plus"/></svg></span><input id="eStep" placeholder="${t.steps.length ? 'הצעד הבא?' : 'מה הצעד הראשון, הכי קטן שיש?'}" enterkeyhint="done" autocomplete="off"></div>
       </div>
       <div class="cap">כמה אנרגיה זה דורש?</div>
@@ -702,7 +718,11 @@ function editTask(t){
       <div class="group"><div class="row"><span class="lbl">לעשות היום</span><label class="sw"><input type="checkbox" id="eToday" ${isToday(t)?'checked':''}><span></span></label></div></div>
       <div class="group"><button class="row danger" data-x="del"><span class="lbl">מחיקה</span></button></div>`);
   };
-  const pullTitle = () => { const v = $('#eTitle')?.value.trim(); if (v) t.title = v; };
+  const pullTitle = () => {
+    const v = $('#eTitle')?.value.trim(); if (v) t.title = v;
+    sheet.querySelectorAll('[data-se]').forEach(inp => { const st = t.steps.find(x => x.id === inp.dataset.se); if (st) st.t = inp.value.trim(); });
+    t.steps = t.steps.filter(x => x.t);   // a step cleared to nothing is removed
+  };
   const addStep = () => { const v = $('#eStep')?.value.trim(); if (v) t.steps.push({id:uid(), t:v, done:false}); };
   sheet.onclick = e => {
     const st = e.target.closest('[data-st]');
@@ -713,12 +733,10 @@ function editTask(t){
     const es = e.target.closest('[data-est]'); if (es){ t.est = +es.dataset.est; pullTitle(); addStep(); save(); return draw(); }
     const x = e.target.closest('[data-x]')?.dataset.x;
     if (x === 'close'){ pullTitle(); addStep(); save(); return closeSheet(); }
-    if (x === 'del'){
-      const i = db.tasks.indexOf(t); db.tasks.splice(i, 1); save(); closeSheet();
-      toast('נמחק', 'ביטול', () => { db.tasks.splice(i, 0, t); save(); render(); });
-    }
+    if (x === 'del'){ closeSheet(); deleteTask(t); }
   };
   sheet.onkeydown = e => {
+    if ((e.target.dataset.se || e.target.id === 'eTitle') && e.key === 'Enter' && !e.isComposing){ e.target.blur(); return; }
     if (e.target.id === 'eStep' && e.key === 'Enter' && !e.isComposing){
       pullTitle(); addStep(); save(); draw();
       setTimeout(() => $('#eStep')?.focus(), 30);
@@ -727,6 +745,36 @@ function editTask(t){
   sheet.onchange = e => { if (e.target.id === 'eToday'){ pullTitle(); if (!toggleToday(t)) e.target.checked = false; } };
   draw();
 }
+
+function deleteTask(t){
+  const i = db.tasks.indexOf(t); if (i < 0) return;
+  db.tasks.splice(i, 1); if (db.focus?.id === t.id) db.focus = null; save(); render();
+  toast('המשימה נמחקה', 'ביטול', () => { db.tasks.splice(Math.min(i, db.tasks.length), 0, t); save(); render(); });
+}
+/* swipe a row right (the trailing side in RTL) to reveal Delete, like iOS */
+let swX = null, swY = 0, swEl = null;
+const closeSwipes = except => document.querySelectorAll('.sw-wrap.open').forEach(w => w !== except && w.classList.remove('open'));
+document.addEventListener('touchstart', e => {
+  swEl = e.target.closest('.sw-wrap'); if (!swEl) { closeSwipes(); return; }
+  swX = e.touches[0].clientX; swY = e.touches[0].clientY;
+}, {passive:true});
+document.addEventListener('touchend', e => {
+  if (!swEl || swX === null) return;
+  const dx = e.changedTouches[0].clientX - swX, dy = Math.abs(e.changedTouches[0].clientY - swY);
+  if (Math.abs(dx) > 40 && Math.abs(dx) > dy * 1.5){
+    if (dx > 0){ closeSwipes(swEl); swEl.classList.add('open'); } else swEl.classList.remove('open');
+    swEl.dataset.swiped = Date.now();
+  }
+  swX = null;
+});
+document.addEventListener('click', e => {
+  const w = e.target.closest('.sw-wrap');
+  if (w && Date.now() - (w.dataset.swiped || 0) < 400){ e.stopPropagation(); e.preventDefault(); return; }   // the swipe itself is not a tap
+  const k = e.target.closest('[data-kill]');
+  if (k){ e.stopPropagation(); deleteTask(byId(k.dataset.kill)); return; }
+  if (w && w.classList.contains('open')){ e.stopPropagation(); w.classList.remove('open'); return; }
+  closeSwipes();
+}, true);
 
 /* pick from the pool into today */
 function pickForToday(){
