@@ -1,0 +1,759 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f2f2f7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="עכשיו">
+<title>עכשיו</title>
+<style>
+/* A task app built for ADHD, in an iOS-like style.
+   Principles: show one thing at a time ("Now"), at most 3 things for today, capture in two seconds,
+   break work into tiny steps, a visual timer against time blindness, and a small reward for every step.
+   No red "overdue" shame. Data stays in localStorage on the device. */
+:root{
+  color-scheme:light;
+  --bg:#f2f2f7; --card:#ffffff; --card2:#ffffff;
+  --fill:rgba(118,118,128,.12); --fill2:rgba(118,118,128,.2);
+  --sep:rgba(60,60,67,.18);
+  --ink:#000; --ink2:rgba(60,60,67,.6); --ink3:rgba(60,60,67,.3);
+  --bar:rgba(249,249,251,.82); --sheet:#f2f2f7;
+  --blue:#007aff; --red:#ff3b30; --orange:#ff9500; --yellow:#ffcc00; --green:#34c759;
+  --teal:#30b0c7; --indigo:#5856d6; --purple:#af52de; --pink:#ff2d55; --gray:#8e8e93;
+  --e1:#34c759; --e2:#ff9500; --e3:#ff2d55;
+  --accent:var(--indigo);
+  --shadow:0 1px 2px rgba(0,0,0,.04), 0 8px 24px rgba(0,0,0,.06);
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    color-scheme:dark;
+    --bg:#000; --card:#1c1c1e; --card2:#2c2c2e;
+    --fill:rgba(118,118,128,.24); --fill2:rgba(118,118,128,.32);
+    --sep:rgba(84,84,88,.6);
+    --ink:#fff; --ink2:rgba(235,235,245,.6); --ink3:rgba(235,235,245,.3);
+    --bar:rgba(22,22,24,.82); --sheet:#1c1c1e;
+    --blue:#0a84ff; --red:#ff453a; --orange:#ff9f0a; --yellow:#ffd60a; --green:#30d158;
+    --teal:#40c8e0; --indigo:#5e5ce6; --purple:#bf5af2; --pink:#ff375f; --gray:#98989d;
+    --e1:#30d158; --e2:#ff9f0a; --e3:#ff375f;
+    --shadow:none;
+  }
+  .sheet .group{background:var(--card2)}
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%}
+body{
+  background:var(--bg);color:var(--ink);
+  font:17px/1.29 -apple-system,BlinkMacSystemFont,"SF Pro Text","SF Hebrew","Segoe UI","Helvetica Neue",Arial,sans-serif;
+  letter-spacing:-.41px;-webkit-font-smoothing:antialiased;overflow:hidden;
+}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer;letter-spacing:inherit}
+input,textarea{font:inherit;color:inherit;letter-spacing:inherit}
+svg{display:block}
+.press:active,button.row:active{opacity:.55}
+
+/* ---------- layout ---------- */
+#app{position:relative;height:100%;max-width:600px;margin:0 auto;overflow:hidden}
+.tab{position:absolute;inset:0;overflow-y:auto;padding:calc(env(safe-area-inset-top) + 12px) 16px calc(110px + env(safe-area-inset-bottom));display:none}
+.tab.on{display:block;animation:fade .3s ease}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.large{font-size:34px;line-height:41px;font-weight:700;letter-spacing:.37px;margin:0}
+.sub{color:var(--ink2);font-size:15px;letter-spacing:-.24px;margin:2px 0 18px}
+.h2{font-size:20px;font-weight:700;letter-spacing:.38px;margin:28px 4px 10px}
+.hint{color:var(--ink2);font-size:13px;letter-spacing:-.08px;margin:8px 4px 0}
+
+/* ---------- tab bar ---------- */
+.tabbar{
+  position:absolute;left:0;right:0;bottom:0;z-index:6;display:flex;
+  padding:6px 8px calc(4px + env(safe-area-inset-bottom));
+  background:var(--bar);backdrop-filter:saturate(180%) blur(20px);-webkit-backdrop-filter:saturate(180%) blur(20px);
+  box-shadow:0 -.5px 0 var(--sep);
+}
+.tabbar button[data-tab]{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:10px;font-weight:500;color:var(--gray);letter-spacing:.1px;padding:2px 0}
+.tabbar button[data-tab] svg{width:26px;height:26px}
+.tabbar button.on{color:var(--accent)}
+.tabbar .fab{flex:none;width:52px;height:52px;margin:-14px 12px 0;border-radius:50%;background:var(--accent);color:#fff;display:grid;place-items:center;
+  box-shadow:0 4px 14px rgba(88,86,214,.4);transition:transform .15s;padding:0}
+.tabbar .fab:active{transform:scale(.92)}
+.tabbar .fab svg{width:22px;height:22px}
+
+/* ---------- now ---------- */
+.wins{display:flex;gap:8px;margin:0 0 18px;flex-wrap:wrap}
+.pill{display:flex;align-items:center;gap:6px;background:var(--card);border-radius:20px;padding:6px 12px;font-size:15px;font-weight:600;letter-spacing:-.24px;box-shadow:var(--shadow)}
+.pill svg{width:16px;height:16px}
+.q{font-size:15px;color:var(--ink2);margin:0 4px 8px;letter-spacing:-.24px}
+.energy{display:flex;gap:8px;margin-bottom:22px}
+.energy button{flex:1;background:var(--card);border-radius:14px;padding:10px 4px 9px;display:flex;flex-direction:column;align-items:center;gap:4px;font-size:13px;font-weight:600;color:var(--ink2);box-shadow:var(--shadow);border:2px solid transparent;transition:all .2s}
+.energy button svg{width:30px;height:16px}
+.energy button.on{border-color:var(--ec);color:var(--ink)}
+.now-card{background:var(--card);border-radius:22px;padding:22px 20px 18px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+.now-card .from{font-size:13px;font-weight:600;color:var(--accent);letter-spacing:-.08px}
+.now-card .title{font-size:28px;line-height:34px;font-weight:700;letter-spacing:.36px;margin:6px 0 10px;word-break:break-word}
+.now-card .meta{display:flex;gap:12px;color:var(--ink2);font-size:15px;align-items:center;flex-wrap:wrap}
+.now-card .meta span{display:flex;align-items:center;gap:4px}
+.now-card .meta svg{width:22px;height:12px}
+.step-box{margin:18px 0 0;background:var(--fill);border-radius:14px;padding:12px 14px}
+.step-box .lbl{font-size:13px;color:var(--ink2);font-weight:600}
+.step-box .st{font-size:19px;font-weight:600;margin-top:2px}
+.step-box input{width:100%;border:0;outline:none;background:none;font-size:17px;margin-top:4px;padding:0}
+.step-box input::placeholder{color:var(--ink3)}
+.progress{height:4px;border-radius:2px;background:var(--fill);margin-top:14px;overflow:hidden}
+.progress i{display:block;height:100%;background:var(--green);border-radius:2px;transition:width .4s}
+.durs{display:flex;gap:6px;justify-content:center;margin:20px 0 10px}
+.durs button{padding:6px 12px;border-radius:16px;background:var(--fill);font-size:15px;font-weight:500}
+.durs button.on{background:var(--accent);color:#fff}
+.big-btn{width:100%;height:56px;border-radius:16px;background:var(--accent);color:#fff;font-size:19px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px;transition:transform .12s}
+.big-btn:active{transform:scale(.98);opacity:.9}
+.big-btn svg{width:20px;height:20px}
+.big-btn.green{background:var(--green)}
+.big-btn.ghost{background:var(--fill);color:var(--ink)}
+.row2{display:flex;gap:10px;margin-top:10px}
+.row2 button{flex:1;height:46px;border-radius:14px;background:var(--fill);font-weight:600;font-size:15px;display:flex;align-items:center;justify-content:center;gap:6px}
+.row2 button svg{width:18px;height:18px}
+.row2 .done{color:var(--green)}
+.empty{text-align:center;padding:40px 16px;color:var(--ink2)}
+.empty .em{font-size:56px;line-height:1}
+.empty .big{font-size:22px;font-weight:700;color:var(--ink);margin:12px 0 6px}
+
+/* ---------- today ---------- */
+.slot{background:var(--card);border-radius:16px;padding:14px 16px;display:flex;gap:14px;align-items:center;margin-bottom:10px;box-shadow:var(--shadow);width:100%;text-align:start}
+.slot .num{width:30px;height:30px;border-radius:50%;background:var(--accent);color:#fff;display:grid;place-items:center;font-weight:700;font-size:15px;flex:none}
+.slot .tx{flex:1;min-width:0}
+.slot .t{font-weight:600;word-break:break-word}
+.slot .m{color:var(--ink2);font-size:13px;margin-top:3px;display:flex;gap:8px;align-items:center}
+.slot .m svg{width:18px;height:10px}
+.slot .play{width:36px;height:36px;border-radius:50%;background:var(--fill);color:var(--accent);display:grid;place-items:center;flex:none}
+.slot .play svg{width:16px;height:16px;margin-left:2px}
+.slot.emptyslot{background:transparent;box-shadow:none;border:1.5px dashed var(--ink3);color:var(--ink2)}
+.slot.emptyslot .num{background:var(--fill);color:var(--ink2)}
+.banner{background:var(--card);border-radius:16px;padding:14px 16px;margin-bottom:16px;box-shadow:var(--shadow)}
+.banner .t{font-weight:600}
+.banner .s{color:var(--ink2);font-size:15px;margin:2px 0 10px}
+.banner .btns{display:flex;gap:8px}
+.banner .btns button{flex:1;height:38px;border-radius:10px;background:var(--fill);font-weight:600;font-size:15px}
+.banner .btns button.p{background:var(--accent);color:#fff}
+.insight{background:linear-gradient(135deg,rgba(88,86,214,.12),rgba(175,82,222,.12));border-radius:16px;padding:14px 16px;margin-top:22px}
+.insight .t{font-weight:600;font-size:15px;color:var(--accent)}
+.insight .s{font-size:15px;margin-top:4px}
+
+/* ---------- list rows ---------- */
+.group{background:var(--card);border-radius:14px;overflow:hidden;box-shadow:var(--shadow)}
+.row{display:flex;align-items:center;gap:12px;min-height:48px;padding:0 16px;position:relative;width:100%;text-align:start}
+.row:not(:last-child)::after{content:"";position:absolute;bottom:0;left:0;inset-inline-start:50px;height:.5px;background:var(--sep)}
+.row .lbl{flex:1;padding:12px 0;min-width:0;text-align:start}
+.row .lbl .m{color:var(--ink2);font-size:13px;margin-top:2px;display:flex;gap:8px;align-items:center}
+.row .lbl .m svg{width:18px;height:10px}
+.chk{flex:none;width:24px;height:24px;border-radius:50%;border:1.5px solid var(--ink3);display:grid;place-items:center;transition:all .2s;color:#fff}
+.chk svg{width:14px;height:14px;opacity:0;transform:scale(.4);transition:all .25s cubic-bezier(.3,1.6,.5,1)}
+.chk.on{background:var(--green);border-color:var(--green)}
+.chk.on svg{opacity:1;transform:none}
+.addtoday{flex:none;font-size:13px;font-weight:600;padding:6px 10px;border-radius:14px;background:var(--fill);color:var(--accent)}
+.addtoday.in{background:var(--accent);color:#fff}
+.won .lbl{color:var(--ink2)}
+.won .t{text-decoration:line-through;text-decoration-color:var(--ink3)}
+
+/* ---------- sheet ---------- */
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.4);opacity:0;pointer-events:none;transition:opacity .35s;z-index:20}
+.scrim.on{opacity:1;pointer-events:auto}
+.sheet{
+  position:fixed;left:0;right:0;bottom:0;z-index:21;max-width:600px;margin:0 auto;
+  background:var(--sheet);border-radius:14px 14px 0 0;max-height:92vh;overflow-y:auto;
+  transform:translateY(105%);transition:transform .45s cubic-bezier(.32,.72,0,1);
+  padding:0 16px calc(28px + env(safe-area-inset-bottom));
+}
+.sheet.on{transform:none}
+.grab{width:36px;height:5px;border-radius:3px;background:var(--ink3);margin:6px auto 0}
+.sheet-nav{display:flex;align-items:center;justify-content:space-between;height:52px;position:sticky;top:0;background:var(--sheet);z-index:1}
+.sheet-nav .ttl{font-weight:600;position:absolute;left:50%;transform:translateX(-50%);white-space:nowrap}
+.link{color:var(--accent);font-size:17px;padding:6px 0}
+.link.strong{font-weight:600}
+.link:active{opacity:.4}
+.sheet .group{margin-bottom:22px}
+.field{width:100%;border:0;outline:none;background:none;padding:13px 16px;display:block;font-size:17px}
+.field.title{font-size:20px;font-weight:600}
+.field::placeholder{color:var(--ink3)}
+.cap{font-size:13px;color:var(--ink2);margin:0 16px 6px;letter-spacing:-.08px}
+.seg{display:flex;background:var(--fill);border-radius:9px;padding:2px;margin:10px 12px}
+.seg button{flex:1;padding:7px 0;font-size:13px;font-weight:500;border-radius:7px;display:flex;align-items:center;justify-content:center;gap:5px;letter-spacing:-.08px}
+.seg button svg{width:18px;height:10px}
+.seg button.on{background:var(--card);box-shadow:0 3px 8px rgba(0,0,0,.12),0 3px 1px rgba(0,0,0,.04);font-weight:600}
+@media (prefers-color-scheme: dark){.seg button.on{background:#636366}}
+.step-row{display:flex;align-items:center;gap:12px;padding:0 16px;min-height:46px;position:relative}
+.step-row:not(:last-child)::after{content:"";position:absolute;bottom:0;left:0;inset-inline-start:52px;height:.5px;background:var(--sep)}
+.step-row .tx{flex:1;padding:11px 0}
+.step-row.d .tx{color:var(--ink2);text-decoration:line-through}
+.step-row .x{color:var(--ink3);font-size:22px;padding:4px 6px}
+.step-row input{flex:1;border:0;outline:none;background:none;padding:12px 0;font-size:17px;min-width:0}
+.step-row input::placeholder{color:var(--ink3)}
+.step-row .plus{width:24px;height:24px;border-radius:50%;background:var(--green);color:#fff;display:grid;place-items:center;flex:none}
+.step-row .plus svg{width:12px;height:12px}
+.sw{position:relative;width:51px;height:31px;flex:none}
+.sw input{position:absolute;opacity:0;inset:0;margin:0;cursor:pointer;z-index:1}
+.sw span{position:absolute;inset:0;border-radius:16px;background:var(--fill2);transition:background .25s}
+.sw span::after{content:"";position:absolute;top:2px;inset-inline-start:2px;width:27px;height:27px;border-radius:50%;background:#fff;box-shadow:0 3px 8px rgba(0,0,0,.15),0 3px 1px rgba(0,0,0,.06);transition:transform .25s cubic-bezier(.3,1.3,.5,1)}
+.sw input:checked+span{background:var(--green)}
+.sw input:checked+span::after{transform:translateX(-20px)}
+.danger{color:var(--red);justify-content:center}
+.danger .lbl{text-align:center;flex:none}
+
+/* capture */
+.cap-in{display:flex;align-items:center;gap:8px;background:var(--card);border-radius:14px;padding:4px;padding-inline-start:16px;margin-top:6px}
+.cap-in input{flex:1;border:0;outline:none;background:none;font-size:19px;padding:12px 0;min-width:0}
+.cap-in input::placeholder{color:var(--ink3)}
+.mic{width:40px;height:40px;border-radius:50%;background:var(--fill);color:var(--accent);display:grid;place-items:center;flex:none}
+.mic svg{width:20px;height:20px}
+.mic.rec{background:var(--red);color:#fff;animation:pulse 1.2s infinite}
+@keyframes pulse{50%{transform:scale(1.08)}}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.chips span{background:var(--card);border-radius:16px;padding:6px 12px;font-size:15px;animation:pop .3s cubic-bezier(.3,1.6,.5,1)}
+@keyframes pop{from{transform:scale(.6);opacity:0}}
+
+/* ---------- focus ---------- */
+.focus{position:fixed;inset:0;z-index:30;background:var(--bg);display:none;flex-direction:column;align-items:center;padding:calc(env(safe-area-inset-top) + 12px) 24px calc(24px + env(safe-area-inset-bottom));max-width:600px;margin:0 auto}
+.focus.on{display:flex;animation:fade .35s ease}
+.focus .top{width:100%;display:flex;justify-content:space-between;align-items:center}
+.focus .task{font-size:17px;font-weight:600;color:var(--ink2);text-align:center;margin-top:10px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dial{position:relative;width:min(72vw,300px);aspect-ratio:1;margin:24px 0 22px;border-radius:50%;background:var(--card);box-shadow:var(--shadow)}
+.dial .pie{position:absolute;inset:12px;border-radius:50%;background:conic-gradient(var(--accent) var(--a,360deg), var(--fill) 0)}
+.dial .center{position:absolute;inset:0;display:grid;place-items:center}
+.dial .time{font-size:48px;font-weight:300;letter-spacing:-1px;font-variant-numeric:tabular-nums;background:var(--card);border-radius:50%;width:58%;aspect-ratio:1;display:grid;place-items:center;direction:ltr}
+.focus .stepnow{font-size:13px;color:var(--ink2);font-weight:600}
+.focus .steptx{font-size:24px;font-weight:700;text-align:center;line-height:30px;margin:4px 0 0;min-height:30px}
+.focus .grow{flex:1}
+.focus .acts{width:100%;display:flex;flex-direction:column;gap:10px}
+.focus.overtime .pie{background:var(--green)}
+.focus .msg{font-size:15px;color:var(--ink2);text-align:center;min-height:20px;margin-top:10px}
+
+/* ---------- celebrate ---------- */
+.party{position:fixed;inset:0;z-index:40;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.35);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.party.on{display:flex}
+.party .box{background:var(--card);border-radius:24px;padding:28px 24px 20px;width:min(86vw,340px);text-align:center;animation:pop .45s cubic-bezier(.3,1.5,.5,1)}
+.party .em{font-size:64px;line-height:1}
+.party .t{font-size:24px;font-weight:700;margin:12px 0 4px}
+.party .s{color:var(--ink2);font-size:15px;margin-bottom:18px;line-height:1.5}
+#confetti{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:41}
+
+.toast{position:fixed;left:50%;bottom:calc(140px + env(safe-area-inset-bottom));transform:translate(-50%,20px);background:rgba(30,30,30,.92);color:#fff;border-radius:22px;padding:10px 16px;font-size:15px;opacity:0;pointer-events:none;transition:all .3s;z-index:50;display:flex;gap:14px;align-items:center;max-width:90vw;backdrop-filter:blur(10px)}
+.toast.on{opacity:1;transform:translate(-50%,0);pointer-events:auto}
+.toast button{color:#64d2ff;font-weight:600;white-space:nowrap}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-now" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="4.2" fill="currentColor"/></symbol>
+  <symbol id="i-today" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M3.5 10h17M8 3v4M16 3v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M9 15h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="i-tray" viewBox="0 0 24 24"><path d="M4 13.5 6.3 6a2 2 0 0 1 1.9-1.5h7.6A2 2 0 0 1 17.7 6L20 13.5V18a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M4 13.5h4.5a3.5 3.5 0 0 0 7 0H20" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 4v16M4 12h16" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4.5v15a1 1 0 0 0 1.5.86l12-7.5a1 1 0 0 0 0-1.72l-12-7.5A1 1 0 0 0 7 4.5z" fill="currentColor"/></symbol>
+  <symbol id="i-skip" viewBox="0 0 24 24"><path d="M14 6 8 12l6 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-flame" viewBox="0 0 24 24"><path d="M12 2.5c.6 3.2 5.5 5.6 5.5 11a5.5 5.5 0 0 1-11 0c0-2.6 1.4-4.2 2.6-5.2.2 1.6 1 2.7 2.1 3.1C10.6 8.5 11.4 5 12 2.5z" fill="currentColor"/></symbol>
+  <symbol id="i-star" viewBox="0 0 24 24"><path d="m12 2.8 2.8 5.9 6.4.8-4.7 4.4 1.2 6.4L12 17.2l-5.7 3.1 1.2-6.4-4.7-4.4 6.4-.8z" fill="currentColor"/></symbol>
+  <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3" fill="currentColor"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="i-bat1" viewBox="0 0 30 16"><rect x="1" y="1" width="25" height="14" rx="4" fill="none" stroke="currentColor" stroke-width="1.6" opacity=".45"/><rect x="27" y="5.5" width="2" height="5" rx="1" fill="currentColor" opacity=".45"/><rect x="3.5" y="3.5" width="6" height="9" rx="2" fill="var(--e1)"/></symbol>
+  <symbol id="i-bat2" viewBox="0 0 30 16"><rect x="1" y="1" width="25" height="14" rx="4" fill="none" stroke="currentColor" stroke-width="1.6" opacity=".45"/><rect x="27" y="5.5" width="2" height="5" rx="1" fill="currentColor" opacity=".45"/><rect x="3.5" y="3.5" width="13" height="9" rx="2" fill="var(--e2)"/></symbol>
+  <symbol id="i-bat3" viewBox="0 0 30 16"><rect x="1" y="1" width="25" height="14" rx="4" fill="none" stroke="currentColor" stroke-width="1.6" opacity=".45"/><rect x="27" y="5.5" width="2" height="5" rx="1" fill="currentColor" opacity=".45"/><rect x="3.5" y="3.5" width="20" height="9" rx="2" fill="var(--e3)"/></symbol>
+</svg>
+
+<div id="app">
+  <section class="tab on" id="t-now"></section>
+  <section class="tab" id="t-today"></section>
+  <section class="tab" id="t-pool"></section>
+
+  <nav class="tabbar">
+    <button data-tab="now" class="on"><svg><use href="#i-now"/></svg>עכשיו</button>
+    <button data-tab="today"><svg><use href="#i-today"/></svg>היום</button>
+    <button class="fab" id="fab" aria-label="לרשום מה בראש"><svg><use href="#i-plus"/></svg></button>
+    <button data-tab="pool"><svg><use href="#i-tray"/></svg>מאגר</button>
+  </nav>
+</div>
+
+<div class="scrim" id="scrim"></div>
+<div class="sheet" id="sheet" role="dialog" aria-modal="true"></div>
+
+<div class="focus" id="focus">
+  <div class="top"><button class="link" id="fStop">עצירה</button><span id="fCount" style="color:var(--green);font-size:15px;font-weight:600"></span><button class="link" id="fPlus">עוד 5 דק'</button></div>
+  <div class="task" id="fTask"></div>
+  <div class="dial"><div class="pie" id="fPie"></div><div class="center"><div class="time" id="fTime">5:00</div></div></div>
+  <div class="stepnow" id="fStepLbl"></div>
+  <div class="steptx" id="fStep"></div>
+  <div class="msg" id="fMsg"></div>
+  <div class="grow"></div>
+  <div class="acts">
+    <button class="big-btn green" id="fStepDone"><svg><use href="#i-check"/></svg>סיימתי את הצעד</button>
+    <button class="big-btn ghost" id="fTaskDone">סיימתי את כל המשימה</button>
+  </div>
+</div>
+
+<div class="party" id="party"><div class="box"><div class="em" id="pEm">🎉</div><div class="t" id="pT"></div><div class="s" id="pS"></div><button class="big-btn" id="pOk">המשך</button></div></div>
+<canvas id="confetti"></canvas>
+<div class="toast" id="toast"><span id="toastTxt"></span><button id="toastBtn"></button></div>
+
+<script>
+(() => {
+'use strict';
+const $ = s => document.querySelector(s);
+const uid = () => Math.random().toString(36).slice(2, 10);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const ymd = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+const today = () => ymd(new Date());
+const dayBefore = s => { const [y,m,d] = s.split('-').map(Number); return ymd(new Date(y, m-1, d-1)); };
+const ENERGY = {1:'נמוכה', 2:'בינונית', 3:'גבוהה'};
+const bat = e => `<svg viewBox="0 0 30 16"><use href="#i-bat${e}"/></svg>`;
+const mins = s => Math.max(1, Math.round(s/60));
+const pick = a => a[Math.floor(Math.random()*a.length)];
+
+/* ---------- storage ---------- */
+const KEY = 'aria-now-v1';
+function seed(){
+  const t = (title, energy, est, steps, isToday, order) => ({
+    id:uid(), title, energy, est, steps:steps.map(s => ({id:uid(), t:s, done:false})),
+    day: isToday ? today() : '', order, done:false, doneAt:0, spent:0, created:Date.now() + order
+  });
+  return {
+    tasks:[
+      t('לשלוח מייל לרואה החשבון', 1, 5, ['לפתוח את המייל הקודם שלו', 'לכתוב שתי שורות', 'ללחוץ שלח'], true, 1),
+      t('לסדר את החדר', 2, 30, ['לאסוף בגדים לסל', 'לפנות את השולחן', 'להוציא את הזבל', 'לשאוב רצפה'], true, 2),
+      t('לקבוע תור לרופא', 1, 5, [], false, 3),
+      t('לשלם חשבון חשמל', 1, 5, [], false, 4),
+      t('אימון 20 דקות', 3, 30, ['ללבוש בגדי ספורט', 'למלא בקבוק מים'], false, 5),
+      t('להכין מצגת ללקוח', 3, 60, ['לפתוח קובץ ריק', 'לכתוב 5 כותרות לשקפים'], false, 6),
+    ],
+    days:{}, energy:null, focus:null
+  };
+}
+let db;
+try { db = JSON.parse(localStorage.getItem(KEY)) || seed(); } catch { db = seed(); }
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(db)); } catch {} };
+const byId = id => db.tasks.find(t => t.id === id);
+
+/* ---------- derived ---------- */
+const isToday = t => !t.done && t.day === today();
+const todayTasks = () => db.tasks.filter(isToday).sort((a,b) => (a.order||0) - (b.order||0));
+const leftovers = () => db.tasks.filter(t => !t.done && t.day && t.day < today());
+const pool = () => db.tasks.filter(t => !t.done && t.day !== today());
+const winsToday = () => db.days[today()] || 0;
+const nextStep = t => t.steps.find(s => !s.done);
+const curEnergy = () => db.energy?.date === today() ? db.energy.val : 0;
+function streak(){
+  let d = today(), n = 0;
+  if (!db.days[d]) d = dayBefore(d);
+  while (db.days[d]) { n++; d = dayBefore(d); }
+  return n;
+}
+function addWin(n){ db.days[today()] = (db.days[today()] || 0) + n; }
+function timeRatio(){
+  const s = db.tasks.filter(t => t.done && t.est && t.spent > 90);
+  if (s.length < 3) return null;
+  return s.reduce((a,t) => a + (t.spent/60)/t.est, 0) / s.length;
+}
+
+/* ---------- sound + haptics ---------- */
+let ac;
+function chime(notes){
+  try {
+    ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+    const now = ac.currentTime;
+    notes.forEach((f, i) => {
+      const o = ac.createOscillator(), g = ac.createGain(), t0 = now + i*.09;
+      o.type = 'sine'; o.frequency.value = f;
+      g.gain.setValueAtTime(0, t0);
+      g.gain.linearRampToValueAtTime(.16, t0 + .02);
+      g.gain.exponentialRampToValueAtTime(.0001, t0 + .7);
+      o.connect(g).connect(ac.destination); o.start(t0); o.stop(t0 + .75);
+    });
+  } catch {}
+  if (navigator.vibrate) navigator.vibrate(12);
+}
+const ding = () => chime([880, 1320]);
+const fanfare = () => chime([523, 659, 784, 1047]);
+
+/* ---------- tabs ---------- */
+let tab = 'now';
+document.querySelector('.tabbar').addEventListener('click', e => {
+  const b = e.target.closest('[data-tab]'); if (b) setTab(b.dataset.tab);
+});
+function setTab(name){
+  tab = name;
+  document.querySelectorAll('.tabbar button').forEach(b => b.classList.toggle('on', b.dataset.tab === name));
+  document.querySelectorAll('.tab').forEach(s => s.classList.toggle('on', s.id === 't-' + name));
+  render();
+}
+function render(){
+  if (tab === 'now') renderNow();
+  if (tab === 'today') renderToday();
+  if (tab === 'pool') renderPool();
+}
+
+/* ---------- NOW: one task, one step ---------- */
+let skip = 0, dur = 5;
+function candidates(){
+  let list = todayTasks(), from = 'מתוך 3 של היום';
+  if (!list.length){ list = pool().sort((a,b) => a.created - b.created); from = 'מהמאגר, כי היום עוד ריק'; }
+  const e = curEnergy();
+  if (e){
+    const fit = list.filter(t => t.energy <= e);
+    if (fit.length) list = fit;
+    else if (list.length) from = 'אין משהו קל יותר. אולי רק צעד אחד?';
+  }
+  return {list, from};
+}
+function renderNow(){
+  const el = $('#t-now');
+  const e = curEnergy(), w = winsToday(), st = streak();
+  const {list, from} = candidates();
+  const t = list.length ? list[skip % list.length] : null;
+  const s = t && nextStep(t);
+  const doneSteps = t ? t.steps.filter(x => x.done).length : 0;
+  const anyOpen = db.tasks.some(x => !x.done);
+
+  el.innerHTML = `
+    <h1 class="large">עכשיו</h1>
+    <p class="sub">דבר אחד. רק הצעד הבא.</p>
+    <div class="wins">
+      <span class="pill"><svg style="color:var(--yellow)"><use href="#i-star"/></svg>${w} ניצחונות היום</span>
+      ${st ? `<span class="pill"><svg style="color:var(--orange)"><use href="#i-flame"/></svg>${st === 1 ? 'יום' : st + ' ימים'} ברצף</span>` : ''}
+    </div>
+    <div class="q">כמה אנרגיה יש לך עכשיו?</div>
+    <div class="energy">${[1,2,3].map(n => `<button data-e="${n}" class="${e===n?'on':''}" style="--ec:var(--e${n})">${bat(n)}${ENERGY[n]}</button>`).join('')}</div>
+    ${t ? `
+      <div class="now-card">
+        <div class="from">${from}</div>
+        <div class="title">${esc(t.title)}</div>
+        <div class="meta"><span>${bat(t.energy)}${ENERGY[t.energy]}</span><span>בערך ${t.est} דק'</span>${t.steps.length ? `<span>${doneSteps}/${t.steps.length} צעדים</span>` : ''}</div>
+        ${t.steps.length ? `<div class="progress"><i style="width:${doneSteps/t.steps.length*100}%"></i></div>` : ''}
+        <div class="step-box">
+          ${s ? `<div class="lbl">הצעד הבא</div><div class="st">${esc(s.t)}</div>`
+              : `<div class="lbl">מה הצעד הראשון, הכי קטן שיש?</div><input id="firstStep" placeholder="למשל: לפתוח את הקובץ" enterkeyhint="done" autocomplete="off">`}
+        </div>
+        <div class="durs">${[2,5,15,25].map(m => `<button data-d="${m}" class="${dur===m?'on':''}">${m} דק'</button>`).join('')}</div>
+        <button class="big-btn" id="go"><svg><use href="#i-play"/></svg>רק ${dur} דקות. מתחילים</button>
+        <div class="row2">
+          ${list.length > 1 ? `<button id="other"><svg><use href="#i-skip"/></svg>משהו אחר</button>` : ''}
+          <button id="edit">צעדים</button>
+          <button class="done" id="doneNow"><svg><use href="#i-check"/></svg>עשיתי</button>
+        </div>
+      </div>`
+    : `<div class="empty"><div class="em">${anyOpen ? '🌿' : '✨'}</div>
+        <div class="big">${anyOpen ? 'אין כרגע משהו שמתאים' : 'הראש נקי'}</div>
+        מה מסתובב לך בראש? לוחצים על ＋ ורושמים בשתי שניות.</div>`}`;
+  el.dataset.task = t ? t.id : '';
+}
+$('#t-now').addEventListener('click', e => {
+  const t = byId($('#t-now').dataset.task);
+  const en = e.target.closest('[data-e]');
+  if (en){ const v = +en.dataset.e; db.energy = curEnergy() === v ? null : {val:v, date:today()}; skip = 0; save(); return renderNow(); }
+  const d = e.target.closest('[data-d]');
+  if (d){ dur = +d.dataset.d; return renderNow(); }
+  if (e.target.closest('#other')){ skip++; return renderNow(); }
+  if (!t) return;
+  if (e.target.closest('#go')){ commitFirstStep(t); startFocus(t, dur); }
+  else if (e.target.closest('#edit')){ commitFirstStep(t); editTask(t); }
+  else if (e.target.closest('#doneNow')) completeTask(t, 0);
+});
+$('#t-now').addEventListener('keydown', e => {
+  if (e.target.id === 'firstStep' && e.key === 'Enter' && !e.isComposing){ commitFirstStep(byId($('#t-now').dataset.task)); renderNow(); }
+});
+function commitFirstStep(t){
+  const v = $('#firstStep')?.value.trim();
+  if (t && v){ t.steps.push({id:uid(), t:v, done:false}); save(); }
+}
+
+/* ---------- TODAY: at most 3 ---------- */
+function renderToday(){
+  const el = $('#t-today');
+  const list = todayTasks(), left = leftovers();
+  const won = db.tasks.filter(t => t.done && t.doneAt && ymd(new Date(t.doneAt)) === today()).sort((a,b) => b.doneAt - a.doneAt);
+  const r = timeRatio();
+  const date = new Intl.DateTimeFormat('he-IL', {weekday:'long', day:'numeric', month:'long'}).format(new Date());
+  const slots = [0,1,2].map(i => {
+    const t = list[i];
+    if (!t) return `<button class="slot emptyslot press" data-pick><span class="num">${i+1}</span><span class="tx">בחירה מהמאגר</span></button>`;
+    const ds = t.steps.filter(s => s.done).length;
+    return `<div class="slot"><span class="num">${i+1}</span>
+      <button class="tx press" data-open="${t.id}" style="text-align:start"><div class="t">${esc(t.title)}</div>
+        <div class="m">${bat(t.energy)}<span>בערך ${t.est} דק'</span>${t.steps.length ? `<span>${ds}/${t.steps.length} צעדים</span>` : ''}</div></button>
+      <button class="play press" data-play="${t.id}" aria-label="להתחיל"><svg><use href="#i-play"/></svg></button></div>`;
+  }).join('');
+  el.innerHTML = `
+    <h1 class="large">היום</h1>
+    <p class="sub">${date}</p>
+    ${left.length ? `<div class="banner"><div class="t">${left.length === 1 ? 'משימה אחת נשארה' : `${left.length} משימות נשארו`} מאתמול</div>
+      <div class="s">זה בסדר גמור. מה עושים איתן?</div>
+      <div class="btns"><button class="p" data-left="keep">להמשיך היום</button><button data-left="pool">חזרה למאגר</button></div></div>` : ''}
+    <h2 class="h2" style="margin-top:4px">3 הדברים של היום</h2>
+    ${slots}
+    <p class="hint">שלושה זה מספיק. כל השאר מחכה במאגר ולא הולך לאיבוד.</p>
+    ${won.length ? `<h2 class="h2">ניצחונות היום 🏆</h2><div class="group">${won.map(t => `
+      <div class="row won"><span class="chk on"><svg><use href="#i-check"/></svg></span>
+      <span class="lbl"><div class="t">${esc(t.title)}</div>${t.spent > 60 ? `<div class="m">לקח ${mins(t.spent)} דק' · הערכת ${t.est}</div>` : ''}</span></div>`).join('')}</div>` : ''}
+    ${r ? `<div class="insight"><div class="t">תובנת זמן</div><div class="s">${r > 1.15 ? `משימות לוקחות לך בממוצע <b>פי ${r.toFixed(1)}</b> ממה שהערכת. כדאי לתכנן עם מרווח.` : r < .85 ? 'משימות לוקחות לך פחות ממה שהערכת. אפשר להעריך פחות.' : 'ההערכות שלך מדויקות. יפה מאוד.'}</div></div>` : ''}`;
+}
+$('#t-today').addEventListener('click', e => {
+  const o = e.target.closest('[data-open]'); if (o) return editTask(byId(o.dataset.open));
+  const p = e.target.closest('[data-play]'); if (p){ setTab('now'); return startFocus(byId(p.dataset.play), dur); }
+  if (e.target.closest('[data-pick]')) return pickForToday();
+  const l = e.target.closest('[data-left]');
+  if (l){
+    let bumped = 0;
+    leftovers().forEach((t, i) => {
+      if (l.dataset.left === 'keep' && todayTasks().length < 3){ t.day = today(); t.order = Date.now() + i; }
+      else { if (l.dataset.left === 'keep') bumped++; t.day = ''; }
+    });
+    if (bumped) toast('נכנסו עד 3. השאר חזרו למאגר');
+    save(); renderToday();
+  }
+});
+
+/* ---------- POOL: everything else, out of sight ---------- */
+function renderPool(){
+  const el = $('#t-pool');
+  const list = db.tasks.filter(t => !t.done).sort((a,b) => (isToday(b) - isToday(a)) || (a.energy - b.energy) || (a.created - b.created));
+  el.innerHTML = `
+    <h1 class="large">מאגר</h1>
+    <p class="sub">${list.length ? `${list.length} דברים מחכים כאן. לא צריך לעשות הכל, רק לבחור.` : ''}</p>
+    ${list.length ? `<div class="group">${list.map(t => `
+      <div class="row"><button class="chk press" data-done="${t.id}" aria-label="סימון כבוצע"><svg><use href="#i-check"/></svg></button>
+        <button class="lbl press" data-open="${t.id}"><div>${esc(t.title)}</div>
+          <div class="m">${bat(t.energy)}<span>בערך ${t.est} דק'</span>${t.steps.length ? `<span>${t.steps.filter(s=>s.done).length}/${t.steps.length} צעדים</span>` : ''}</div></button>
+        <button class="addtoday ${isToday(t)?'in':''}" data-today="${t.id}">${isToday(t) ? '✓ היום' : 'להיום'}</button></div>`).join('')}</div>`
+    : `<div class="empty"><div class="em">📭</div><div class="big">המאגר ריק</div>כשמשהו עולה בראש, לוחצים על ＋ ושוכחים ממנו.</div>`}`;
+}
+$('#t-pool').addEventListener('click', e => {
+  const o = e.target.closest('[data-open]'); if (o) return editTask(byId(o.dataset.open));
+  const d = e.target.closest('[data-done]');
+  if (d){ d.classList.add('on'); setTimeout(() => completeTask(byId(d.dataset.done), 0), 250); return; }
+  const td = e.target.closest('[data-today]'); if (td){ toggleToday(byId(td.dataset.today)); renderPool(); }
+});
+function toggleToday(t){
+  if (isToday(t)){ t.day = ''; save(); return true; }
+  if (todayTasks().length >= 3){ toast('היום כבר מלא. 3 זה מספיק 💙', 'להחליף', () => pickForToday(t)); return false; }
+  t.day = today(); t.order = Date.now(); save(); return true;
+}
+
+/* ---------- complete + celebrate ---------- */
+function completeTask(t, extraSpent){
+  if (!t) return;
+  t.done = true; t.doneAt = Date.now(); t.spent += extraSpent || 0;
+  t.steps.forEach(s => s.done = true);
+  addWin(3); save(); skip = 0;
+  fanfare(); confetti();
+  const time = t.spent > 60 ? `לקח ${mins(t.spent)} דק', הערכת ${t.est}` : '';
+  const left = todayTasks().length;
+  celebrate(pick(['🎉','🏆','🚀','💪','🌟']), pick(['כל הכבוד!', 'עשית את זה!', 'איזה יופי!']),
+    [`+3 ניצחונות · ${winsToday()} היום`, time, left ? `נשארו ${left} להיום` : 'סיימת את ה-3 של היום!'].filter(Boolean).join('<br>'));
+  render();
+}
+function celebrate(em, t, s){
+  $('#pEm').textContent = em; $('#pT').textContent = t; $('#pS').innerHTML = s;
+  $('#party').classList.add('on');
+}
+$('#pOk').onclick = () => { $('#party').classList.remove('on'); render(); };
+
+function confetti(){
+  const c = $('#confetti'), x = c.getContext('2d'), k = devicePixelRatio || 1;
+  const W = c.width = innerWidth * k, H = c.height = innerHeight * k;
+  const cols = ['#5856d6','#ff2d55','#ff9500','#34c759','#007aff','#ffcc00','#af52de'];
+  const P = Array.from({length:140}, () => ({
+    x:W/2, y:H*.42, vx:(Math.random()-.5)*26*k, vy:(-Math.random()*22-6)*k,
+    r:(5+Math.random()*5)*k, c:pick(cols), a:Math.random()*6, va:(Math.random()-.5)*.4
+  }));
+  let f = 0;
+  (function step(){
+    x.clearRect(0,0,W,H);
+    P.forEach(p => { p.vy += .7*k; p.vx *= .985; p.x += p.vx; p.y += p.vy; p.a += p.va;
+      x.save(); x.translate(p.x,p.y); x.rotate(p.a); x.fillStyle = p.c; x.fillRect(-p.r/2,-p.r/4,p.r,p.r/2); x.restore(); });
+    if (++f < 110) requestAnimationFrame(step); else x.clearRect(0,0,W,H);
+  })();
+}
+
+/* ---------- FOCUS: visual timer that empties like a time-timer ---------- */
+let tick = null, rang = false;
+function startFocus(t, m){
+  if (!t) return;
+  db.focus = {id:t.id, dur:m*60, end:Date.now() + m*60e3, seg:Date.now()};
+  save(); openFocus();
+}
+function openFocus(){
+  const f = db.focus, t = f && byId(f.id);
+  if (!t){ db.focus = null; save(); return; }
+  rang = Date.now() > f.end;
+  $('#focus').classList.add('on');
+  $('#fMsg').textContent = '';
+  drawFocusStep(t);
+  clearInterval(tick); tick = setInterval(drawTimer, 250); drawTimer();
+}
+function drawFocusStep(t){
+  const s = nextStep(t);
+  $('#fTask').textContent = t.title;
+  $('#fStepLbl').textContent = s ? `צעד ${t.steps.indexOf(s)+1} מתוך ${t.steps.length}` : 'מתמקדים ב:';
+  $('#fStep').textContent = s ? s.t : t.title;
+  $('#fStepDone').style.display = s ? '' : 'none';
+  $('#fTaskDone').className = s ? 'big-btn ghost' : 'big-btn green';
+  $('#fTaskDone').innerHTML = s ? 'סיימתי את כל המשימה' : '<svg><use href="#i-check"/></svg>סיימתי';
+}
+function drawTimer(){
+  const f = db.focus; if (!f) return;
+  const left = Math.round((f.end - Date.now())/1000), over = left <= 0, a = Math.abs(left);
+  $('#fTime').textContent = `${over ? '+' : ''}${Math.floor(a/60)}:${String(a%60).padStart(2,'0')}`;
+  $('#fPie').style.setProperty('--a', `${Math.max(0, left/f.dur)*360}deg`);
+  $('#focus').classList.toggle('overtime', over);
+  $('#fCount').textContent = over ? 'בזמן נוסף 🔥' : '';
+  if (over && !rang){ rang = true; chime([660, 880, 660, 880]); $('#fMsg').textContent = 'הזמן עבר. אפשר להמשיך או לעצור. גם זה ניצחון.'; }
+}
+function endFocus(){
+  const f = db.focus, t = f && byId(f.id), spent = f ? Math.round((Date.now() - f.seg)/1000) : 0;
+  db.focus = null; save();
+  clearInterval(tick); $('#focus').classList.remove('on');
+  return {t, spent};
+}
+$('#fPlus').onclick = () => {
+  const f = db.focus; if (!f) return;
+  f.end = Math.max(Date.now(), f.end) + 300e3;
+  f.dur = Math.max(f.dur, (f.end - Date.now())/1000);
+  rang = false; save(); $('#fMsg').textContent = ''; drawTimer();
+};
+$('#fStop').onclick = () => {
+  const {t, spent} = endFocus();
+  if (t) t.spent += spent;
+  if (spent > 60){ addWin(1); toast(`עבדת ${mins(spent)} דק'. זה נחשב ⭐`); }
+  save(); render();
+};
+$('#fStepDone').onclick = () => {
+  const t = byId(db.focus?.id); if (!t) return;
+  const s = nextStep(t); if (!s) return;
+  s.done = true; addWin(1); save(); ding();
+  if (!nextStep(t)){ const r = endFocus(); return completeTask(t, r.spent); }
+  $('#fMsg').textContent = pick(['יופי! ⭐', 'עוד אחד ✓', 'ממשיכים 💪', 'מעולה ⭐']);
+  drawFocusStep(t);
+};
+$('#fTaskDone').onclick = () => { const r = endFocus(); completeTask(r.t, r.spent); };
+document.addEventListener('visibilitychange', () => { if (!document.hidden && db.focus) drawTimer(); });
+
+/* ---------- sheets ---------- */
+const sheet = $('#sheet'), scrim = $('#scrim');
+function openSheet(html){ sheet.innerHTML = `<div class="grab"></div>` + html; scrim.classList.add('on'); sheet.classList.add('on'); }
+function closeSheet(){ scrim.classList.remove('on'); sheet.classList.remove('on'); document.activeElement?.blur(); stopMic(); render(); }
+scrim.onclick = () => sheet.querySelector('[data-x=close]')?.click();
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && sheet.classList.contains('on')) scrim.onclick(); });
+
+/* capture: brain dump, one thought per Enter */
+let rec = null;
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+function stopMic(){ try { rec?.stop(); } catch {} rec = null; }
+function capture(){
+  const added = [];
+  openSheet(`
+    <div class="sheet-nav"><span></span><span class="ttl">מה בראש?</span><button class="link strong" data-x="close">סיום</button></div>
+    <div class="cap">רושמים ושוכחים. אפשר כמה ברצף, Enter אחרי כל אחד.</div>
+    <div class="cap-in"><input id="capIn" placeholder="למשל: להתקשר לבנק" enterkeyhint="send" autocomplete="off">
+      ${SR ? `<button class="mic" id="mic" aria-label="הקלטה"><svg><use href="#i-mic"/></svg></button>` : ''}</div>
+    <div class="chips" id="capChips"></div>
+    <p class="hint" style="margin-top:18px">הכל נכנס למאגר. את הפרטים אפשר לסדר אחר כך, או בכלל לא.</p>`);
+  const add = v => {
+    v = v.trim(); if (!v) return;
+    db.tasks.push({id:uid(), title:v, energy:2, est:15, steps:[], day:'', order:0, done:false, doneAt:0, spent:0, created:Date.now()});
+    save(); added.push(v); ding();
+    $('#capChips').insertAdjacentHTML('beforeend', `<span>✓ ${esc(v)}</span>`);
+  };
+  setTimeout(() => $('#capIn')?.focus(), 350);
+  sheet.onclick = e => {
+    if (e.target.closest('[data-x=close]')){ add($('#capIn').value); if (added.length) toast(added.length === 1 ? 'נוסף למאגר' : `${added.length} נוספו למאגר`); return closeSheet(); }
+    if (e.target.closest('#mic')){
+      if (rec) return stopMic();
+      rec = new SR(); rec.lang = 'he-IL'; rec.interimResults = false;
+      rec.onresult = ev => add(ev.results[0][0].transcript);
+      rec.onend = () => { rec = null; $('#mic')?.classList.remove('rec'); };
+      $('#mic').classList.add('rec'); rec.start();
+    }
+  };
+  sheet.onkeydown = e => { if (e.target.id === 'capIn' && e.key === 'Enter' && !e.isComposing){ add(e.target.value); e.target.value = ''; } };
+  sheet.onchange = null;
+}
+$('#fab').onclick = capture;
+
+/* task details: steps, energy, estimate */
+function editTask(t){
+  if (!t) return;
+  const draw = () => {
+    openSheet(`
+      <div class="sheet-nav"><span></span><span class="ttl">פרטים</span><button class="link strong" data-x="close">סיום</button></div>
+      <div class="group"><input class="field title" id="eTitle" value="${esc(t.title)}" autocomplete="off"></div>
+      <div class="cap">צעדים קטנים. כל צעד = ניצחון ⭐</div>
+      <div class="group">
+        ${t.steps.map(s => `<div class="step-row ${s.done?'d':''}"><button class="chk ${s.done?'on':''}" data-st="${s.id}"><svg><use href="#i-check"/></svg></button>
+          <span class="tx">${esc(s.t)}</span><button class="x" data-del="${s.id}" aria-label="מחיקה">×</button></div>`).join('')}
+        <div class="step-row"><span class="plus"><svg><use href="#i-plus"/></svg></span><input id="eStep" placeholder="${t.steps.length ? 'הצעד הבא?' : 'מה הצעד הראשון, הכי קטן שיש?'}" enterkeyhint="done" autocomplete="off"></div>
+      </div>
+      <div class="cap">כמה אנרגיה זה דורש?</div>
+      <div class="group"><div class="seg">${[1,2,3].map(n => `<button data-en="${n}" class="${t.energy===n?'on':''}">${bat(n)}${ENERGY[n]}</button>`).join('')}</div></div>
+      <div class="cap">כמה זמן זה ייקח, להערכתך?</div>
+      <div class="group"><div class="seg">${[5,15,30,60].map(m => `<button data-est="${m}" class="${t.est===m?'on':''}">${m} דק'</button>`).join('')}</div></div>
+      <div class="group"><div class="row"><span class="lbl">ב-3 של היום</span><label class="sw"><input type="checkbox" id="eToday" ${isToday(t)?'checked':''}><span></span></label></div></div>
+      <div class="group"><button class="row danger" data-x="del"><span class="lbl">מחיקה</span></button></div>`);
+  };
+  const pullTitle = () => { const v = $('#eTitle')?.value.trim(); if (v) t.title = v; };
+  const addStep = () => { const v = $('#eStep')?.value.trim(); if (v) t.steps.push({id:uid(), t:v, done:false}); };
+  sheet.onclick = e => {
+    const st = e.target.closest('[data-st]');
+    if (st){ const s = t.steps.find(x => x.id === st.dataset.st); s.done = !s.done; if (s.done){ addWin(1); ding(); } pullTitle(); save(); return draw(); }
+    const dl = e.target.closest('[data-del]');
+    if (dl){ t.steps = t.steps.filter(x => x.id !== dl.dataset.del); pullTitle(); save(); return draw(); }
+    const en = e.target.closest('[data-en]'); if (en){ t.energy = +en.dataset.en; pullTitle(); addStep(); save(); return draw(); }
+    const es = e.target.closest('[data-est]'); if (es){ t.est = +es.dataset.est; pullTitle(); addStep(); save(); return draw(); }
+    const x = e.target.closest('[data-x]')?.dataset.x;
+    if (x === 'close'){ pullTitle(); addStep(); save(); return closeSheet(); }
+    if (x === 'del'){
+      const i = db.tasks.indexOf(t); db.tasks.splice(i, 1); save(); closeSheet();
+      toast('נמחק', 'ביטול', () => { db.tasks.splice(i, 0, t); save(); render(); });
+    }
+  };
+  sheet.onkeydown = e => {
+    if (e.target.id === 'eStep' && e.key === 'Enter' && !e.isComposing){
+      pullTitle(); addStep(); save(); draw();
+      setTimeout(() => $('#eStep')?.focus(), 30);
+    }
+  };
+  sheet.onchange = e => { if (e.target.id === 'eToday'){ pullTitle(); if (!toggleToday(t)) e.target.checked = false; } };
+  draw();
+}
+
+/* pick from the pool into today, or choose which one to swap out */
+function pickForToday(incoming){
+  const swap = !!incoming;
+  const list = swap ? todayTasks() : pool().sort((a,b) => (a.energy - b.energy) || (a.created - b.created));
+  openSheet(`
+    <div class="sheet-nav"><button class="link" data-x="close">ביטול</button><span class="ttl">${swap ? 'מה יוצא מהיום?' : 'מה נכנס להיום?'}</span><span></span></div>
+    ${list.length ? `<div class="group">${list.map(t => `<button class="row" data-p="${t.id}"><span class="lbl"><div>${esc(t.title)}</div>
+      <div class="m">${bat(t.energy)}<span>בערך ${t.est} דק'</span></div></span></button>`).join('')}</div>`
+      : `<div class="empty"><div class="big">המאגר ריק</div>אפשר לרשום משהו חדש עם ＋</div>`}`);
+  sheet.onkeydown = sheet.onchange = null;
+  sheet.onclick = e => {
+    if (e.target.closest('[data-x=close]')) return closeSheet();
+    const p = e.target.closest('[data-p]'); if (!p) return;
+    const t = byId(p.dataset.p);
+    if (swap){ t.day = ''; incoming.day = today(); incoming.order = Date.now(); }
+    else if (todayTasks().length < 3){ t.day = today(); t.order = Date.now(); }
+    save(); closeSheet();
+  };
+}
+
+/* ---------- toast ---------- */
+let toastTimer;
+function toast(msg, btn, fn){
+  $('#toastTxt').textContent = msg;
+  const b = $('#toastBtn'); b.style.display = btn ? '' : 'none'; b.textContent = btn || '';
+  b.onclick = () => { fn && fn(); $('#toast').classList.remove('on'); };
+  $('#toast').classList.add('on');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => $('#toast').classList.remove('on'), 3600);
+}
+
+/* ---------- start ---------- */
+if (db.focus) openFocus();
+render();
+})();
+</script>
+</body>
+</html>
