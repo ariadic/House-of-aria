@@ -6,6 +6,11 @@
 <meta name="theme-color" content="#f3f4f8" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0e0f12" media="(prefers-color-scheme: dark)">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="minus.webmanifest">
+<link rel="apple-touch-icon" href="icons/minus-180.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/minus-192.png">
 <meta name="apple-mobile-web-app-title" content="יוצאים מהמינוס">
 <title>יוצאים מהמינוס</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1237,6 +1242,8 @@ function renderAll(){
   renderBackup();
 }
 try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch(e) {}
+// Installed app (own web address): register offline support. Not used inside claude.ai.
+try { if ('serviceWorker' in navigator && location.protocol === 'https:' && !window.claude) navigator.serviceWorker.register('minus-sw.js', {scope: './minus'}).catch(()=>{}); } catch(e) {}
 fillInputs();
 if (!['home','list','plan','set'].includes(S.tab)) S.tab = 'home';
 document.querySelectorAll('.pane').forEach(p=>p.hidden = p.dataset.pane!==(S.setPane||'debt'));
