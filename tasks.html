@@ -402,7 +402,7 @@ function render(){
 /* ---------- NOW: one task, one step ---------- */
 let skip = 0, dur = 5;
 function candidates(){
-  let list = todayTasks(), from = 'מתוך 3 של היום';
+  let list = todayTasks(), from = 'מתוך המשימות של היום';
   if (!list.length){ list = pool().sort((a,b) => a.created - b.created); from = 'מהמאגר, כי היום עוד ריק'; }
   const e = curEnergy();
   if (e){
@@ -480,24 +480,22 @@ function renderToday(){
   const won = db.tasks.filter(t => t.done && t.doneAt && ymd(new Date(t.doneAt)) === today()).sort((a,b) => b.doneAt - a.doneAt);
   const r = timeRatio();
   const date = new Intl.DateTimeFormat('he-IL', {weekday:'long', day:'numeric', month:'long'}).format(new Date());
-  const slots = [0,1,2].map(i => {
-    const t = list[i];
-    if (!t) return `<button class="slot emptyslot press" data-pick><span class="num">${i+1}</span><span class="tx">בחירה מהמאגר</span></button>`;
+  const slots = list.map((t, i) => {
     const ds = t.steps.filter(s => s.done).length;
     return `<div class="slot"><span class="num">${i+1}</span>
       <button class="tx press" data-open="${t.id}" style="text-align:start"><div class="t">${esc(t.title)}</div>
         <div class="m">${bat(t.energy)}<span>בערך ${t.est} דק'</span>${t.steps.length ? `<span>${ds}/${t.steps.length} צעדים</span>` : ''}</div></button>
       <button class="play press" data-play="${t.id}" aria-label="להתחיל"><svg><use href="#i-play"/></svg></button></div>`;
-  }).join('');
+  }).join('') + `<button class="slot emptyslot press" data-pick><span class="num">＋</span><span class="tx">בחירה מהמאגר</span></button>`;
   el.innerHTML = `
     <h1 class="large">היום</h1>
     <p class="sub">${date}</p>
     ${left.length ? `<div class="banner"><div class="t">${left.length === 1 ? 'משימה אחת נשארה' : `${left.length} משימות נשארו`} מאתמול</div>
       <div class="s">זה בסדר גמור. מה עושים איתן?</div>
       <div class="btns"><button class="p" data-left="keep">להמשיך היום</button><button data-left="pool">חזרה למאגר</button></div></div>` : ''}
-    <h2 class="h2" style="margin-top:4px">3 הדברים של היום</h2>
+    <h2 class="h2" style="margin-top:4px">לעשות היום${list.length ? ` · ${list.length}` : ''}</h2>
     ${slots}
-    <p class="hint">שלושה זה מספיק. כל השאר מחכה במאגר ולא הולך לאיבוד.</p>
+    ${list.length > 1 ? '<p class="hint">לא צריך הכל בבת אחת. במסך "עכשיו" מוצגת רק אחת בכל פעם.</p>' : ''}
     ${won.length ? `<h2 class="h2">ניצחונות היום 🏆</h2><div class="group">${won.map(t => `
       <div class="row won"><span class="chk on"><svg><use href="#i-check"/></svg></span>
       <span class="lbl"><div class="t">${esc(t.title)}</div>${t.spent > 60 ? `<div class="m">לקח ${mins(t.spent)} דק' · הערכת ${t.est}</div>` : ''}</span></div>`).join('')}</div>` : ''}
@@ -509,12 +507,10 @@ $('#t-today').addEventListener('click', e => {
   if (e.target.closest('[data-pick]')) return pickForToday();
   const l = e.target.closest('[data-left]');
   if (l){
-    let bumped = 0;
     leftovers().forEach((t, i) => {
-      if (l.dataset.left === 'keep' && todayTasks().length < 3){ t.day = today(); t.order = Date.now() + i; }
-      else { if (l.dataset.left === 'keep') bumped++; t.day = ''; }
+      if (l.dataset.left === 'keep'){ t.day = today(); t.order = Date.now() + i; }
+      else t.day = '';
     });
-    if (bumped) toast('נכנסו עד 3. השאר חזרו למאגר');
     save(); renderToday();
   }
 });
@@ -542,7 +538,6 @@ $('#t-pool').addEventListener('click', e => {
 });
 function toggleToday(t){
   if (isToday(t)){ t.day = ''; save(); return true; }
-  if (todayTasks().length >= 3){ toast('היום כבר מלא. 3 זה מספיק 💙', 'להחליף', () => pickForToday(t)); return false; }
   t.day = today(); t.order = Date.now(); save(); return true;
 }
 
@@ -556,7 +551,7 @@ function completeTask(t, extraSpent){
   const time = t.spent > 60 ? `לקח ${mins(t.spent)} דק', הערכת ${t.est}` : '';
   const left = todayTasks().length;
   celebrate(pick(['🎉','🏆','🚀','💪','🌟']), pick(['כל הכבוד!', 'עשית את זה!', 'איזה יופי!']),
-    [`+3 ניצחונות · ${winsToday()} היום`, time, left ? `נשארו ${left} להיום` : 'סיימת את ה-3 של היום!'].filter(Boolean).join('<br>'));
+    [`+3 ניצחונות · ${winsToday()} היום`, time, left ? `נשארו ${left} להיום` : 'סיימת את כל המשימות של היום!'].filter(Boolean).join('<br>'));
   render();
 }
 function celebrate(em, t, s){
@@ -704,7 +699,7 @@ function editTask(t){
       <div class="group"><div class="seg">${[1,2,3].map(n => `<button data-en="${n}" class="${t.energy===n?'on':''}">${bat(n)}${ENERGY[n]}</button>`).join('')}</div></div>
       <div class="cap">כמה זמן זה ייקח, להערכתך?</div>
       <div class="group"><div class="seg">${[5,15,30,60].map(m => `<button data-est="${m}" class="${t.est===m?'on':''}">${m} דק'</button>`).join('')}</div></div>
-      <div class="group"><div class="row"><span class="lbl">ב-3 של היום</span><label class="sw"><input type="checkbox" id="eToday" ${isToday(t)?'checked':''}><span></span></label></div></div>
+      <div class="group"><div class="row"><span class="lbl">לעשות היום</span><label class="sw"><input type="checkbox" id="eToday" ${isToday(t)?'checked':''}><span></span></label></div></div>
       <div class="group"><button class="row danger" data-x="del"><span class="lbl">מחיקה</span></button></div>`);
   };
   const pullTitle = () => { const v = $('#eTitle')?.value.trim(); if (v) t.title = v; };
@@ -733,12 +728,11 @@ function editTask(t){
   draw();
 }
 
-/* pick from the pool into today, or choose which one to swap out */
-function pickForToday(incoming){
-  const swap = !!incoming;
-  const list = swap ? todayTasks() : pool().sort((a,b) => (a.energy - b.energy) || (a.created - b.created));
+/* pick from the pool into today */
+function pickForToday(){
+  const list = pool().sort((a,b) => (a.energy - b.energy) || (a.created - b.created));
   openSheet(`
-    <div class="sheet-nav"><button class="link" data-x="close">ביטול</button><span class="ttl">${swap ? 'מה יוצא מהיום?' : 'מה נכנס להיום?'}</span><span></span></div>
+    <div class="sheet-nav"><button class="link" data-x="close">ביטול</button><span class="ttl">מה נכנס להיום?</span><span></span></div>
     ${list.length ? `<div class="group">${list.map(t => `<button class="row" data-p="${t.id}"><span class="lbl"><div>${esc(t.title)}</div>
       <div class="m">${bat(t.energy)}<span>בערך ${t.est} דק'</span></div></span></button>`).join('')}</div>`
       : `<div class="empty"><div class="big">המאגר ריק</div>אפשר לרשום משהו חדש עם ＋</div>`}`);
@@ -747,8 +741,7 @@ function pickForToday(incoming){
     if (e.target.closest('[data-x=close]')) return closeSheet();
     const p = e.target.closest('[data-p]'); if (!p) return;
     const t = byId(p.dataset.p);
-    if (swap){ t.day = ''; incoming.day = today(); incoming.order = Date.now(); }
-    else if (todayTasks().length < 3){ t.day = today(); t.order = Date.now(); }
+    t.day = today(); t.order = Date.now();
     save(); closeSheet();
   };
 }
@@ -902,7 +895,6 @@ function previewImport(d){
       });
       for (const [k, n] of Object.entries(d.days || {})) db.days[k] = Math.max(db.days[k] || 0, n);
     }
-    todayTasks().slice(3).forEach(t => t.day = '');   // keep the 3-a-day limit
     db.focus = null; save(); closeSheet(); setTab('pool');
     toast(m === 'replace' ? `${incoming.length} משימות הועברו` : `${fresh} משימות חדשות נוספו`);
   };
