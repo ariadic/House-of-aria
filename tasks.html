@@ -235,6 +235,17 @@ svg{display:block}
 .party .s{color:var(--ink2);font-size:15px;margin-bottom:18px;line-height:1.5}
 #confetti{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:41}
 
+.hdr{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.hbtn{display:flex;align-items:center;gap:6px;color:var(--accent);font-size:15px;font-weight:600;background:var(--card);border-radius:16px;padding:7px 12px;box-shadow:var(--shadow)}
+.hbtn svg{width:16px;height:16px}
+.qrbox{background:#fff;border-radius:18px;padding:14px;width:min(78vw,300px);margin:6px auto 0;aspect-ratio:1;display:grid;place-items:center;color:#000}
+.qrbox svg{width:100%;height:auto;display:block}
+.cam{position:relative;border-radius:18px;overflow:hidden;background:#000;aspect-ratio:1;width:min(78vw,300px);margin:12px auto}
+.cam video{width:100%;height:100%;object-fit:cover;display:block}
+.cam::after{content:"";position:absolute;inset:18%;border:3px solid rgba(255,255,255,.85);border-radius:16px}
+textarea.field{resize:none;font-size:15px;font-family:ui-monospace,Menlo,monospace;letter-spacing:0;direction:ltr;text-align:left}
+.stack{display:flex;flex-direction:column;gap:10px}
+.err{color:var(--red);font-size:15px;text-align:center;min-height:20px;margin-top:10px}
 .toast{position:fixed;left:50%;bottom:calc(140px + env(safe-area-inset-bottom));transform:translate(-50%,20px);background:rgba(30,30,30,.92);color:#fff;border-radius:22px;padding:10px 16px;font-size:15px;opacity:0;pointer-events:none;transition:all .3s;z-index:50;display:flex;gap:14px;align-items:center;max-width:90vw;backdrop-filter:blur(10px)}
 .toast.on{opacity:1;transform:translate(-50%,0);pointer-events:auto}
 .toast button{color:#64d2ff;font-weight:600;white-space:nowrap}
@@ -251,6 +262,7 @@ svg{display:block}
   <symbol id="i-skip" viewBox="0 0 24 24"><path d="M14 6 8 12l6 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
   <symbol id="i-flame" viewBox="0 0 24 24"><path d="M12 2.5c.6 3.2 5.5 5.6 5.5 11a5.5 5.5 0 0 1-11 0c0-2.6 1.4-4.2 2.6-5.2.2 1.6 1 2.7 2.1 3.1C10.6 8.5 11.4 5 12 2.5z" fill="currentColor"/></symbol>
   <symbol id="i-star" viewBox="0 0 24 24"><path d="m12 2.8 2.8 5.9 6.4.8-4.7 4.4 1.2 6.4L12 17.2l-5.7 3.1 1.2-6.4-4.7-4.4 6.4-.8z" fill="currentColor"/></symbol>
+  <symbol id="i-sync" viewBox="0 0 24 24"><path d="M4 9a8 8 0 0 1 14.3-3.3M20 15a8 8 0 0 1-14.3 3.3" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><path d="M19 2.5v4h-4M5 21.5v-4h4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
   <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3" fill="currentColor"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
   <symbol id="i-bat1" viewBox="0 0 30 16"><rect x="1" y="1" width="25" height="14" rx="4" fill="none" stroke="currentColor" stroke-width="1.6" opacity=".45"/><rect x="27" y="5.5" width="2" height="5" rx="1" fill="currentColor" opacity=".45"/><rect x="3.5" y="3.5" width="6" height="9" rx="2" fill="var(--e1)"/></symbol>
   <symbol id="i-bat2" viewBox="0 0 30 16"><rect x="1" y="1" width="25" height="14" rx="4" fill="none" stroke="currentColor" stroke-width="1.6" opacity=".45"/><rect x="27" y="5.5" width="2" height="5" rx="1" fill="currentColor" opacity=".45"/><rect x="3.5" y="3.5" width="13" height="9" rx="2" fill="var(--e2)"/></symbol>
@@ -512,7 +524,7 @@ function renderPool(){
   const el = $('#t-pool');
   const list = db.tasks.filter(t => !t.done).sort((a,b) => (isToday(b) - isToday(a)) || (a.energy - b.energy) || (a.created - b.created));
   el.innerHTML = `
-    <h1 class="large">מאגר</h1>
+    <div class="hdr"><h1 class="large">מאגר</h1><button class="hbtn press" id="moveBtn"><svg><use href="#i-sync"/></svg>העברה</button></div>
     <p class="sub">${list.length ? `${list.length} דברים מחכים כאן. לא צריך לעשות הכל, רק לבחור.` : ''}</p>
     ${list.length ? `<div class="group">${list.map(t => `
       <div class="row"><button class="chk press" data-done="${t.id}" aria-label="סימון כבוצע"><svg><use href="#i-check"/></svg></button>
@@ -522,6 +534,7 @@ function renderPool(){
     : `<div class="empty"><div class="em">📭</div><div class="big">המאגר ריק</div>כשמשהו עולה בראש, לוחצים על ＋ ושוכחים ממנו.</div>`}`;
 }
 $('#t-pool').addEventListener('click', e => {
+  if (e.target.closest('#moveBtn')) return transferMenu();
   const o = e.target.closest('[data-open]'); if (o) return editTask(byId(o.dataset.open));
   const d = e.target.closest('[data-done]');
   if (d){ d.classList.add('on'); setTimeout(() => completeTask(byId(d.dataset.done), 0), 250); return; }
@@ -635,7 +648,7 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden && db
 /* ---------- sheets ---------- */
 const sheet = $('#sheet'), scrim = $('#scrim');
 function openSheet(html){ sheet.innerHTML = `<div class="grab"></div>` + html; scrim.classList.add('on'); sheet.classList.add('on'); }
-function closeSheet(){ scrim.classList.remove('on'); sheet.classList.remove('on'); document.activeElement?.blur(); stopMic(); render(); }
+function closeSheet(){ scrim.classList.remove('on'); sheet.classList.remove('on'); document.activeElement?.blur(); stopMic(); stopCam(); render(); }
 scrim.onclick = () => sheet.querySelector('[data-x=close]')?.click();
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && sheet.classList.contains('on')) scrim.onclick(); });
 
@@ -737,6 +750,161 @@ function pickForToday(incoming){
     if (swap){ t.day = ''; incoming.day = today(); incoming.order = Date.now(); }
     else if (todayTasks().length < 3){ t.day = today(); t.order = Date.now(); }
     save(); closeSheet();
+  };
+}
+
+/* ---------- move tasks between devices (QR code or a copied code, no server) ---------- */
+const QR_LIB = 'https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js';
+const SCAN_LIB = 'https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js';
+const loadScript = src => new Promise((ok, no) => {
+  if (document.querySelector(`script[src="${src}"]`)?.dataset.ready) return ok();
+  const s = document.createElement('script'); s.src = src;
+  s.onload = () => { s.dataset.ready = 1; ok(); }; s.onerror = no; document.head.appendChild(s);
+});
+const b64u = bytes => { let s = ''; for (const b of bytes) s += String.fromCharCode(b); return btoa(s).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''); };
+const unb64u = str => Uint8Array.from(atob(str.replace(/-/g,'+').replace(/_/g,'/')), c => c.charCodeAt(0));
+const through = async (bytes, stream) => new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(stream)).arrayBuffer());
+async function packData(){
+  const raw = new TextEncoder().encode(JSON.stringify({v:1, tasks:db.tasks, days:db.days}));
+  try { if (window.CompressionStream) return 'NOW1:' + b64u(await through(raw, new CompressionStream('deflate-raw'))); } catch {}
+  return 'NOW0:' + b64u(raw);
+}
+async function unpackData(code){
+  const m = String(code).match(/NOW([01]):([A-Za-z0-9_-]+)/);
+  if (!m) throw new Error('הקוד לא נראה כמו קוד של האפליקציה. כדאי להעתיק אותו שוב, במלואו.');
+  let bytes;
+  try { bytes = unb64u(m[2]); if (m[1] === '1') bytes = await through(bytes, new DecompressionStream('deflate-raw')); }
+  catch { throw new Error('הקוד חלקי או פגום. כדאי להעתיק אותו שוב, במלואו.'); }
+  const d = JSON.parse(new TextDecoder().decode(bytes));
+  if (!Array.isArray(d.tasks)) throw new Error('בקוד אין משימות.');
+  return d;
+}
+const navBack = (title, back = true) => `<div class="sheet-nav">${back ? '<button class="link" data-x="back">חזרה</button>' : '<span></span>'}<span class="ttl">${title}</span><button class="link strong" data-x="close">סיום</button></div>`;
+function sheetNav(e){
+  const x = e.target.closest('[data-x]')?.dataset.x;
+  if (x === 'close'){ closeSheet(); return true; }
+  if (x === 'back'){ stopCam(); transferMenu(); return true; }
+  return false;
+}
+
+function transferMenu(){
+  openSheet(`${navBack('העברה בין מכשירים', false)}
+    <p class="cap" style="font-size:15px;margin-bottom:14px">המשימות נשמרות רק במכשיר הזה. כדי להעביר אותן למכשיר אחר, שולחים מכאן ומקבלים שם.</p>
+    <div class="group">
+      <button class="row" data-m="send"><span class="lbl"><div><b>שליחה מהמכשיר הזה</b></div><div class="m">מציג קוד QR לסריקה</div></span></button>
+      <button class="row" data-m="get"><span class="lbl"><div><b>קבלה ממכשיר אחר</b></div><div class="m">סורקים או מדביקים קוד</div></span></button>
+    </div>
+    <p class="hint">באייפון, צריך לעשות את זה מתוך האפליקציה שבמסך הבית. ל-Safari ולאפליקציה שבמסך הבית יש זיכרון נפרד.</p>`);
+  sheet.onkeydown = sheet.onchange = null;
+  sheet.onclick = e => {
+    if (sheetNav(e)) return;
+    const m = e.target.closest('[data-m]')?.dataset.m;
+    if (m === 'send') sendSheet();
+    if (m === 'get') getSheet();
+  };
+}
+
+async function sendSheet(){
+  const open = db.tasks.filter(t => !t.done).length;
+  openSheet(`${navBack('שליחה')}
+    <div class="qrbox" id="qrBox"><span style="color:#666">מכין קוד…</span></div>
+    <p class="hint" style="text-align:center;margin-top:10px">${db.tasks.length} משימות (${open} פתוחות) והניצחונות שלך</p>
+    <div class="stack" style="margin-top:16px"><button class="big-btn ghost" id="copyCode">העתקת הקוד</button></div>
+    <p class="hint" style="margin-top:14px">במכשיר השני: מאגר ← העברה ← קבלה, וסורקים את הקוד.<br>אם שני המכשירים של Apple, אפשר גם להעתיק כאן ולהדביק שם.</p>`);
+  sheet.onkeydown = sheet.onchange = null;
+  const code = await packData();
+  sheet.onclick = async e => {
+    if (sheetNav(e)) return;
+    if (e.target.closest('#copyCode')){
+      try { await navigator.clipboard.writeText(code); toast('הקוד הועתק'); }
+      catch { const t = document.createElement('textarea'); t.value = code; document.body.appendChild(t); t.select(); try { document.execCommand('copy'); toast('הקוד הועתק'); } catch { toast('לא הצלחתי להעתיק. אפשר לסרוק את הקוד במקום.'); } t.remove(); }
+    }
+  };
+  const box = $('#qrBox'); if (!box) return;
+  try {
+    await loadScript(QR_LIB);
+    const q = qrcode(0, 'L'); q.addData(code); q.make();
+    box.innerHTML = q.createSvgTag({cellSize:4, margin:0, scalable:true});
+  } catch (err) {
+    box.innerHTML = `<span style="color:#666;text-align:center;padding:12px">${/overflow/i.test(String(err)) ? 'יש יותר מדי משימות בשביל קוד QR. אפשר להשתמש ב"העתקת הקוד".' : 'אין חיבור לאינטרנט, אז אי אפשר להציג קוד QR. אפשר להשתמש ב"העתקת הקוד".'}</span>`;
+  }
+}
+
+let camStream = null;
+function stopCam(){ camStream?.getTracks().forEach(t => t.stop()); camStream = null; }
+function getSheet(){
+  openSheet(`${navBack('קבלה')}
+    <div class="stack"><button class="big-btn" id="scanBtn">סריקת קוד QR</button></div>
+    <div class="cam" id="cam" hidden><video id="camV" playsinline muted></video></div>
+    <div class="cap" style="margin-top:22px">או הדבקה של קוד שהועתק</div>
+    <div class="group" style="margin-bottom:10px"><textarea class="field" id="codeIn" rows="3" placeholder="NOW1:…" autocomplete="off" spellcheck="false"></textarea></div>
+    <div class="stack"><button class="big-btn ghost" id="useCode">המשך</button></div>
+    <div class="err" id="impErr"></div>`);
+  sheet.onkeydown = sheet.onchange = null;
+  const fail = msg => { const el = $('#impErr'); if (el) el.textContent = msg; };
+  const got = async code => { try { previewImport(await unpackData(code)); } catch (err) { fail(err.message); } };
+  sheet.onclick = async e => {
+    if (sheetNav(e)) return;
+    if (e.target.closest('#useCode')) return got($('#codeIn').value);
+    if (e.target.closest('#scanBtn')){
+      if (camStream){ stopCam(); $('#cam').hidden = true; $('#scanBtn').textContent = 'סריקת קוד QR'; return; }
+      fail('');
+      try {
+        await loadScript(SCAN_LIB);
+        camStream = await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}, audio:false});
+      } catch (err) {
+        return fail(err?.name === 'NotAllowedError' ? 'אין הרשאה למצלמה. אפשר לאשר אותה בהגדרות, או להדביק את הקוד.' : 'לא הצלחתי לפתוח את המצלמה. אפשר להדביק את הקוד במקום.');
+      }
+      const v = $('#camV'); $('#cam').hidden = false; $('#scanBtn').textContent = 'עצירת הסריקה';
+      v.srcObject = camStream; try { await v.play(); } catch {}
+      const c = document.createElement('canvas'), x = c.getContext('2d', {willReadFrequently:true});
+      const loop = () => {
+        if (!camStream) return;
+        if (v.readyState >= 2 && v.videoWidth){
+          const k = Math.min(1, 640 / v.videoWidth);
+          c.width = Math.round(v.videoWidth * k); c.height = Math.round(v.videoHeight * k);
+          x.drawImage(v, 0, 0, c.width, c.height);
+          const r = jsQR(x.getImageData(0, 0, c.width, c.height).data, c.width, c.height, {inversionAttempts:'dontInvert'});
+          if (r && r.data.startsWith('NOW')){ stopCam(); ding(); return got(r.data); }
+        }
+        requestAnimationFrame(loop);
+      };
+      loop();
+    }
+  };
+}
+
+function previewImport(d){
+  const incoming = d.tasks.filter(t => t && t.id && t.title);
+  const norm0 = x => x.title.trim().replace(/\s+/g, ' ');
+  const fresh = incoming.filter(t => !byId(t.id) && !db.tasks.some(x => !x.done && !t.done && norm0(x) === norm0(t))).length;
+  openSheet(`${navBack('קבלה')}
+    <div class="empty" style="padding:18px 8px 8px"><div class="em">📦</div><div class="big">נמצאו ${incoming.length} משימות</div>${fresh} מהן חדשות למכשיר הזה.</div>
+    <div class="stack" style="margin-top:12px">
+      <button class="big-btn" data-imp="merge">לאחד עם מה שיש כאן</button>
+      <button class="big-btn ghost" data-imp="replace" id="repBtn">להחליף את מה שיש כאן</button>
+    </div>
+    <p class="hint" style="margin-top:12px">איחוד שומר את המשימות שכבר כאן ומוסיף את החדשות. משימה שקיימת בשני המכשירים מתעדכנת לגרסה שהגיעה, אלא אם כאן היא כבר בוצעה.</p>`);
+  let armed = false;
+  sheet.onclick = e => {
+    if (sheetNav(e)) return;
+    const m = e.target.closest('[data-imp]')?.dataset.imp; if (!m) return;
+    if (m === 'replace' && !armed){ armed = true; $('#repBtn').textContent = 'בטוח? לחיצה נוספת מוחקת את מה שיש כאן'; $('#repBtn').style.color = 'var(--red)'; return; }
+    if (m === 'replace'){ db.tasks = incoming; db.days = {...(d.days || {})}; }
+    else {
+      const norm = x => x.title.trim().replace(/\s+/g, ' ');
+      incoming.forEach(t => {
+        // same task, or the same open task typed on both devices (like the example tasks)
+        let i = db.tasks.findIndex(x => x.id === t.id);
+        if (i < 0) i = db.tasks.findIndex(x => !x.done && !t.done && norm(x) === norm(t));
+        if (i < 0) db.tasks.push(t);
+        else if (!(db.tasks[i].done && !t.done)) db.tasks[i] = t;
+      });
+      for (const [k, n] of Object.entries(d.days || {})) db.days[k] = Math.max(db.days[k] || 0, n);
+    }
+    todayTasks().slice(3).forEach(t => t.day = '');   // keep the 3-a-day limit
+    db.focus = null; save(); closeSheet(); setTab('pool');
+    toast(m === 'replace' ? `${incoming.length} משימות הועברו` : `${fresh} משימות חדשות נוספו`);
   };
 }
 
