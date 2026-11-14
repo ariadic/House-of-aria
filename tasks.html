@@ -293,6 +293,12 @@ textarea.field{resize:none;font-size:15px;font-family:ui-monospace,Menlo,monospa
 .party .s{color:var(--ink2);font-size:15px;margin-bottom:18px;line-height:1.5}
 #confetti{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:41}
 
+.rem{color:var(--accent);font-weight:700}
+.rem-when{color:var(--accent);font-weight:700;font-size:13px;margin-top:3px}
+.dt{border:0;background:var(--fill);color:var(--ink);border-radius:10px;padding:8px 10px;font-size:16px;outline:none;width:100%}
+.alt-links{display:flex;justify-content:center;gap:18px;margin:10px 0 2px;font-size:14px}
+.alt-links button{color:var(--accent);font-weight:600}
+.added-ok{display:flex;align-items:center;justify-content:center;gap:6px;color:var(--green);font-weight:700;font-size:15px;margin-top:8px}
 .toast{position:fixed;left:50%;bottom:calc(96px + env(safe-area-inset-bottom));transform:translate(-50%,20px);background:#2a2440;color:#fff;border-radius:22px;padding:11px 16px;font-size:15px;opacity:0;pointer-events:none;transition:all .3s;z-index:50;display:flex;gap:14px;align-items:center;max-width:90vw;box-shadow:0 8px 24px rgba(0,0,0,.2)}
 .toast.on{opacity:1;transform:translate(-50%,0);pointer-events:auto}
 .toast button{color:#c9b8ff;font-weight:700;white-space:nowrap}
@@ -435,6 +441,70 @@ function timeRatio(){
   return s.reduce((a,t) => a + (t.spent/60)/t.est, 0) / s.length;
 }
 
+/* ---------- reminders (through the phone's calendar, no server) ---------- */
+const pad = n => String(n).padStart(2, '0');
+const localISO = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+const parseLocal = s => { const [a, b] = s.split('T'); const [y,m,d] = a.split('-').map(Number); const [h,mi] = b.split(':').map(Number); return new Date(y, m-1, d, h, mi); };
+function remindLabel(s){
+  const d = parseLocal(s), now = new Date();
+  const t = `<bdi>${d.getHours()}:${pad(d.getMinutes())}</bdi>`;
+  const day = ymd(d), tdy = today(), tmr = ymd(new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1));
+  if (day === tdy) return `היום ${t}`;
+  if (day === tmr) return `מחר ${t}`;
+  const diff = (d - now) / 864e5;
+  if (diff > 0 && diff < 6) return `${new Intl.DateTimeFormat('he-IL', {weekday:'long'}).format(d)} ${t}`;
+  return `<bdi>${d.getDate()}.${d.getMonth()+1}</bdi> ${t}`;
+}
+const remindBadge = t => (t.remind && !t.done && parseLocal(t.remind) > new Date()) ? `<span class="rem">⏰ ${remindLabel(t.remind)}</span>` : '';
+function quickTimes(){
+  const now = new Date();
+  const inHour = new Date(now.getTime() + 60*60e3); inHour.setMinutes(Math.ceil(inHour.getMinutes()/5)*5, 0, 0);
+  const evening = new Date(now.getFullYear(), now.getMonth(), now.getDate() + (now.getHours() >= 19 ? 1 : 0), 20, 0);
+  const morning = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 9, 0);
+  return [
+    ['בעוד שעה', localISO(inHour)],
+    [now.getHours() >= 19 ? 'מחר בערב 20:00' : 'הערב 20:00', localISO(evening)],
+    ['מחר 9:00', localISO(morning)],
+  ];
+}
+const icsEsc = v => String(v).replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');
+const icsFold = line => { const out = []; let rest = line; while (rest.length > 60){ out.push(rest.slice(0, 60)); rest = ' ' + rest.slice(60); } out.push(rest); return out.join('\r\n'); };
+const icsTime = d => `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}T${pad(d.getHours())}${pad(d.getMinutes())}00`;
+const appLink = t => location.href.split('#')[0] + '#t-' + t.id;
+function buildICS(t){
+  const start = parseLocal(t.remind), end = new Date(start.getTime() + Math.max(5, Math.min(t.est || 5, 60)) * 60e3);
+  const s = nextStep(t);
+  const desc = [s ? `הצעד הראשון: ${s.t}` : '', `פתיחת המשימה: ${appLink(t)}`].filter(Boolean).join('\n');
+  const now = new Date();
+  const utc = `${now.getUTCFullYear()}${pad(now.getUTCMonth()+1)}${pad(now.getUTCDate())}T${pad(now.getUTCHours())}${pad(now.getUTCMinutes())}${pad(now.getUTCSeconds())}Z`;
+  return ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Now tasks//HE','CALSCALE:GREGORIAN','METHOD:PUBLISH','BEGIN:VEVENT',
+    `UID:${t.id}-${icsTime(start)}@now-tasks`, `DTSTAMP:${utc}`, `DTSTART:${icsTime(start)}`, `DTEND:${icsTime(end)}`,
+    `SUMMARY:${icsEsc(t.title)}`, `DESCRIPTION:${icsEsc(desc)}`, `URL:${appLink(t)}`,
+    'BEGIN:VALARM','ACTION:DISPLAY',`DESCRIPTION:${icsEsc(t.title)}`,'TRIGGER:PT0M','END:VALARM',
+    'END:VEVENT','END:VCALENDAR'].map(icsFold).join('\r\n');
+}
+const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+function addToCalendar(t, asFile){
+  const ics = buildICS(t);
+  t.remindAdded = t.remind; save();
+  if (isIOS && !asFile){
+    // iOS opens a calendar file as an "Add event" sheet
+    location.href = 'data:text/calendar;charset=utf-8,' + encodeURIComponent(ics);
+  } else {
+    const url = URL.createObjectURL(new Blob([ics], {type:'text/calendar;charset=utf-8'}));
+    const a = document.createElement('a'); a.href = url; a.download = 'reminder.ics'; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+  }
+}
+function googleCalendar(t){
+  const start = parseLocal(t.remind), end = new Date(start.getTime() + Math.max(5, Math.min(t.est || 5, 60)) * 60e3);
+  const s = nextStep(t);
+  const q = new URLSearchParams({action:'TEMPLATE', text:t.title, dates:`${icsTime(start)}/${icsTime(end)}`,
+    details:[s ? `הצעד הראשון: ${s.t}` : '', `פתיחת המשימה: ${appLink(t)}`].filter(Boolean).join('\n')});
+  t.remindAdded = t.remind; save();
+  window.open('https://calendar.google.com/calendar/render?' + q, '_blank');
+}
+
 /* ---------- sound + haptics ---------- */
 let ac;
 function chime(notes){
@@ -500,7 +570,7 @@ function renderNow(){
       <div class="card now-card">
         <div class="meta-top"><span class="from">${from}</span>${catTag(t, true)}</div>
         <div class="title">${esc(t.title)}</div>
-        <div class="meta"><span>בערך ${t.est} דק'</span>${stepsTxt(t)}</div>
+        <div class="meta"><span>בערך ${t.est} דק'</span>${stepsTxt(t)}${remindBadge(t)}</div>
         ${t.steps.length ? `<div class="progress"><i style="width:${doneSteps/t.steps.length*100}%"></i></div>` : ''}
         <div class="step-box">
           ${s ? `<div class="lbl">הצעד הבא</div><div class="st">${esc(s.t)}</div>`
@@ -554,7 +624,7 @@ function renderToday(){
     <div class="list">
       ${list.map((t, i) => `<div class="sw-wrap"><button class="sw-del" data-kill="${t.id}">מחיקה</button><div class="tcard"><span class="num">${i+1}</span>
         <button class="tx press" data-open="${t.id}"><div class="t">${esc(t.title)}</div>
-          <div class="m">${catTag(t)}<span>בערך ${t.est} דק'</span>${stepsTxt(t)}</div></button>
+          <div class="m">${catTag(t)}<span>בערך ${t.est} דק'</span>${stepsTxt(t)}${remindBadge(t)}</div></button>
         <button class="play press" data-play="${t.id}" aria-label="להתחיל"><svg><use href="#i-play"/></svg></button></div></div>`).join('')}
       <button class="add-row press" data-pick><svg><use href="#i-plus"/></svg>בחירה מהרשימה</button>
     </div>
@@ -587,7 +657,7 @@ function taskRow(t){
   return `<div class="sw-wrap"><button class="sw-del" data-kill="${t.id}">מחיקה</button><div class="row">
     <button class="chk press" data-done="${t.id}" aria-label="סימון כבוצע"><svg><use href="#i-check"/></svg></button>
     <button class="lbl press" data-open="${t.id}"><div>${esc(t.title)}</div>
-      <div class="m"><span>בערך ${t.est} דק'</span>${stepsTxt(t)}</div></button>
+      <div class="m"><span>בערך ${t.est} דק'</span>${stepsTxt(t)}${remindBadge(t)}</div></button>
     <button class="addtoday ${isToday(t)?'in':''}" data-today="${t.id}">${isToday(t) ? '✓ היום' : 'להיום'}</button></div></div>`;
 }
 function renderTasks(){
@@ -784,12 +854,27 @@ $('#fab').onclick = capture;
 /* task details: title, category, steps, estimate, today */
 function editTask(t){
   if (!t) return;
+  let pickOpen = false;
   const draw = () => {
     openSheet(`
       <div class="sheet-nav"><span></span><span class="ttl">פרטים</span><button class="link strong" data-x="close">סיום</button></div>
       <div class="group"><input class="field title" id="eTitle" value="${esc(t.title)}" autocomplete="off" aria-label="שם המשימה"></div>
       <div class="cap">קטגוריה</div>
       <div class="group">${catChips(catOf(t) ? t.cat : '', 'data-ec')}</div>
+      <div class="cap">תזכורת</div>
+      <div class="group">
+        <div class="row"><span class="set-ic" style="background:var(--c-orange)">⏰</span>
+          <span class="lbl">להזכיר לי${t.remind ? `<div class="rem-when">${remindLabel(t.remind)}</div>` : ''}</span>
+          <label class="sw"><input type="checkbox" id="eRem" ${t.remind?'checked':''}><span></span></label></div>
+        ${t.remind ? `<div class="chips-pick" style="padding:4px 16px 12px">
+          ${quickTimes().map(([l, v]) => `<button class="chip ${t.remind===v?'on':''}" data-rq="${v}" style="--cc:var(--accent)">${l}</button>`).join('')}
+          <button class="chip ${pickOpen || !quickTimes().some(([,v]) => v===t.remind)?'on':''}" data-rq="pick" style="--cc:var(--accent)">בחירה…</button></div>
+          ${pickOpen || !quickTimes().some(([,v]) => v===t.remind) ? `<div style="padding:0 16px 14px"><input type="datetime-local" class="dt" id="eRemAt" value="${t.remind}"></div>` : ''}` : ''}
+      </div>
+      ${t.remind ? `<div class="stack" style="margin:-8px 0 0"><button class="big-btn" data-x="cal">📅 ${t.remindAdded === t.remind ? 'הוספה שוב ליומן' : 'הוספה ליומן'}</button></div>
+        ${t.remindAdded === t.remind ? '<div class="added-ok">✓ נשלח ליומן</div>' : ''}
+        <div class="alt-links">${isIOS ? '<button data-x="calfile">לא נפתח? הורדת קובץ יומן</button>' : ''}<button data-x="gcal">יומן Google</button></div>
+        <p class="hint" style="margin:6px 6px 20px">${isIOS ? 'האייפון ישאל אם להוסיף ליומן. לוחצים "הוספה", וההתראה תגיע מהיומן גם כשהאפליקציה סגורה.' : 'יורד קובץ יומן. פותחים אותו כדי להוסיף את התזכורת, או בוחרים "יומן Google".'}</p>` : ''}
       <div class="cap">צעדים קטנים. כל צעד = ניצחון ⭐</div>
       <div class="group">
         ${t.steps.map(s => `<div class="step-row ${s.done?'d':''}"><button class="chk ${s.done?'on':''}" data-st="${s.id}" aria-label="סימון צעד"><svg><use href="#i-check"/></svg></button>
@@ -813,10 +898,18 @@ function editTask(t){
     const dl = e.target.closest('[data-del]');
     if (dl){ t.steps = t.steps.filter(x => x.id !== dl.dataset.del); pullTitle(); save(); return draw(); }
     const ec = e.target.closest('[data-ec]'); if (ec){ t.cat = ec.dataset.ec; pullTitle(); addStep(); save(); return draw(); }
+    const rq = e.target.closest('[data-rq]');
+    if (rq){ pullTitle(); addStep(); if (rq.dataset.rq === 'pick') pickOpen = true; else { pickOpen = false; t.remind = rq.dataset.rq; } save(); draw(); if (pickOpen) $('#eRemAt')?.focus(); return; }
     const es = e.target.closest('[data-est]'); if (es){ t.est = +es.dataset.est; pullTitle(); addStep(); save(); return draw(); }
     const x = e.target.closest('[data-x]')?.dataset.x;
     if (x === 'close'){ pullTitle(); addStep(); save(); return closeSheet(); }
     if (x === 'del'){ closeSheet(); deleteTask(t); }
+    if (x === 'cal' || x === 'gcal' || x === 'calfile'){
+      pullTitle(); addStep(); save();
+      if (parseLocal(t.remind) < new Date()){ toast('השעה שבחרת כבר עברה. כדאי לבחור שעה אחרת.'); return; }
+      if (x === 'gcal') googleCalendar(t); else addToCalendar(t, x === 'calfile');
+      draw();
+    }
   };
   sheet.onkeydown = e => {
     if ((e.target.dataset.se || e.target.id === 'eTitle') && e.key === 'Enter' && !e.isComposing){ e.target.blur(); return; }
@@ -825,7 +918,11 @@ function editTask(t){
       setTimeout(() => $('#eStep')?.focus(), 30);
     }
   };
-  sheet.onchange = e => { if (e.target.id === 'eToday'){ pullTitle(); toggleToday(t); } };
+  sheet.onchange = e => {
+    if (e.target.id === 'eToday'){ pullTitle(); toggleToday(t); }
+    if (e.target.id === 'eRem'){ pullTitle(); addStep(); t.remind = e.target.checked ? quickTimes()[2][1] : ''; pickOpen = false; save(); draw(); }
+    if (e.target.id === 'eRemAt' && e.target.value){ pullTitle(); addStep(); t.remind = e.target.value.slice(0, 16); pickOpen = true; save(); draw(); }
+  };
   draw();
 }
 
@@ -1127,6 +1224,14 @@ function toast(msg, btn, fn){
 /* ---------- start ---------- */
 if (db.focus) openFocus();
 render();
+function openFromLink(){
+  const m = location.hash.match(/^#t-([a-z0-9]+)$/); if (!m) return;
+  const t = byId(m[1]); history.replaceState(null, '', location.pathname + location.search);
+  if (t && !t.done){ setTab('now'); editTask(t); }
+  else toast(t ? 'המשימה הזו כבר בוצעה 🎉' : 'המשימה לא נמצאה במכשיר הזה');
+}
+openFromLink();
+addEventListener('hashchange', openFromLink);
 })();
 </script>
 </body>
