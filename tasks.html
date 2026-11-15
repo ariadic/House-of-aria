@@ -663,17 +663,34 @@ function taskRow(t){
 function renderTasks(){
   const el = $('#t-tasks');
   const open = db.tasks.filter(t => !t.done).sort((a,b) => (isToday(b) - isToday(a)) || (a.created - b.created));
-  if (filter !== 'all' && filter !== 'none' && !db.cats.some(c => c.id === filter)) filter = 'all';
+  const doneAll = db.tasks.filter(t => t.done).sort((a,b) => (b.doneAt || 0) - (a.doneAt || 0));
+  if (filter !== 'all' && filter !== 'none' && filter !== 'done' && !db.cats.some(c => c.id === filter)) filter = 'all';
   const count = id => open.filter(t => (t.cat || 'none') === id).length;
   const uncategorised = count('none');
   const chips = `<div class="filters">
     <button class="chip ${filter==='all'?'on':''}" data-f="all">הכל <b>${open.length}</b></button>
     ${db.cats.map(c => `<button class="chip ${filter===c.id?'on':''}" data-f="${c.id}" style="--cc:${cc(c.color)}"><i></i>${esc(c.name)} <b>${count(c.id)}</b></button>`).join('')}
     ${uncategorised ? `<button class="chip ${filter==='none'?'on':''}" data-f="none"><i></i>בלי קטגוריה <b>${uncategorised}</b></button>` : ''}
+    ${doneAll.length ? `<button class="chip ${filter==='done'?'on':''}" data-f="done" style="--cc:var(--green)">✓ הושלמו <b>${doneAll.length}</b></button>` : ''}
     <button class="chip ghost" data-cats><svg width="14" height="14"><use href="#i-plus"/></svg>קטגוריה</button>
   </div>`;
   let body;
-  if (!open.length) body = `<div class="empty"><div class="em">📭</div><div class="big">אין משימות פתוחות</div>כשמשהו עולה בראש, לוחצים על "חדשה" ושוכחים ממנו.</div>`;
+  if (filter === 'done'){
+    const dayName = d => { const k = ymd(d); if (k === today()) return 'היום'; if (k === dayBefore(today())) return 'אתמול';
+      return new Intl.DateTimeFormat('he-IL', {weekday:'long', day:'numeric', month:'long'}).format(d); };
+    const byDay = [];
+    doneAll.forEach(t => { const d = t.doneAt ? new Date(t.doneAt) : null, k = d ? ymd(d) : 'x';
+      let g = byDay.find(x => x.k === k); if (!g){ g = {k, name: d ? dayName(d) : 'בלי תאריך', items:[]}; byDay.push(g); } g.items.push(t); });
+    body = `<div class="card" style="padding:14px 16px;margin-bottom:6px;display:flex;gap:12px;align-items:center">
+        <span style="font-size:30px">🏆</span><div><div style="font-weight:800;font-size:18px">${doneAll.length} משימות הושלמו</div>
+        ${Object.values(db.days).reduce((a,n) => a + n, 0) ? `<div style="color:var(--ink2);font-size:14px">${Object.values(db.days).reduce((a,n) => a + n, 0)} ניצחונות בסך הכל</div>` : ''}</div></div>
+      ${byDay.map(g => `<div class="sec" style="--cc:var(--green)"><i></i>${g.name} <span>${g.items.length}</span></div>
+      <div class="group">${g.items.map(t => `<div class="row won"><span class="chk on"><svg><use href="#i-check"/></svg></span>
+        <span class="lbl"><div class="t">${esc(t.title)}</div><div class="m">${catTag(t)}${t.spent > 60 ? `<span>לקח ${mins(t.spent)} דק'</span>` : ''}</div></span>
+        <button class="addtoday" data-restore="${t.id}">להחזיר</button></div>`).join('')}</div>`).join('')}
+      <p class="hint">"להחזיר" מחזיר משימה לרשימה, למקרה שסימנת בטעות.</p>`;
+  }
+  else if (!open.length) body = `<div class="empty"><div class="em">📭</div><div class="big">אין משימות פתוחות</div>כשמשהו עולה בראש, לוחצים על "חדשה" ושוכחים ממנו.</div>`;
   else if (filter === 'all'){
     const groups = [...db.cats.map(c => ({c, items:open.filter(t => t.cat === c.id)})), {c:null, items:open.filter(t => !catOf(t))}].filter(g => g.items.length);
     body = groups.map(g => `<div class="sec" style="--cc:${g.c ? cc(g.c.color) : 'var(--ink3)'}"><i></i>${g.c ? esc(g.c.name) : 'בלי קטגוריה'} <span>${g.items.length}</span></div>
@@ -683,11 +700,14 @@ function renderTasks(){
     body = items.length ? `<div class="group">${items.map(taskRow).join('')}</div>` : `<div class="empty"><div class="big">אין כאן משימות</div>לוחצים על "חדשה" כדי להוסיף לקטגוריה הזו.</div>`;
   }
   el.innerHTML = `${header('משימות', open.length ? `${open.length} פתוחות. לא צריך לעשות הכל, רק לבחור.` : '')}${chips}${body}
-    ${open.length ? '<p class="hint">לחיצה פותחת לעריכה. החלקה ימינה מוחקת.</p>' : ''}`;
+    ${open.length && filter !== 'done' ? '<p class="hint">לחיצה פותחת לעריכה. החלקה ימינה מוחקת.</p>' : ''}
+    ${filter === 'all' && doneAll.length ? `<button class="add-row press" data-f="done" style="margin-top:18px;border-style:solid;border-color:var(--sep);background:var(--card)">✓ ${doneAll.length} משימות שהושלמו</button>` : ''}`;
 }
 $('#t-tasks').addEventListener('click', e => {
   const f = e.target.closest('[data-f]'); if (f){ filter = f.dataset.f; return renderTasks(); }
   if (e.target.closest('[data-cats]')) return manageCats();
+  const rs = e.target.closest('[data-restore]');
+  if (rs){ const t = byId(rs.dataset.restore); t.done = false; t.doneAt = 0; t.steps.forEach(x => x.done = false); t.day = ''; save(); renderTasks(); toast('המשימה חזרה לרשימה'); return; }
   const o = e.target.closest('[data-open]'); if (o) return editTask(byId(o.dataset.open));
   const d = e.target.closest('[data-done]');
   if (d){ d.classList.add('on'); setTimeout(() => completeTask(byId(d.dataset.done), 0), 250); return; }
@@ -989,7 +1009,7 @@ function settings(){
       <button class="row" data-go="cats"><span class="set-ic" style="background:var(--c-violet)"><svg><use href="#i-tag"/></svg></span><span class="lbl">קטגוריות<div class="m">${db.cats.length} קטגוריות</div></span><svg class="chev"><use href="#i-chev"/></svg></button>
       <button class="row" data-go="move"><span class="set-ic" style="background:var(--c-teal)"><svg><use href="#i-sync"/></svg></span><span class="lbl">העברה בין מכשירים<div class="m">${n} משימות פתוחות במכשיר הזה</div></span><svg class="chev"><use href="#i-chev"/></svg></button>
     </div>
-    <p class="hint">המשימות נשמרות רק במכשיר הזה ולא נשלחות לשום מקום.</p>`);
+    <p class="hint">שמורות במכשיר הזה: ${n} משימות פתוחות ו-${db.tasks.length - n} שהושלמו. הן לא נשלחות לשום מקום.</p>`);
   sheet.onkeydown = sheet.onchange = null;
   sheet.onclick = e => {
     if (e.target.closest('[data-x=close]')) return closeSheet();
