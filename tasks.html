@@ -10,8 +10,8 @@
 <title>עכשיו</title>
 <style>
 /* "Now": a task app for ADHD in an iOS-like style, lavender palette.
-   Layout: three tabs (Now / Today / Tasks) in a bottom bar, a floating add button in the trailing corner,
-   sheets for capture, details and settings. One task at a time on "Now"; categories organise the rest. */
+   Layout: three tabs (Now / Today / Tasks) in a bottom bar,
+   "New task" rows inside each list, sheets for details and settings. One task at a time on "Now"; categories organise the rest. */
 :root{
   color-scheme:light;
   --bg:#f4f1fa; --card:#ffffff; --card2:#ffffff; --raised:#ffffff;
@@ -96,10 +96,16 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline
 .tabbar button{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;font-weight:600;color:var(--ink3);letter-spacing:0}
 .tabbar button svg{width:26px;height:26px}
 .tabbar button.on{color:var(--accent)}
-.tabbar .new{color:var(--accent)}
-.tabbar .new .ring{width:26px;height:26px;border-radius:50%;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;box-shadow:var(--fab-shadow)}
-.tabbar .new .ring svg{width:14px;height:14px}
-.tabbar .new:active .ring{transform:scale(.9)}
+.addline{display:flex;align-items:center;gap:12px;min-height:52px;padding:0 16px;width:100%;color:var(--accent);font-weight:600;text-align:start;position:relative;background:var(--card)}
+.group>.addline{border-top:1px solid var(--sep)}
+.group>.addline:first-child{border-top:0}
+.addline .pl{width:26px;height:26px;border-radius:50%;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;flex:none}
+.addline .pl svg{width:12px;height:12px}
+.addline input{flex:1;min-width:0;border:0;outline:none;background:none;font-size:17px;font-weight:400;color:var(--ink);padding:14px 0}
+.addline input::placeholder{color:var(--ink3)}
+.addline .mic{width:34px;height:34px}
+.addline .mic svg{width:17px;height:17px}
+.addcard{border-radius:20px;border:1px solid var(--sep);box-shadow:var(--shadow);overflow:hidden}
 
 /* ---------- shared pieces ---------- */
 .card{background:var(--card);border-radius:20px;border:1px solid var(--sep);box-shadow:var(--shadow)}
@@ -333,7 +339,6 @@ textarea.field{resize:none;font-size:15px;font-family:ui-monospace,Menlo,monospa
     <button data-tab="now" class="on"><svg><use href="#i-now"/></svg>עכשיו</button>
     <button data-tab="today"><svg><use href="#i-today"/></svg>היום</button>
     <button data-tab="tasks"><svg><use href="#i-list"/></svg>משימות</button>
-    <button class="new" id="fab" aria-label="משימה חדשה"><span class="ring"><svg><use href="#i-plus"/></svg></span>חדשה</button>
   </nav>
 </div>
 
@@ -586,7 +591,8 @@ function renderNow(){
       </div>`
     : `<div class="empty"><div class="em">${anyOpen ? '🌿' : '✨'}</div>
         <div class="big">${anyOpen ? 'אין כרגע משהו לעשות' : 'הראש נקי'}</div>
-        מה מסתובב לך בראש? לוחצים על "חדשה" ורושמים בשתי שניות.</div>`}`;
+        מה מסתובב לך בראש? רושמים כאן בשתי שניות.</div>
+        <div class="addcard">${addRow('now', '', true, 'משימה חדשה')}</div>`}`;
   el.dataset.task = t ? t.id : '';
 }
 $('#t-now').addEventListener('click', e => {
@@ -626,7 +632,8 @@ function renderToday(){
         <button class="tx press" data-open="${t.id}"><div class="t">${esc(t.title)}</div>
           <div class="m">${catTag(t)}<span>בערך ${t.est} דק'</span>${stepsTxt(t)}${remindBadge(t)}</div></button>
         <button class="play press" data-play="${t.id}" aria-label="להתחיל"><svg><use href="#i-play"/></svg></button></div></div>`).join('')}
-      <button class="add-row press" data-pick><svg><use href="#i-plus"/></svg>בחירה מהרשימה</button>
+      <div class="addcard">${addRow('today', '', true, 'משימה חדשה להיום')}</div>
+      <button class="add-row press" data-pick><svg><use href="#i-list"/></svg>בחירה מהרשימה</button>
     </div>
     ${list.length > 1 ? '<p class="hint">לא צריך הכל בבת אחת. במסך "עכשיו" מוצגת רק אחת בכל פעם.</p>' : ''}
     ${won.length ? `<div class="h2">ניצחונות היום 🏆</div><div class="group">${won.map(t => `
@@ -651,6 +658,53 @@ $('#t-today').addEventListener('click', e => {
   }
 });
 
+/* ---------- inline "New task" rows: tap, type, Enter; stays open for the next one ---------- */
+let addingKey = null;
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let rec = null;
+function stopMic(){ try { rec?.stop(); } catch {} rec = null; }
+function addRow(key, cat, forToday, label = 'משימה חדשה'){
+  if (addingKey === key) return `<div class="addline" data-addkey="${key}"><span class="pl"><svg><use href="#i-plus"/></svg></span>
+    <input class="addin" data-cat="${cat || ''}" data-today="${forToday ? 1 : ''}" placeholder="מה צריך לעשות?" enterkeyhint="send" autocomplete="off">
+    ${SR ? '<button class="mic" data-mic aria-label="הקלטה"><svg><use href="#i-mic"/></svg></button>' : ''}</div>`;
+  return `<button class="addline press" data-add="${key}"><span class="pl"><svg><use href="#i-plus"/></svg></span>${label}</button>`;
+}
+function addTask(title, cat, forToday){
+  title = title.trim(); if (!title) return null;
+  const t = {id:uid(), title, cat: db.cats.some(c => c.id === cat) ? cat : '', est:15, steps:[], day: forToday ? today() : '', order: Date.now(), done:false, doneAt:0, spent:0, created:Date.now()};
+  db.tasks.push(t); save(); ding(); return t;
+}
+// focus right away, inside the tap: iPhone only opens the keyboard when focus happens during the tap itself
+const focusAdd = () => { const i = document.querySelector('.tab.on .addin'); if (i){ i.focus(); i.scrollIntoView({block:'center'}); } };
+document.addEventListener('click', e => {
+  const a = e.target.closest('[data-add]'); if (!a) return;
+  addingKey = a.dataset.add; render(); focusAdd();
+});
+document.addEventListener('keydown', e => {
+  const i = e.target.closest?.('.addin'); if (!i) return;
+  if (e.key === 'Escape'){ addingKey = null; render(); return; }
+  if (e.key !== 'Enter' || e.isComposing) return;
+  e.preventDefault();
+  if (addTask(i.value, i.dataset.cat, !!i.dataset.today)){ render(); focusAdd(); }
+});
+document.addEventListener('focusout', e => {
+  const i = e.target.closest?.('.addin'); if (!i) return;
+  setTimeout(() => {   // leaving the field: keep what was typed, then close the row
+    if (!i.isConnected || document.activeElement?.closest?.('.addline') || rec) return;   // a field replaced by a re-render was already handled
+    addTask(i.value, i.dataset.cat, !!i.dataset.today);
+    addingKey = null; render();
+  }, 120);
+});
+document.addEventListener('click', e => {
+  if (!e.target.closest('[data-mic]')) return;
+  const i = document.querySelector('.tab.on .addin'); if (!i) return;
+  if (rec) return stopMic();
+  rec = new SR(); rec.lang = 'he-IL'; rec.interimResults = false;
+  rec.onresult = ev => { addTask(ev.results[0][0].transcript, i.dataset.cat, !!i.dataset.today); };
+  rec.onend = () => { rec = null; render(); };
+  e.target.closest('[data-mic]').classList.add('rec'); rec.start();
+});
+
 /* ---------- TASKS: everything, by category ---------- */
 let filter = 'all';
 function taskRow(t){
@@ -663,31 +717,52 @@ function taskRow(t){
 function renderTasks(){
   const el = $('#t-tasks');
   const open = db.tasks.filter(t => !t.done).sort((a,b) => (isToday(b) - isToday(a)) || (a.created - b.created));
-  if (filter !== 'all' && filter !== 'none' && !db.cats.some(c => c.id === filter)) filter = 'all';
+  const doneAll = db.tasks.filter(t => t.done).sort((a,b) => (b.doneAt || 0) - (a.doneAt || 0));
+  if (filter !== 'all' && filter !== 'none' && filter !== 'done' && !db.cats.some(c => c.id === filter)) filter = 'all';
   const count = id => open.filter(t => (t.cat || 'none') === id).length;
   const uncategorised = count('none');
   const chips = `<div class="filters">
     <button class="chip ${filter==='all'?'on':''}" data-f="all">הכל <b>${open.length}</b></button>
     ${db.cats.map(c => `<button class="chip ${filter===c.id?'on':''}" data-f="${c.id}" style="--cc:${cc(c.color)}"><i></i>${esc(c.name)} <b>${count(c.id)}</b></button>`).join('')}
     ${uncategorised ? `<button class="chip ${filter==='none'?'on':''}" data-f="none"><i></i>בלי קטגוריה <b>${uncategorised}</b></button>` : ''}
+    ${doneAll.length ? `<button class="chip ${filter==='done'?'on':''}" data-f="done" style="--cc:var(--green)">✓ הושלמו <b>${doneAll.length}</b></button>` : ''}
     <button class="chip ghost" data-cats><svg width="14" height="14"><use href="#i-plus"/></svg>קטגוריה</button>
   </div>`;
   let body;
-  if (!open.length) body = `<div class="empty"><div class="em">📭</div><div class="big">אין משימות פתוחות</div>כשמשהו עולה בראש, לוחצים על "חדשה" ושוכחים ממנו.</div>`;
+  if (filter === 'done'){
+    const dayName = d => { const k = ymd(d); if (k === today()) return 'היום'; if (k === dayBefore(today())) return 'אתמול';
+      return new Intl.DateTimeFormat('he-IL', {weekday:'long', day:'numeric', month:'long'}).format(d); };
+    const byDay = [];
+    doneAll.forEach(t => { const d = t.doneAt ? new Date(t.doneAt) : null, k = d ? ymd(d) : 'x';
+      let g = byDay.find(x => x.k === k); if (!g){ g = {k, name: d ? dayName(d) : 'בלי תאריך', items:[]}; byDay.push(g); } g.items.push(t); });
+    body = `<div class="card" style="padding:14px 16px;margin-bottom:6px;display:flex;gap:12px;align-items:center">
+        <span style="font-size:30px">🏆</span><div><div style="font-weight:800;font-size:18px">${doneAll.length} משימות הושלמו</div>
+        ${Object.values(db.days).reduce((a,n) => a + n, 0) ? `<div style="color:var(--ink2);font-size:14px">${Object.values(db.days).reduce((a,n) => a + n, 0)} ניצחונות בסך הכל</div>` : ''}</div></div>
+      ${byDay.map(g => `<div class="sec" style="--cc:var(--green)"><i></i>${g.name} <span>${g.items.length}</span></div>
+      <div class="group">${g.items.map(t => `<div class="row won"><span class="chk on"><svg><use href="#i-check"/></svg></span>
+        <span class="lbl"><div class="t">${esc(t.title)}</div><div class="m">${catTag(t)}${t.spent > 60 ? `<span>לקח ${mins(t.spent)} דק'</span>` : ''}</div></span>
+        <button class="addtoday" data-restore="${t.id}">להחזיר</button></div>`).join('')}</div>`).join('')}
+      <p class="hint">"להחזיר" מחזיר משימה לרשימה, למקרה שסימנת בטעות.</p>`;
+  }
+  else if (!open.length) body = `<div class="empty" style="padding-bottom:20px"><div class="em">📭</div><div class="big">אין משימות פתוחות</div>מה מסתובב לך בראש? רושמים כאן ושוכחים ממנו.</div>
+    <div class="group">${addRow('empty', '', false)}</div>`;
   else if (filter === 'all'){
     const groups = [...db.cats.map(c => ({c, items:open.filter(t => t.cat === c.id)})), {c:null, items:open.filter(t => !catOf(t))}].filter(g => g.items.length);
     body = groups.map(g => `<div class="sec" style="--cc:${g.c ? cc(g.c.color) : 'var(--ink3)'}"><i></i>${g.c ? esc(g.c.name) : 'בלי קטגוריה'} <span>${g.items.length}</span></div>
-      <div class="group">${g.items.map(taskRow).join('')}</div>`).join('');
+      <div class="group">${g.items.map(taskRow).join('')}${addRow('cat:' + (g.c ? g.c.id : 'none'), g.c ? g.c.id : '', false)}</div>`).join('');
   } else {
     const items = open.filter(t => (t.cat || 'none') === filter || (filter === 'none' && !catOf(t)));
-    body = items.length ? `<div class="group">${items.map(taskRow).join('')}</div>` : `<div class="empty"><div class="big">אין כאן משימות</div>לוחצים על "חדשה" כדי להוסיף לקטגוריה הזו.</div>`;
+    body = `<div class="group">${items.map(taskRow).join('')}${addRow('cat:' + filter, filter === 'none' ? '' : filter, false)}</div>`;
   }
   el.innerHTML = `${header('משימות', open.length ? `${open.length} פתוחות. לא צריך לעשות הכל, רק לבחור.` : '')}${chips}${body}
-    ${open.length ? '<p class="hint">לחיצה פותחת לעריכה. החלקה ימינה מוחקת.</p>' : ''}`;
+    ${open.length && filter !== 'done' ? '<p class="hint">לחיצה פותחת לעריכה. החלקה ימינה מוחקת.</p>' : ''}
+    ${filter === 'all' && doneAll.length ? `<button class="add-row press" data-f="done" style="margin-top:18px;border-style:solid;border-color:var(--sep);background:var(--card)">✓ ${doneAll.length} משימות שהושלמו</button>` : ''}`;
 }
 $('#t-tasks').addEventListener('click', e => {
   const f = e.target.closest('[data-f]'); if (f){ filter = f.dataset.f; return renderTasks(); }
   if (e.target.closest('[data-cats]')) return manageCats();
+  const rs = e.target.closest('[data-restore]');
+  if (rs){ const t = byId(rs.dataset.restore); t.done = false; t.doneAt = 0; t.steps.forEach(x => x.done = false); t.day = ''; save(); renderTasks(); toast('המשימה חזרה לרשימה'); return; }
   const o = e.target.closest('[data-open]'); if (o) return editTask(byId(o.dataset.open));
   const d = e.target.closest('[data-done]');
   if (d){ d.classList.add('on'); setTimeout(() => completeTask(byId(d.dataset.done), 0), 250); return; }
@@ -807,49 +882,7 @@ const catChips = (sel, attr) => `<div class="chips-pick">
   ${db.cats.map(c => `<button class="chip ${sel===c.id?'on':''}" ${attr}="${c.id}" style="--cc:${cc(c.color)}"><i></i>${esc(c.name)}</button>`).join('')}
   <button class="chip ${!sel?'on':''}" ${attr}="">בלי</button></div>`;
 
-/* capture: brain dump, one thought per Enter, into a chosen category */
-let rec = null, lastCat = null;
-const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-function stopMic(){ try { rec?.stop(); } catch {} rec = null; }
-function capture(){
-  const added = [];
-  let cat = (tab === 'tasks' && filter !== 'all' && filter !== 'none') ? filter : (lastCat ?? db.cats[0]?.id ?? '');
-  if (cat && !db.cats.some(c => c.id === cat)) cat = '';
-  const draw = () => {
-    const val = $('#capIn')?.value || '';
-    openSheet(`
-      <div class="sheet-nav"><span></span><span class="ttl">משימה חדשה</span><button class="link strong" data-x="close">סיום</button></div>
-      <div class="cap-in"><input id="capIn" placeholder="מה צריך לעשות?" enterkeyhint="send" autocomplete="off" value="${esc(val)}">
-        ${SR ? `<button class="mic" id="mic" aria-label="הקלטה"><svg><use href="#i-mic"/></svg></button>` : ''}</div>
-      <div class="cap" style="margin-top:16px">קטגוריה</div>
-      <div class="group">${catChips(cat, 'data-c')}</div>
-      <div class="added" id="added">${added.map(v => `<span>✓ ${esc(v)}</span>`).join('')}</div>
-      <p class="hint">אפשר לרשום כמה ברצף, Enter אחרי כל אחת. את הפרטים מסדרים אחר כך, או בכלל לא.</p>`);
-  };
-  const add = v => {
-    v = v.trim(); if (!v) return;
-    db.tasks.push({id:uid(), title:v, cat, est:15, steps:[], day:'', order:0, done:false, doneAt:0, spent:0, created:Date.now()});
-    save(); added.push(v); ding(); lastCat = cat;
-    $('#added').insertAdjacentHTML('beforeend', `<span>✓ ${esc(v)}</span>`);
-  };
-  draw();
-  setTimeout(() => $('#capIn')?.focus(), 350);
-  sheet.onclick = e => {
-    const c = e.target.closest('[data-c]');
-    if (c){ cat = c.dataset.c; lastCat = cat; draw(); $('#capIn').focus(); return; }
-    if (e.target.closest('[data-x=close]')){ add($('#capIn').value); if (added.length) toast(added.length === 1 ? 'נוספה משימה' : `נוספו ${added.length} משימות`); return closeSheet(); }
-    if (e.target.closest('#mic')){
-      if (rec) return stopMic();
-      rec = new SR(); rec.lang = 'he-IL'; rec.interimResults = false;
-      rec.onresult = ev => add(ev.results[0][0].transcript);
-      rec.onend = () => { rec = null; $('#mic')?.classList.remove('rec'); };
-      $('#mic').classList.add('rec'); rec.start();
-    }
-  };
-  sheet.onkeydown = e => { if (e.target.id === 'capIn' && e.key === 'Enter' && !e.isComposing){ add(e.target.value); e.target.value = ''; } };
-  sheet.onchange = null;
-}
-$('#fab').onclick = capture;
+
 
 /* task details: title, category, steps, estimate, today */
 function editTask(t){
@@ -965,7 +998,7 @@ function pickForToday(){
     ${groups.length ? groups.map(g => `<div class="sec" style="--cc:${g.c ? cc(g.c.color) : 'var(--ink3)'};margin-top:6px"><i></i>${g.c ? esc(g.c.name) : 'בלי קטגוריה'}</div>
       <div class="group">${g.items.map(t => `<button class="row" data-p="${t.id}"><span class="lbl"><div>${esc(t.title)}</div>
       <div class="m"><span>בערך ${t.est} דק'</span>${stepsTxt(t)}</div></span><span class="addtoday">להיום</span></button>`).join('')}</div>`).join('')
-      : `<div class="empty"><div class="big">אין משימות שמחכות</div>אפשר לרשום משהו חדש עם "חדשה".</div>`}`);
+      : `<div class="empty"><div class="big">אין משימות שמחכות</div>אפשר לרשום משימה חדשה ישר ב"היום".</div>`}`);
   sheet.onkeydown = sheet.onchange = null;
   sheet.onclick = e => {
     if (e.target.closest('[data-x=close]')) return closeSheet();
@@ -989,7 +1022,7 @@ function settings(){
       <button class="row" data-go="cats"><span class="set-ic" style="background:var(--c-violet)"><svg><use href="#i-tag"/></svg></span><span class="lbl">קטגוריות<div class="m">${db.cats.length} קטגוריות</div></span><svg class="chev"><use href="#i-chev"/></svg></button>
       <button class="row" data-go="move"><span class="set-ic" style="background:var(--c-teal)"><svg><use href="#i-sync"/></svg></span><span class="lbl">העברה בין מכשירים<div class="m">${n} משימות פתוחות במכשיר הזה</div></span><svg class="chev"><use href="#i-chev"/></svg></button>
     </div>
-    <p class="hint">המשימות נשמרות רק במכשיר הזה ולא נשלחות לשום מקום.</p>`);
+    <p class="hint">שמורות במכשיר הזה: ${n} משימות פתוחות ו-${db.tasks.length - n} שהושלמו. הן לא נשלחות לשום מקום.</p>`);
   sheet.onkeydown = sheet.onchange = null;
   sheet.onclick = e => {
     if (e.target.closest('[data-x=close]')) return closeSheet();
