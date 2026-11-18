@@ -325,6 +325,7 @@ textarea.field{resize:none;font-size:15px;font-family:ui-monospace,Menlo,monospa
   <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 2.8v2.6M12 18.6v2.6M21.2 12h-2.6M5.4 12H2.8M18.5 5.5l-1.8 1.8M7.3 16.7l-1.8 1.8M18.5 18.5l-1.8-1.8M7.3 7.3 5.5 5.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
   <symbol id="i-sync" viewBox="0 0 24 24"><path d="M4 9a8 8 0 0 1 14.3-3.3M20 15a8 8 0 0 1-14.3 3.3" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><path d="M19 2.5v4h-4M5 21.5v-4h4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
   <symbol id="i-tag" viewBox="0 0 24 24"><path d="M3.5 12.2V4.5a1 1 0 0 1 1-1h7.7a1 1 0 0 1 .7.3l7.8 7.8a1 1 0 0 1 0 1.4l-7.7 7.7a1 1 0 0 1-1.4 0l-7.8-7.8a1 1 0 0 1-.3-.7z" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="8" cy="8" r="1.6" fill="currentColor"/></symbol>
+  <symbol id="i-cloud" viewBox="0 0 24 24"><path d="M7 18.5h10.5a4 4 0 0 0 .6-7.96A6 6 0 0 0 6.6 9.1 4.7 4.7 0 0 0 7 18.5z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
   <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z" fill="currentColor"/></symbol>
   <symbol id="i-chev" viewBox="0 0 24 24"><path d="m15 4-8 8 8 8" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></symbol>
   <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 7.5V12l3 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
@@ -362,6 +363,100 @@ textarea.field{resize:none;font-size:15px;font-family:ui-monospace,Menlo,monospa
 <div class="party" id="party"><div class="box"><div class="em" id="pEm">🎉</div><div class="t" id="pT"></div><div class="s" id="pS"></div><button class="big-btn" id="pOk">המשך</button></div></div>
 <canvas id="confetti"></canvas>
 <div class="toast" id="toast"><span id="toastTxt"></span><button id="toastBtn"></button></div>
+
+<script type="text/plain" id="gsCode">
+/* "עכשיו": גשר בין האפליקציה לטבלה הזו. אל תשתפו את הקוד הסודי (TOKEN). */
+const TOKEN = '__TOKEN__';
+const TASKS = 'משימות', META = 'הגדרות האפליקציה';
+const HEAD = ['מזהה', 'משימה', 'קטגוריה', 'מצב', 'להיום', 'צעדים', 'תזכורת', 'נוצרה', 'הושלמה', 'עודכנה', 'נתונים (לא לערוך)'];
+
+function doGet(e) { return reply(e.parameter.token, function () { return state(); }); }
+function doPost(e) {
+  var req;
+  try { req = JSON.parse(e.postData.contents); } catch (err) { return json({ error: 'bad request' }); }
+  return reply(req.token, function () { merge(req); return state(); });
+}
+function reply(token, fn) {
+  if (token !== TOKEN) return json({ error: 'token' });
+  var lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try { return json(fn()); } finally { lock.releaseLock(); }
+}
+function json(o) { return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON); }
+function safe(s, fallback) { try { return s ? JSON.parse(s) : fallback; } catch (e) { return fallback; } }
+function text(v) { return (typeof v === 'string' && v !== '') ? "'" + v : v; }   // keep text as text, never a formula or a date
+
+function tab(name, head) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet(), sh = ss.getSheetByName(name);
+  if (!sh) {
+    sh = ss.insertSheet(name);
+    sh.getRange(1, 1, 1, head.length).setValues([head]).setFontWeight('bold');
+    sh.setFrozenRows(1);
+    sh.setRightToLeft(true);
+  }
+  return sh;
+}
+function readTasks() {
+  var sh = tab(TASKS, HEAD), v = sh.getDataRange().getValues(), rows = {};
+  for (var i = 1; i < v.length; i++) {
+    var t = safe(String(v[i][HEAD.length - 1] || ''), null);
+    if (t && t.id) rows[t.id] = { t: t, row: i + 1 };
+  }
+  return { sh: sh, rows: rows };
+}
+function readMeta() {
+  var sh = tab(META, ['מפתח', 'ערך']), v = sh.getDataRange().getValues(), m = {};
+  for (var i = 1; i < v.length; i++) m[v[i][0]] = { val: String(v[i][1]), row: i + 1 };
+  return { sh: sh, m: m, get: function (k) { return m[k] ? m[k].val : ''; } };
+}
+function setMeta(M, key, val) {
+  if (M.m[key]) M.sh.getRange(M.m[key].row, 2).setValue(text(String(val)));
+  else { M.sh.appendRow([key, text(String(val))]); M.m[key] = { row: M.sh.getLastRow() }; }
+  M.m[key].val = String(val);
+}
+function line(t, cats) {
+  var c = null;
+  for (var i = 0; i < cats.length; i++) if (cats[i].id === t.cat) c = cats[i];
+  var when = function (ms) { return ms ? new Date(ms) : ''; };
+  var steps = (t.steps || []).map(function (s) { return (s.done ? '✓ ' : '• ') + s.t; }).join('\n');
+  return [t.id, t.title, c ? c.name : '', t.deleted ? 'נמחקה' : t.done ? '✓ הושלמה' : 'פתוחה', t.day || '', steps,
+    (t.remind || '').replace('T', ' '), when(t.created), when(t.doneAt), when(t.updated), JSON.stringify(t)].map(text);
+}
+function merge(req) {
+  var M = readMeta();
+  if (req.cats && Number(req.metaUpdated || 0) >= Number(M.get('metaUpdated') || 0)) {
+    setMeta(M, 'cats', JSON.stringify(req.cats));
+    setMeta(M, 'metaUpdated', Number(req.metaUpdated || 0));
+  }
+  var days = safe(M.get('days'), {}), inDays = req.days || {};
+  Object.keys(inDays).forEach(function (k) { days[k] = Math.max(days[k] || 0, inDays[k] || 0); });
+  setMeta(M, 'days', JSON.stringify(days));
+  var cats = safe(M.get('cats'), []);
+  var T = readTasks();
+  var put = function (t) {
+    var r = T.rows[t.id], vals = line(t, cats);
+    if (r) T.sh.getRange(r.row, 1, 1, HEAD.length).setValues([vals]);
+    else { T.sh.appendRow(vals); T.rows[t.id] = { row: T.sh.getLastRow() }; }
+    T.rows[t.id].t = t;
+  };
+  (req.tasks || []).forEach(function (t) {
+    var r = T.rows[t.id];
+    if (t && t.id && (!r || Number(t.updated || 0) >= Number(r.t.updated || 0))) put(t);
+  });
+  (req.deleted || []).forEach(function (d) {
+    var r = T.rows[d.id];
+    if (r && Number(d.at || 0) >= Number(r.t.updated || 0)) {
+      var t = JSON.parse(JSON.stringify(r.t)); t.deleted = true; t.updated = d.at; put(t);
+    }
+  });
+}
+function state() {
+  var M = readMeta(), T = readTasks(), tasks = [];
+  Object.keys(T.rows).forEach(function (id) { if (!T.rows[id].t.deleted) tasks.push(T.rows[id].t); });
+  return { ok: true, tasks: tasks, cats: safe(M.get('cats'), null), days: safe(M.get('days'), {}),
+    metaUpdated: Number(M.get('metaUpdated') || 0), sheetUrl: SpreadsheetApp.getActiveSpreadsheet().getUrl(), now: Date.now() };
+}
+</script>
 
 <script>
 (() => {
@@ -410,7 +505,8 @@ if (!Array.isArray(db.cats)) db.cats = defaultCats();
 db.tasks.forEach(t => { if (t.cat === undefined) t.cat = ''; delete t.energy; });
 delete db.energy;
 db.theme = db.theme || 'auto';
-const save = () => { try { localStorage.setItem(KEY, JSON.stringify(db)); } catch {} };
+const persist = () => { try { localStorage.setItem(KEY, JSON.stringify(db)); } catch {} };
+const save = () => { persist(); scheduleSync(); };
 const byId = id => db.tasks.find(t => t.id === id);
 const catOf = t => db.cats.find(c => c.id === t.cat);
 const catTag = (t, tag) => { const c = catOf(t); return c ? `<span class="cat${tag ? ' tag' : ''}" style="--cc:${cc(c.color)}">${esc(c.name)}</span>` : ''; };
@@ -1020,9 +1116,10 @@ function settings(){
     </div></div>
     <div class="group">
       <button class="row" data-go="cats"><span class="set-ic" style="background:var(--c-violet)"><svg><use href="#i-tag"/></svg></span><span class="lbl">קטגוריות<div class="m">${db.cats.length} קטגוריות</div></span><svg class="chev"><use href="#i-chev"/></svg></button>
-      <button class="row" data-go="move"><span class="set-ic" style="background:var(--c-teal)"><svg><use href="#i-sync"/></svg></span><span class="lbl">העברה בין מכשירים<div class="m">${n} משימות פתוחות במכשיר הזה</div></span><svg class="chev"><use href="#i-chev"/></svg></button>
+      <button class="row" data-go="sync"><span class="set-ic" style="background:var(--c-green)"><svg><use href="#i-cloud"/></svg></span><span class="lbl">גיבוי וסנכרון בגוגל שיטס<div class="m">${syncLine()}</div></span><svg class="chev"><use href="#i-chev"/></svg></button>
+      <button class="row" data-go="move"><span class="set-ic" style="background:var(--c-teal)"><svg><use href="#i-sync"/></svg></span><span class="lbl">העברה חד-פעמית בקוד QR<div class="m">העתקה של המשימות למכשיר אחר</div></span><svg class="chev"><use href="#i-chev"/></svg></button>
     </div>
-    <p class="hint">שמורות במכשיר הזה: ${n} משימות פתוחות ו-${db.tasks.length - n} שהושלמו. הן לא נשלחות לשום מקום.</p>`);
+    <p class="hint">שמורות במכשיר הזה: ${n} משימות פתוחות ו-${db.tasks.length - n} שהושלמו.${db.sync?.url ? ' יש להן גיבוי בטבלה בגוגל דרייב שלך.' : ' אין להן גיבוי מחוץ למכשיר.'}</p>`);
   sheet.onkeydown = sheet.onchange = null;
   sheet.onclick = e => {
     if (e.target.closest('[data-x=close]')) return closeSheet();
@@ -1030,6 +1127,7 @@ function settings(){
     const g = e.target.closest('[data-go]')?.dataset.go;
     if (g === 'cats') manageCats(true);
     if (g === 'move') transferMenu();
+    if (g === 'sync') syncSheet();
   };
 }
 
@@ -1160,7 +1258,7 @@ async function sendSheet(){
 
 let camStream = null;
 function stopCam(){ camStream?.getTracks().forEach(t => t.stop()); camStream = null; }
-function getSheet(){
+function getSheet(back){
   openSheet(`${navBack('קבלה')}
     <div class="stack"><button class="big-btn" id="scanBtn">סריקת קוד QR</button></div>
     <div class="cam" id="cam" hidden><video id="camV" playsinline muted></video></div>
@@ -1170,9 +1268,12 @@ function getSheet(){
     <div class="err" id="impErr"></div>`);
   sheet.onkeydown = sheet.onchange = null;
   const fail = msg => { const el = $('#impErr'); if (el) el.textContent = msg; };
-  const got = async code => { try { previewImport(await unpackData(code)); } catch (err) { fail(err.message); } };
+  const got = async code => {
+    if (/NOWSYNC:/.test(code)) return connectFromCode(code, fail);
+    try { previewImport(await unpackData(code)); } catch (err) { fail(err.message); }
+  };
   sheet.onclick = async e => {
-    if (sheetNav(e)) return;
+    if (sheetNav(e, back)) return;
     if (e.target.closest('#useCode')) return got($('#codeIn').value);
     if (e.target.closest('#scanBtn')){
       if (camStream){ stopCam(); $('#cam').hidden = true; $('#scanBtn').textContent = 'סריקת קוד QR'; return; }
@@ -1254,6 +1355,202 @@ function toast(msg, btn, fn){
   clearTimeout(toastTimer); toastTimer = setTimeout(() => $('#toast').classList.remove('on'), 3600);
 }
 
+/* ---------- backup + sync through a Google Sheet (an Apps Script web app in the user's own Drive) ---------- */
+let syncing = false, syncAgain = false, syncTimer = null;
+const strip = t => { const {updated, ...rest} = t; return JSON.stringify(rest); };
+function scheduleSync(){ if (!db.sync?.url) return; clearTimeout(syncTimer); syncTimer = setTimeout(() => syncNow(), 1500); }
+function ago(ms){
+  const m = Math.round((Date.now() - ms) / 60e3);
+  return m < 1 ? 'הרגע' : m < 60 ? `לפני ${m} דק'` : m < 1440 ? `לפני ${Math.round(m/60)} שע'` : `לפני ${Math.round(m/1440)} ימים`;
+}
+function syncLine(){
+  const S = db.sync;
+  if (!S?.url) return 'לא מחובר. המשימות שמורות רק במכשיר הזה';
+  if (syncing) return 'מסנכרן…';
+  if (S.error) return `לא הצלחתי לסנכרן ${S.last ? '(הסנכרון האחרון ' + ago(S.last) + ')' : ''}`;
+  return S.last ? `מחובר · סונכרן ${ago(S.last)}` : 'מחובר';
+}
+async function callSheet(S, body){
+  const res = body
+    ? await fetch(S.url, {method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'}, body:JSON.stringify(body), redirect:'follow'})
+    : await fetch(S.url + (S.url.includes('?') ? '&' : '?') + 'token=' + encodeURIComponent(S.token) + '&t=' + Date.now(), {redirect:'follow'});
+  let d;
+  try { d = await res.json(); } catch { throw new Error('הטבלה לא החזירה תשובה תקינה. כדאי לבדוק שהפריסה היא "אפליקציית אינטרנט" עם גישה ל"כל אחד".'); }
+  if (d.error === 'token') throw new Error('הקוד הסודי לא תואם. כדאי להעתיק שוב את קוד הגשר מהאפליקציה ולפרוס מחדש.');
+  if (d.error || !d.ok) throw new Error('הטבלה החזירה שגיאה.');
+  return d;
+}
+async function syncNow(manual){
+  const S = db.sync; if (!S?.url) return;
+  if (syncing){ syncAgain = true; return; }
+  if (!navigator.onLine){ if (manual) toast('אין חיבור לאינטרנט. הסנכרון ימשיך כשיהיה.'); return; }
+  syncing = true; refreshSyncUI();
+  try {
+    const now = Date.now(), snap = S.snap || {};
+    const changed = [];
+    db.tasks.forEach(t => { if (snap[t.id] !== strip(t)){ t.updated = now; changed.push(t); } });
+    const ids = new Set(db.tasks.map(t => t.id));
+    const deleted = Object.keys(snap).filter(id => !ids.has(id)).map(id => ({id, at:now}));
+    const metaJ = JSON.stringify(db.cats);
+    if (metaJ !== S.metaSnap) S.metaUpdated = now;
+    const sent = Object.fromEntries(db.tasks.map(t => [t.id, strip(t)]));
+    const d = await callSheet(S, {token:S.token, tasks:changed, deleted, cats:db.cats, days:db.days, metaUpdated:S.metaUpdated || 0});
+    applyRemote(d, sent);
+    S.last = Date.now(); S.error = '';
+  } catch (err){
+    S.error = err.message || 'שגיאה'; if (manual) toast(S.error);
+  } finally {
+    syncing = false; persist(); refreshSyncUI();
+    if (syncAgain){ syncAgain = false; scheduleSync(); }
+  }
+}
+// The sheet's merged state wins, except for what changed here while the request was out.
+function applyRemote(d, sent){
+  const S = db.sync, local = new Map(db.tasks.map(t => [t.id, t])), out = [], seen = new Set();
+  d.tasks.forEach(rt => {
+    seen.add(rt.id);
+    const lt = local.get(rt.id);
+    if (!lt){ if (!(rt.id in sent)) out.push(rt); return; }          // in `sent` but gone here = deleted while syncing
+    if (strip(lt) !== sent[rt.id]){ out.push(lt); return; }          // edited while syncing: keep, push next time
+    Object.keys(lt).forEach(k => { if (!(k in rt)) delete lt[k]; }); // keep the same object so an open sheet stays live
+    Object.assign(lt, rt); out.push(lt);
+  });
+  db.tasks.forEach(t => { if (!seen.has(t.id) && !(t.id in sent)) out.push(t); });   // added while syncing
+  db.tasks = out;
+  if (Array.isArray(d.cats) && d.cats.length) db.cats = d.cats;
+  for (const [k, n] of Object.entries(d.days || {})) db.days[k] = Math.max(db.days[k] || 0, n);
+  S.snap = Object.fromEntries(d.tasks.map(t => [t.id, strip(t)]));
+  S.metaSnap = JSON.stringify(db.cats); S.metaUpdated = d.metaUpdated || S.metaUpdated || 0;
+  if (d.sheetUrl) S.sheetUrl = d.sheetUrl;
+  if (db.focus && !byId(db.focus.id)) { db.focus = null; clearInterval(tick); $('#focus').classList.remove('on'); }
+  if (!sheet.classList.contains('on') && !document.activeElement?.closest?.('.addline')) render();
+}
+function refreshSyncUI(){ const el = $('#syncState'); if (el) el.textContent = syncLine(); }
+const randToken = () => Array.from(crypto.getRandomValues(new Uint8Array(18)), b => b.toString(16).padStart(2, '0')).join('');
+const scriptFor = token => $('#gsCode').textContent.replace('__TOKEN__', token).trim() + '\n';
+const syncCode = S => 'NOWSYNC:' + b64u(new TextEncoder().encode(JSON.stringify({u:S.url, k:S.token})));
+
+async function connect(url, token, fail){
+  url = url.trim();
+  if (!/^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec/.test(url)){ fail('הכתובת צריכה להתחיל ב-https://script.google.com/macros/s/ ולהסתיים ב-/exec'); return; }
+  fail('מתחבר…');
+  let d;
+  try { d = await callSheet({url, token}); } catch (err){ fail(err.message.includes('fetch') ? 'לא הצלחתי להגיע לטבלה. כדאי לבדוק את הכתובת ואת החיבור לאינטרנט.' : err.message); return; }
+  fail('');
+  const remote = d.tasks || [];
+  const mine = db.tasks.length;
+  if (remote.length && mine) return chooseMerge(url, token, d);
+  finishConnect(url, token, remote.length ? 'take' : 'push', d);
+}
+function chooseMerge(url, token, d){
+  openSheet(`${navBack('חיבור לטבלה')}
+    <div class="empty" style="padding:14px 8px 6px"><div class="em">🔗</div><div class="big">בטבלה כבר יש ${d.tasks.length} משימות</div>ובמכשיר הזה יש ${db.tasks.length}. מה לעשות?</div>
+    <div class="stack" style="margin-top:12px">
+      <button class="big-btn" data-mg="merge">לאחד את שתיהן</button>
+      <button class="big-btn ghost" data-mg="take">להשתמש רק במה שבטבלה</button>
+    </div>
+    <p class="hint" style="margin-top:12px">איחוד שומר את כל המשימות משני המקומות. משימה פתוחה עם אותו שם בשני המקומות נשמרת פעם אחת. "רק מה שבטבלה" מחליף את מה שיש במכשיר הזה.</p>`);
+  sheet.onkeydown = sheet.onchange = null;
+  sheet.onclick = e => {
+    if (sheetNav(e, syncSheet)) return;
+    const m = e.target.closest('[data-mg]')?.dataset.mg; if (m) finishConnect(url, token, m, d);
+  };
+}
+async function finishConnect(url, token, mode, d){
+  if (mode === 'take'){ db.tasks = []; if (Array.isArray(d.cats) && d.cats.length) db.cats = d.cats; }
+  if (mode === 'merge'){
+    const norm = x => x.title.trim().replace(/\s+/g, ' ');
+    db.tasks = db.tasks.filter(t => !d.tasks.some(r => r.id === t.id || (!r.done && !t.done && norm(r) === norm(t))));
+  }
+  db.sync = {url, token, snap:{}, metaSnap:'', metaUpdated:0, last:0, error:''};
+  delete db.syncDraft;
+  persist(); syncSheet();
+  await syncNow(true);
+  if (!db.sync?.error) toast('מחובר לטבלה ✓');
+  if (sheet.classList.contains('on') && $('#syncState')) syncSheet();   // now with the "open the sheet" link
+}
+async function connectFromCode(code, fail){
+  try {
+    const m = String(code).match(/NOWSYNC:([A-Za-z0-9_-]+)/);
+    const {u, k} = JSON.parse(new TextDecoder().decode(unb64u(m[1])));
+    await connect(u, k, fail || (msg => msg && toast(msg)));
+  } catch { (fail || toast)('קוד החיבור לא תקין. כדאי להציג אותו שוב במכשיר המחובר.'); }
+}
+
+function syncSheet(){
+  const S = db.sync;
+  if (S?.url){
+    openSheet(`${navBack('גיבוי וסנכרון')}
+      <div class="card" style="padding:16px;display:flex;gap:12px;align-items:center;margin-bottom:18px">
+        <span class="set-ic" style="background:var(--c-green);width:40px;height:40px;border-radius:12px"><svg><use href="#i-cloud"/></svg></span>
+        <div style="flex:1"><div style="font-weight:800">מחובר לטבלה בגוגל דרייב</div><div class="m" id="syncState" style="color:var(--ink2);font-size:14px">${syncLine()}</div></div></div>
+      <div class="group">
+        <button class="row" data-s="now"><span class="lbl"><b>סנכרון עכשיו</b></span></button>
+        ${S.sheetUrl ? `<a class="row" href="${esc(S.sheetUrl)}" target="_blank" rel="noopener" style="text-decoration:none;color:inherit"><span class="lbl"><b>פתיחת הטבלה</b><div class="m">לראות את כל המשימות בגוגל שיטס</div></span><svg class="chev"><use href="#i-chev"/></svg></a>` : ''}
+        <button class="row" data-s="other"><span class="lbl"><b>חיבור מכשיר נוסף</b><div class="m">קוד QR שמחבר מכשיר אחר לאותה טבלה</div></span><svg class="chev"><use href="#i-chev"/></svg></button>
+      </div>
+      <div class="group"><button class="row danger" data-s="off"><span class="lbl">ניתוק המכשיר הזה</span></button></div>
+      <p class="hint">הסנכרון קורה כשפותחים את האפליקציה, אחרי כל שינוי ופעם בדקה. את הטבלה אפשר לפתוח ולקרוא בגוגל שיטס. עריכה של משימות נעשית באפליקציה.</p>`);
+    let armed = false;
+    sheet.onkeydown = sheet.onchange = null;
+    sheet.onclick = e => {
+      if (sheetNav(e, settings)) return;
+      const a = e.target.closest('[data-s]')?.dataset.s;
+      if (a === 'now') syncNow(true);
+      if (a === 'other') showCode('חיבור מכשיר נוסף', syncCode(S), 'במכשיר השני: ⚙ הגדרות ← גיבוי וסנכרון ← "יש לי כבר טבלה", וסורקים את הקוד. הקוד מאפשר גישה למשימות שלך, אז לא לשלוח אותו לאחרים.', syncSheet);
+      if (a === 'off'){
+        if (!armed){ armed = true; e.target.closest('[data-s]').querySelector('.lbl').textContent = 'בטוח? המשימות יישארו במכשיר ובטבלה'; return; }
+        db.sync = null; persist(); toast('המכשיר נותק מהטבלה'); syncSheet();
+      }
+    };
+    return;
+  }
+  db.syncDraft = db.syncDraft || randToken(); persist();
+  const token = db.syncDraft;
+  openSheet(`${navBack('גיבוי וסנכרון בגוגל שיטס')}
+    <p class="hint" style="font-size:15px;margin:0 6px 16px">המשימות יישמרו בטבלה בגוגל דרייב שלך, ויסתנכרנו בין המחשב לנייד. ההקמה לוקחת בערך 5 דקות, פעם אחת.</p>
+    <div class="group" style="padding:4px 0">
+      ${[
+        `פותחים טבלה חדשה: <a href="https://sheets.new" target="_blank" rel="noopener" style="color:var(--accent);font-weight:700">sheets.new</a>`,
+        `בתפריט של הטבלה: <b>תוספים ← Apps Script</b> (באנגלית: Extensions ← Apps Script).`,
+        `מוחקים את מה שכתוב שם, ומדביקים את קוד הגשר:<div style="margin-top:8px"><button class="addtoday" data-s="copy">📋 העתקת קוד הגשר</button></div>`,
+        `לוחצים על 💾 שמירה, ואז <b>פריסה ← פריסה חדשה</b>. ליד "בחירת סוג" לוחצים על ⚙ ובוחרים <b>אפליקציית אינטרנט</b>.`,
+        `ב"למי יש גישה" בוחרים <b>כל אחד</b>, ולוחצים <b>פריסה</b>. גוגל תבקש הרשאה: מאשרים. אם מופיע "Google hasn't verified this app", לוחצים <b>Advanced</b> ואז <b>Go to…</b>.`,
+        `מעתיקים את <b>כתובת אפליקציית האינטרנט</b> ומדביקים כאן:`
+      ].map((x, i) => `<div class="row" style="align-items:flex-start;gap:12px"><span class="num" style="width:26px;height:26px;border-radius:50%;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;font-weight:800;font-size:13px;flex:none;margin-top:12px">${i+1}</span><span class="lbl" style="font-size:15px;line-height:1.45">${x}</span></div>`).join('')}
+      <div style="padding:0 16px 14px"><input class="dt" id="syncUrl" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off" spellcheck="false" style="direction:ltr;text-align:left"></div>
+    </div>
+    <div class="stack"><button class="big-btn" data-s="connect">חיבור</button></div>
+    <div class="err" id="syncErr"></div>
+    <div class="group" style="margin-top:6px"><button class="row" data-s="have"><span class="lbl"><b>יש לי כבר טבלה</b><div class="m">חיבור המכשיר הזה בקוד QR ממכשיר שכבר מחובר</div></span><svg class="chev"><use href="#i-chev"/></svg></button></div>
+    <p class="hint">הקוד הסודי בגשר נוצר במכשיר הזה. רק מי שיש לו גם אותו וגם את הכתובת יכול לגשת למשימות.</p>`);
+  const fail = msg => { const el = $('#syncErr'); if (el){ el.textContent = msg; el.style.color = msg === 'מתחבר…' ? 'var(--ink2)' : ''; } };
+  sheet.onkeydown = e => { if (e.target.id === 'syncUrl' && e.key === 'Enter' && !e.isComposing) connect(e.target.value, token, fail); };
+  sheet.onchange = null;
+  sheet.onclick = async e => {
+    if (sheetNav(e, settings)) return;
+    const a = e.target.closest('[data-s]')?.dataset.s;
+    if (a === 'copy') copyText(scriptFor(token), 'קוד הגשר הועתק. עכשיו מדביקים אותו ב-Apps Script.');
+    if (a === 'connect') connect($('#syncUrl').value, token, fail);
+    if (a === 'have') getSheet(syncSheet);
+  };
+}
+async function copyText(txt, done){
+  try { await navigator.clipboard.writeText(txt); toast(done); }
+  catch { const t = document.createElement('textarea'); t.value = txt; document.body.appendChild(t); t.select(); try { document.execCommand('copy'); toast(done); } catch { toast('לא הצלחתי להעתיק'); } t.remove(); }
+}
+async function showCode(title, code, hint, back){
+  openSheet(`${navBack(title)}
+    <div class="qrbox" id="qrBox"><span style="color:#666">מכין קוד…</span></div>
+    <div class="stack" style="margin-top:16px"><button class="big-btn ghost" id="copyCode">העתקת הקוד</button></div>
+    <p class="hint" style="margin-top:14px">${hint}</p>`);
+  sheet.onkeydown = sheet.onchange = null;
+  sheet.onclick = e => { if (sheetNav(e, back)) return; if (e.target.closest('#copyCode')) copyText(code, 'הקוד הועתק'); };
+  const box = $('#qrBox');
+  try { await loadScript(QR_LIB); const q = qrcode(0, 'M'); q.addData(code); q.make(); box.innerHTML = q.createSvgTag({cellSize:4, margin:0, scalable:true}); }
+  catch { box.innerHTML = '<span style="color:#666;text-align:center;padding:12px">אין חיבור לאינטרנט, אז אי אפשר להציג קוד QR. אפשר להשתמש ב"העתקת הקוד".</span>'; }
+}
+
 /* ---------- start ---------- */
 if (db.focus) openFocus();
 render();
@@ -1265,6 +1562,10 @@ function openFromLink(){
 }
 openFromLink();
 addEventListener('hashchange', openFromLink);
+if (db.sync?.url) syncNow();
+document.addEventListener('visibilitychange', () => { if (!document.hidden && db.sync?.url) syncNow(); });
+addEventListener('online', () => { if (db.sync?.url) syncNow(); });
+setInterval(() => { if (!document.hidden && db.sync?.url) syncNow(); }, 60e3);
 })();
 </script>
 </body>
