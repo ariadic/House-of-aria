@@ -1,6 +1,13 @@
 {
   "version": 2,
   "skills": {
+    "drama-creator": {
+      "source": "GongLingRui/screen-creative-skills",
+      "commit": "2af6492e278b1e222bee9578d176642e26b8aee7",
+      "sourceType": "github",
+      "skillPath": "category/creation/drama-creator/SKILL.md",
+      "computedHash": "f3bb630490ffd6f9a7314edf4c41e6c61ee97bcd7f42723f3a3d73ff1fb235de"
+    },
     "threejs-animation": {
       "source": "cloudai-x/threejs-skills",
       "commit": "0e181866f095b5f06d005133876e926515390d95",
