@@ -91,6 +91,55 @@
       "sourceType": "github",
       "skillPath": "skills/threejs-textures/SKILL.md",
       "computedHash": "c9d53239206d8d152de16bfa630760f289616c86c43b47e94599be3b19c32d05"
+    },
+    "viral-captions-and-ctas": {
+      "source": "vyralcontent/content-skills",
+      "commit": "349e495d97029a3e6303a7510e3f39c73f36d8fe",
+      "sourceType": "github",
+      "skillPath": "skills/viral-captions-and-ctas/SKILL.md",
+      "computedHash": "85eb580e06969217073a677a4acec37692cab6a4ea0c746c64e732488891ef01"
+    },
+    "viral-hooks": {
+      "source": "vyralcontent/content-skills",
+      "commit": "349e495d97029a3e6303a7510e3f39c73f36d8fe",
+      "sourceType": "github",
+      "skillPath": "skills/viral-hooks/SKILL.md",
+      "computedHash": "560daa7eec0c7fabeea30ca6c2636af1a92bc18767a97f9724d614a56f26f595"
+    },
+    "viral-instagram-reels": {
+      "source": "vyralcontent/content-skills",
+      "commit": "349e495d97029a3e6303a7510e3f39c73f36d8fe",
+      "sourceType": "github",
+      "skillPath": "skills/viral-instagram-reels/SKILL.md",
+      "computedHash": "197aacf0ea300a651d1b77e281c9b8fa29be62046f133119098e84fb56b9b5a5"
+    },
+    "viral-short-form": {
+      "source": "vyralcontent/content-skills",
+      "commit": "349e495d97029a3e6303a7510e3f39c73f36d8fe",
+      "sourceType": "github",
+      "skillPath": "skills/viral-short-form/SKILL.md",
+      "computedHash": "bb4330fe033473d1a375d12e97a2e536eef59bec9f53bbf89179b434cd7c0347"
+    },
+    "viral-short-form-ideas": {
+      "source": "vyralcontent/content-skills",
+      "commit": "349e495d97029a3e6303a7510e3f39c73f36d8fe",
+      "sourceType": "github",
+      "skillPath": "skills/viral-short-form-ideas/SKILL.md",
+      "computedHash": "600967a77128e0881164e4c07f2adefedddd5149b4c5812e124768155540a379"
+    },
+    "viral-tiktok-content": {
+      "source": "vyralcontent/content-skills",
+      "commit": "349e495d97029a3e6303a7510e3f39c73f36d8fe",
+      "sourceType": "github",
+      "skillPath": "skills/viral-tiktok-content/SKILL.md",
+      "computedHash": "12ba2c6fa6abab84a1e5c2f47c258ca4ab2dd5cf4fd3b59ffe38000f47a83e03"
+    },
+    "viral-youtube-shorts": {
+      "source": "vyralcontent/content-skills",
+      "commit": "349e495d97029a3e6303a7510e3f39c73f36d8fe",
+      "sourceType": "github",
+      "skillPath": "skills/viral-youtube-shorts/SKILL.md",
+      "computedHash": "fbba03f8b22f6febfc6fe102a9f2d7b29d2a8b118f76ba85bf33e833502d7306"
     }
   }
 }
