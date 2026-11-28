@@ -8,6 +8,41 @@
       "skillPath": "skills/algorithmic-art/SKILL.md",
       "computedHash": "4a85abfeaa09f2dd2c4b76c85d57b65f61dc10d55c3cca245989cee8897c2be5"
     },
+    "brand-guidelines": {
+      "source": "arnabbagxd/Brand-building-skills",
+      "commit": "4a0a8b5b7a0f64bf0fc551978a18a591670a5223",
+      "sourceType": "github",
+      "skillPath": "skills/brand-guidelines/SKILL.md",
+      "computedHash": "0215b96ae3e5cf8423157280186937a5e8be85fbc3183db0b1d0ecaaee0fb91a"
+    },
+    "brand-identity": {
+      "source": "arnabbagxd/Brand-building-skills",
+      "commit": "4a0a8b5b7a0f64bf0fc551978a18a591670a5223",
+      "sourceType": "github",
+      "skillPath": "skills/brand-identity/SKILL.md",
+      "computedHash": "cc7cfba9ec4c23654417fc2faeab118fd32cd6cf10eb325753667794246e0695"
+    },
+    "brand-positioning": {
+      "source": "arnabbagxd/Brand-building-skills",
+      "commit": "4a0a8b5b7a0f64bf0fc551978a18a591670a5223",
+      "sourceType": "github",
+      "skillPath": "skills/brand-positioning/SKILL.md",
+      "computedHash": "006bea97fb75210ef6e0c6215530cf77106ba2b9de35e3a1d65383b74e47891d"
+    },
+    "brand-story": {
+      "source": "arnabbagxd/Brand-building-skills",
+      "commit": "4a0a8b5b7a0f64bf0fc551978a18a591670a5223",
+      "sourceType": "github",
+      "skillPath": "skills/brand-story/SKILL.md",
+      "computedHash": "4d0b2e45f97eaaf8cf9e4b2ddc915fae50e1ac2bfb9854d21211c6a8036e0324"
+    },
+    "brand-voice": {
+      "source": "arnabbagxd/Brand-building-skills",
+      "commit": "4a0a8b5b7a0f64bf0fc551978a18a591670a5223",
+      "sourceType": "github",
+      "skillPath": "skills/brand-voice/SKILL.md",
+      "computedHash": "e54f0dfe3c7f0805f199adce5b0f1d5ddbab327ef4bdf2a0a92b7cad07cdb53a"
+    },
     "canvas-design": {
       "source": "anthropics/skills",
       "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
@@ -57,12 +92,33 @@
       "skillPath": "skills/gsap-utils/SKILL.md",
       "computedHash": "d05b56284eea0118d481b8c673aff27cae66199282995bfe78315785f561002d"
     },
+    "logo-design": {
+      "source": "kaankiziltug/logo-design-skill",
+      "commit": "e9eaddc07895575253d6663320354a708f53e955",
+      "sourceType": "github",
+      "skillPath": "skills/logo-design/SKILL.md",
+      "computedHash": "1e43981509936ee4ba378f9cff590f5e547a6ed3d8b9a65ece6a43473b671ed1"
+    },
+    "personal-brand": {
+      "source": "arnabbagxd/Brand-building-skills",
+      "commit": "4a0a8b5b7a0f64bf0fc551978a18a591670a5223",
+      "sourceType": "github",
+      "skillPath": "skills/personal-brand/SKILL.md",
+      "computedHash": "86c8451cce10d0d61c8aa0271ebf11601505822e4c5bde3a265f20aa26733276"
+    },
     "slack-gif-creator": {
       "source": "anthropics/skills",
       "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
       "sourceType": "github",
       "skillPath": "skills/slack-gif-creator/SKILL.md",
       "computedHash": "25581243f719e75121f9051ec671e810e53375fe648a6362d673d6bfbbe9d479"
+    },
+    "target-audience": {
+      "source": "arnabbagxd/Brand-building-skills",
+      "commit": "4a0a8b5b7a0f64bf0fc551978a18a591670a5223",
+      "sourceType": "github",
+      "skillPath": "skills/target-audience/SKILL.md",
+      "computedHash": "c451779959f49272967f8d1bc9428c393ffb61b0c1bd90dd6f24b7d2c64aac4f"
     },
     "theme-factory": {
       "source": "anthropics/skills",
